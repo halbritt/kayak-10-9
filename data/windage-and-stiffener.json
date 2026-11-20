@@ -1,0 +1,99 @@
+{
+  "windage_and_rudder": {
+    "Epic 18X": {
+      "lcg_m": 2.8933,
+      "draft_cm": 9.34,
+      "A_air_hull_m2": 0.9564,
+      "x_CE_hull_cm": 15.86,
+      "A_sub_hull_m2": 0.3683,
+      "x_CLR_geom_cm": 9.29,
+      "x_CE_total_cm": 10.62,
+      "x_CP_hydro_dyn_cm": 63.79,
+      "weathercock_lever_cm": 53.17,
+      "wind_cases": {
+        "15kn_beam": {
+          "side_force_N": 33.54,
+          "weathercock_Nm": 17.83,
+          "rudder_trim_deg": 3.77,
+          "rudder_power_W": 0.98
+        },
+        "22kn_beam": {
+          "side_force_N": 72.15,
+          "weathercock_Nm": 38.36,
+          "rudder_trim_deg": 8.11,
+          "rudder_power_W": 2.57
+        }
+      }
+    },
+    "Stage 9 (18.5 cm rear slab)": {
+      "lcg_m": 2.7089,
+      "draft_cm": 8.81,
+      "A_air_hull_m2": 1.1592,
+      "x_CE_hull_cm": 20.08,
+      "A_sub_hull_m2": 0.3836,
+      "x_CLR_geom_cm": -0.12,
+      "x_CE_total_cm": 14.64,
+      "x_CP_hydro_dyn_cm": 53.5,
+      "weathercock_lever_cm": 38.85,
+      "wind_cases": {
+        "15kn_beam": {
+          "side_force_N": 38.87,
+          "weathercock_Nm": 15.1,
+          "rudder_trim_deg": 3.19,
+          "rudder_power_W": 0.86
+        },
+        "22kn_beam": {
+          "side_force_N": 83.6,
+          "weathercock_Nm": 32.48,
+          "rudder_trim_deg": 6.87,
+          "rudder_power_W": 1.99
+        }
+      }
+    },
+    "10.9 (14.8 cm low rear deck)": {
+      "lcg_m": 2.7097,
+      "draft_cm": 8.82,
+      "A_air_hull_m2": 1.0366,
+      "x_CE_hull_cm": 36.43,
+      "A_sub_hull_m2": 0.3799,
+      "x_CLR_geom_cm": 0.74,
+      "x_CE_total_cm": 26.64,
+      "x_CP_hydro_dyn_cm": 54.72,
+      "weathercock_lever_cm": 28.08,
+      "wind_cases": {
+        "15kn_beam": {
+          "side_force_N": 35.65,
+          "weathercock_Nm": 10.01,
+          "rudder_trim_deg": 2.12,
+          "rudder_power_W": 0.68
+        },
+        "22kn_beam": {
+          "side_force_N": 76.68,
+          "weathercock_Nm": 21.53,
+          "rudder_trim_deg": 4.55,
+          "rudder_power_W": 1.18
+        }
+      }
+    }
+  },
+  "rear_deck_stiffener": {
+    "load_N": 800.0,
+    "open_span_m": 0.8,
+    "bare_3mm_no_day_bh": {
+      "added_mass_g": 0,
+      "deflection_mm": 30.03
+    },
+    "transverse_arch_beam_20x20mm_only": {
+      "added_mass_g": 26,
+      "deflection_mm": 20.09
+    },
+    "deep_center_ud_rib_18x24mm_only": {
+      "added_mass_g": 48,
+      "deflection_mm": 2.41
+    },
+    "cruciform_ud_rib_plus_arch_beam": {
+      "added_mass_g": 64,
+      "deflection_mm": 1.79
+    }
+  }
+}

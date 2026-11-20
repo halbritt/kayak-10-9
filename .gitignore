@@ -1,0 +1,12 @@
+# Build & local site staging outputs (published via GitHub Releases & GitHub Pages)
+/build/
+/_site/
+/dist/
+__pycache__/
+*.py[cod]
+.venv/
+*.stl
+*.glb
+*.3mf
+*.tar.gz
+*.zip

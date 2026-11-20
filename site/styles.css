@@ -1,0 +1,116 @@
+:root {
+  --ink: #0f1e2e;
+  --muted: #4b5e71;
+  --bg: #f4f7fa;
+  --card: #ffffff;
+  --line: #d6e0ea;
+  --accent: #18649a;
+  --teal: #0b8466;
+  --amber: #c96a1b;
+  --purple: #7c3aed;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.56;
+}
+header.hero {
+  background: linear-gradient(135deg, #0b1928 0%, #153654 62%, #1b567e 100%);
+  color: #fff;
+  padding: 2.8rem 1.5rem 2.2rem;
+  border-bottom: 4px solid var(--teal);
+}
+.wrap { max-width: 1260px; margin: 0 auto; }
+.eyebrow {
+  display: inline-block; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase;
+  background: rgba(11, 132, 102, 0.35); border: 1px solid rgba(94, 234, 212, 0.45);
+  padding: 0.25rem 0.65rem; border-radius: 999px; color: #a7f3d0; font-weight: 600;
+}
+h1 { font-size: 2.35rem; margin: 0.65rem 0 0.45rem; letter-spacing: -0.02em; }
+.subtitle { color: #cbd5e1; font-size: 1.06rem; max-width: 920px; margin: 0 0 1.5rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 0.85rem; }
+.kpi {
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px; padding: 0.85rem 1rem;
+}
+.kpi .val { font-size: 1.48rem; font-weight: 700; color: #fff; }
+.kpi .lbl { font-size: 0.78rem; color: #cbd5e1; margin-top: 0.15rem; }
+nav.topnav {
+  position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); padding: 0.55rem 1.5rem;
+}
+nav.topnav .wrap { display: flex; flex-wrap: wrap; gap: 0.45rem 1rem; font-size: 0.84rem; font-weight: 600; }
+nav.topnav a { color: var(--ink); text-decoration: none; padding: 0.2rem 0.35rem; border-radius: 5px; }
+nav.topnav a:hover { background: #e2edf7; color: var(--accent); }
+main { padding: 1.8rem 1.5rem 3.5rem; }
+section.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 1.6rem 1.75rem; margin-bottom: 1.6rem; box-shadow: 0 2px 8px rgba(15, 30, 46, 0.04);
+}
+h2 { font-size: 1.42rem; margin: 0 0 0.35rem; color: var(--ink); border-bottom: 2px solid #edf2f7; padding-bottom: 0.45rem; }
+h3 { font-size: 1.08rem; margin: 1.2rem 0 0.4rem; color: #16324f; }
+.lead { color: var(--muted); font-size: 0.96rem; margin: 0.3rem 0 1.1rem; }
+.plate-box { margin: 1rem 0 0.5rem; text-align: center; }
+.plate-box img {
+  width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px;
+  cursor: zoom-in; transition: box-shadow 0.15s ease; background: #fff;
+}
+.plate-box img:hover { box-shadow: 0 6px 20px rgba(15, 30, 46, 0.12); }
+.caption { font-size: 0.83rem; color: var(--muted); margin-top: 0.45rem; text-align: left; }
+.table-wrap { overflow-x: auto; margin-top: 0.8rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+th, td { padding: 0.52rem 0.7rem; border-bottom: 1px solid #e6edf4; text-align: left; vertical-align: top; }
+th { background: #f0f5fa; font-weight: 700; color: #142c44; position: sticky; top: 0; }
+tr.group-hdr td { background: #e6eff8; font-weight: 700; color: #0f2942; text-transform: uppercase; font-size: 0.76rem; letter-spacing: 0.06em; }
+td.hi { font-weight: 600; color: #0c4a6e; background: #f8fbff; }
+.badge { display: inline-block; padding: 0.12rem 0.45rem; border-radius: 4px; font-size: 0.73rem; font-weight: 600; }
+.b-mesh { background: #dbeafe; color: #1e40af; }
+.b-spec { background: #f3e8ff; color: #6b21a8; }
+.b-cfd { background: #d1fae5; color: #065f46; }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.25rem; align-items: start; }
+.viewer-frame { width: 100%; height: 540px; border: 1px solid var(--line); border-radius: 10px; background: #eef3f8; }
+.dl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem; margin-top: 0.9rem; }
+.dl-item {
+  display: block; padding: 0.85rem 1rem; border: 1px solid var(--line); border-radius: 8px;
+  text-decoration: none; color: var(--ink); background: #fafcfe; transition: border-color 0.15s, background 0.15s;
+}
+.dl-item:hover { border-color: var(--accent); background: #f0f7fd; }
+.dl-item strong { display: block; color: var(--accent); font-size: 0.92rem; }
+.dl-item span { font-size: 0.8rem; color: var(--muted); }
+.note-box { background: #f8fafc; border-left: 4px solid var(--accent); padding: 0.85rem 1.1rem; border-radius: 6px; font-size: 0.88rem; color: #334155; margin-top: 0.9rem; }
+#lightbox {
+  display: none; position: fixed; inset: 0; background: rgba(9, 16, 26, 0.88);
+  z-index: 100; align-items: center; justify-content: center; padding: 1.5rem; cursor: zoom-out;
+}
+#lightbox img { max-width: 96vw; max-height: 94vh; border-radius: 6px; background: #fff; }
+
+.render-stack { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 0.9rem; }
+.render-card {
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #eef2f6;
+  box-shadow: 0 3px 12px rgba(15, 30, 46, 0.06);
+}
+.render-card img {
+  display: block; width: 100%; height: auto; cursor: zoom-in;
+}
+.render-card .rcap {
+  background: #fff; padding: 0.65rem 1rem; font-size: 0.85rem; color: var(--muted);
+  border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+}
+.render-card .rcap strong { color: var(--ink); }
+.render-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 1.15rem; }
+
+.viewer-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.7rem 0 0.85rem; align-items: center; justify-content: space-between; }
+.viewer-tabs { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.vtab {
+  border: 1px solid var(--line); background: #f4f8fc; color: var(--ink);
+  padding: 0.45rem 0.8rem; border-radius: 7px; font-size: 0.83rem; font-weight: 600;
+  cursor: pointer; transition: all 0.14s ease;
+}
+.vtab:hover { border-color: var(--accent); background: #e8f2fb; }
+.vtab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.viewer-open { font-size: 0.84rem; font-weight: 600; color: var(--accent); text-decoration: none; }
+.viewer-open:hover { text-decoration: underline; }

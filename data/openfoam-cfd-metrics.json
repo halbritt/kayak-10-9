@@ -1,0 +1,62 @@
+{
+  "epic_18x_5.5kn": {
+    "hull": "epic_18x",
+    "speed_kn": 5.5,
+    "u_mps": 2.8294,
+    "drag_total_N": 21.378,
+    "drag_std_N": 0.093,
+    "drag_pressure_N": 4.996,
+    "drag_viscous_N": 16.383,
+    "effective_power_W": 60.49,
+    "vertical_force_N": 867.77,
+    "pitch_moment_My_Nm": 63.576,
+    "bow_up_running_trim_deg": 0.15,
+    "bow_wave_crest_mm": 34.0,
+    "mid_wave_trough_mm": -18.5
+  },
+  "fsk_k12_d6b5_5.5kn": {
+    "hull": "fsk_k12_d6b5",
+    "speed_kn": 5.5,
+    "u_mps": 2.8294,
+    "drag_total_N": 20.584,
+    "drag_std_N": 0.238,
+    "drag_pressure_N": 3.822,
+    "drag_viscous_N": 16.762,
+    "effective_power_W": 58.24,
+    "vertical_force_N": 890.07,
+    "pitch_moment_My_Nm": 72.41,
+    "bow_up_running_trim_deg": 0.153,
+    "bow_wave_crest_mm": 36.8,
+    "mid_wave_trough_mm": -16.2
+  },
+  "epic_18x_6.2kn": {
+    "hull": "epic_18x",
+    "speed_kn": 6.2,
+    "u_mps": 3.1896,
+    "drag_total_N": 27.166,
+    "drag_std_N": 0.073,
+    "drag_pressure_N": 7.147,
+    "drag_viscous_N": 20.019,
+    "effective_power_W": 86.65,
+    "vertical_force_N": 848.89,
+    "pitch_moment_My_Nm": 96.201,
+    "bow_up_running_trim_deg": 0.227,
+    "bow_wave_crest_mm": 43.3,
+    "mid_wave_trough_mm": -20.9
+  },
+  "fsk_k12_d6b5_6.2kn": {
+    "hull": "fsk_k12_d6b5",
+    "speed_kn": 6.2,
+    "u_mps": 3.1896,
+    "drag_total_N": 26.019,
+    "drag_std_N": 0.218,
+    "drag_pressure_N": 5.298,
+    "drag_viscous_N": 20.722,
+    "effective_power_W": 82.99,
+    "vertical_force_N": 875.1,
+    "pitch_moment_My_Nm": 103.483,
+    "bow_up_running_trim_deg": 0.219,
+    "bow_wave_crest_mm": 43.2,
+    "mid_wave_trough_mm": -16.9
+  }
+}
