@@ -10,9 +10,10 @@ Heavy 3D meshes, slicer plates, and full-scale CAD exports are published on **[G
 
 | Deliverable | Direct `"Latest"` Download | Contents |
 | --- | --- | --- |
+| **Replacement bow · 1:8 H2S** | [Download the bow-only 3MF](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-scale-1to8-h2s-bow.3mf) | One fore section with the v0.1.0 joint, sockets and scale. Print bulkhead face down. |
 | **1:8 Scale Bambu Lab H2S `.3MF`** | [`kayak-10-9-scale-1to8-h2s-plate.3mf`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-scale-1to8-h2s-plate.3mf) | Single-plate (`340 x 320 x 340 mm`) support-free vertical bulkhead-split `1:8` scale model (`683.8 x 70.3 x 42.1 mm`), `6x` octagonal shear keys, and `2x` Bessel-station desk stands |
 | **1:8 Scale Watertight `.STL` Set** | [`kayak-10-9-scale-1to8-stls.zip`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-scale-1to8-stls.zip) | Individual watertight `.stl` sections (`01_bow`, `02_cockpit`, `03_stern`, keys, stands) + uncut `683.75 mm` solid `.stl` |
-| **Full-Scale Builder DXFs & Offsets** | [`kayak-10-9-builder-dxf-offsets.zip`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-builder-dxf-offsets.zip) | `station_molds.dxf` (`29` stations), `sections.dxf`, `offsets.csv`, profile SVGs, and `kayak-10-9.hull.json` |
+| **Full-Scale Builder DXFs & Offsets** | [`kayak-10-9-builder-dxf-offsets.zip`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-builder-dxf-offsets.zip) | `finished-stations.dxf` (faired surface in millimetres, with 10 mm bow spacing and a centerline profile), base-hull `station_molds.dxf` (`29` stations), `sections.dxf`, `offsets.csv`, profile SVGs, and `kayak-10-9.hull.json` |
 | **Full-Scale 3D-Printed Mold `.STL` Samples** | [`kayak-10-9-female-mold-stls.zip`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-female-mold-stls.zip) | Watertight zero-undercut female hull & deck mold stations for Bambu Lab H2S (unsplit forward + midship slicer-dovetail) and Voron Phoenix `600³` (`45°` diagonal Station 06) |
 | **Interactive 3D `.GLB` & Outer OML `.STL`** | [`kayak-10-9-3d-assemblies.zip`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-3d-assemblies.zip) | 8-part finished `.glb`, smoked-deck X-ray `.glb`, H2S stepped wedge-clamping Baltic-birch strongback `.glb`, and `kayak-10-9-outer-shell.stl` |
 | **Checksums** | [`SHA256SUMS.txt`](https://github.com/halbritt/kayak-10-9/releases/latest/download/SHA256SUMS.txt) | SHA-256 digests for all release archives and `.3mf` assets |
@@ -26,13 +27,16 @@ Heavy 3D meshes, slicer plates, and full-scale CAD exports are published on **[G
 
 ## Rebuilding Locally
 
-With a Python 3.12 environment containing [`kayak-gen`](https://github.com/halbritt/kayak-gen), `numpy`, `scipy`, `trimesh`, `vtk`, `pyvista`, and `matplotlib`:
+With a Python 3.12 environment containing [`kayak-gen`](https://github.com/halbritt/kayak-gen), `numpy`, `scipy`, `trimesh`, `vtk`, `pyvista`, `matplotlib`, `ezdxf`, `networkx`, and `shapely>=2.1`:
 
 ```bash
+python3 cad/build_finished.py                    # -> build/finished/ (outer STL, both 8-part GLBs, finished stations DXF)
 python3 cad/build_stepped_cradle_strongback.py   # -> build/mold_stepped_cradle_assy/
 python3 cad/build_model_1to8_h2s.py              # -> build/model_1to8_h2s/ (.3mf + .stl)
 python3 site/build_site.py --dist _site          # -> _site/index.html
 ```
+
+The v0.1.1 outer-shell STL and finished station DXF include the sculpted ends. The original kayak-gen offsets, profile SVGs and station molds describe the underlying parametric hull. The current hydrostatic summary uses the revised surface. OpenFOAM drag and Capytaine wave-response datasets are historical comparisons.
 
 ## Epistemological Scope & Licenses
 

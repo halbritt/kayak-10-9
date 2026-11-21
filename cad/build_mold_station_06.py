@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 HULL_JSON = REPO_ROOT / "hull" / "kayak-10-9.hull.json"
 BUILD_ROOT = REPO_ROOT / "build"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-OUT = B / "s13" / "mold_station_06"
+OUT = BUILD_ROOT / "mold_station_06"
 OUT.mkdir(parents=True, exist_ok=True)
 
 import matplotlib

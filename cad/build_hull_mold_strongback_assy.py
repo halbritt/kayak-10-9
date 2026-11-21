@@ -95,10 +95,7 @@ def _resample_2d(pts: np.ndarray, n: int) -> np.ndarray:
 
 
 def _precompute_mold_tables(surf: SculptedKayakSurface) -> dict[str, np.ndarray]:
-    rings_mm = np.array([
-        surf.end_shape_xyz(np.column_stack((np.full(surf.hull_rings.shape[1], surf.xs[i]), surf.hull_rings[i]))) * 1000.0
-        for i in range(len(surf.xs))
-    ])
+    rings_mm = surf.mold_station_rings_mm()
     xs_mm = surf.xs * 1000.0
     z_raw, y_raw = np.zeros(len(xs_mm)), np.zeros(len(xs_mm))
     for i, xm in enumerate(xs_mm):

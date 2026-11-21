@@ -708,6 +708,12 @@ def main() -> None:
     tmf_path = OUT / "kayak-10-9-scale-1to8-h2s-plate.3mf"
     report["threemf_verification"] = write_bambu_3mf(plate_items, tmf_path)
 
+    bow_name, bow_mesh, _ = next(item for item in plate_items if item[0] == "01_bow_section_1to8")
+    report["bow_only_3mf"] = write_bambu_3mf(
+        [(bow_name, bow_mesh, (170.0, 160.0, 0.0))],
+        OUT / "kayak-10-9-scale-1to8-h2s-bow.3mf",
+    )
+
     # Export uncut 1:8 STL + individual part STLs + GLB preview
     uncut_full.export(OUT / "kayak-10-9-scale-1to8-uncut-full.stl")
     sc = trimesh.Scene()

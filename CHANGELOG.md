@@ -2,6 +2,12 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## [v0.1.1] - 2026-11-21
+
+- Faired the diagonal pinch where the stem turns into the keel. The surface now has a continuous tangent across the original crease and retains the 135 × 56 mm elliptical forefoot profile.
+- Added a bow-only H2S plate for existing 1:8 models. The bulkhead and alignment sockets fit the v0.1.0 midbody and keys.
+- Regenerated both outfitted boat views, the outer shell, complete scale model, tooling assemblies, hydrostatic summary and monograph. The forward mold cavities now use transverse cuts through the shaped bow. The builder package includes a finished-surface DXF with closely spaced bow sections.
+
 ## [v0.1.0] - 2026-11-20
 
 ### Added

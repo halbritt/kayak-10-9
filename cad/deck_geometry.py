@@ -243,13 +243,14 @@ class SculptedKayakSurface:
             d_bow[m_bn] = rx_n * (1.0 - sc * ux)
             z[m_bn] = (z_top[m_bn] - rz_n) + rz_n * (sc * uz)
 
-        # 2. Smooth lower bow forefoot curve (Rx=135 mm, Rz=56 mm tangent arc into keel, zero forefoot kink)
+        # The product vanishes quadratically in the scale factor at each join.
+        # On the stem or keel one coordinate is 1, preserving the elliptical profile.
         rx_f, rz_f = 0.135, 0.056
         m_bf = (d_bow < rx_f) & (z < zk + rz_f)
         if np.any(m_bf):
             fx = (rx_f - d_bow[m_bf]) / rx_f
             fz = np.clip(((zk[m_bf] + rz_f) - z[m_bf]) / rz_f, 0.0, 1.5)
-            scf = np.maximum(fx, fz) / np.maximum(np.hypot(fx, fz), 1e-12)
+            scf = 1.0 / np.hypot(1.0, fx * fz)
             d_bow[m_bf] = rx_f * (1.0 - scf * fx)
             z[m_bf] = (zk[m_bf] + rz_f) - rz_f * (scf * fz)
 
@@ -278,6 +279,34 @@ class SculptedKayakSurface:
         out[:, 0] = x_new
         out[:, 2] = z
         return out
+
+    def mold_station_rings_mm(self) -> np.ndarray:
+        """Sample mold cavities at physical X after rounding and raking the bow."""
+        x = np.broadcast_to(self.xs[:, None, None], self.hull_rings.shape[:2] + (1,))
+        rings = self.end_shape_xyz(np.concatenate((x, self.hull_rings), axis=2).reshape(-1, 3))
+        rings = rings.reshape(len(self.xs), -1, 3) * 1000.0
+
+        # Bow rings bend longitudinally during fairing. The tooling loft uses
+        # flat stations, so intersect those planes with the finished surface.
+        shell = trimesh.util.concatenate((self.build_hull_shell(), self.build_deck_shell(cut_openings=False)))
+        end_x = self.xs[0] + 0.250
+        bow = shell.submesh([shell.triangles[:, :, 0].min(axis=1) <= end_x], append=True)
+        for i in np.flatnonzero(self.xs < end_x):
+            station = max(self.xs[i], self.xs[0] + 0.00005)
+            edges = trimesh.intersections.mesh_plane(bow, [1, 0, 0], [station, 0, 0])
+            yz = np.unique(edges.reshape(-1, 3)[:, 1:].round(10), axis=0)
+            side = yz[yz[:, 0] >= 0.0]
+            side = side[side[:, 1].argsort()]
+            # Where rake moves the stem above the mold parting line, retain
+            # its lowest point so the tooling can close the cavity there.
+            side = side[:max(1, side[:, 1].searchsorted(self.seam_z[i], side="right"))]
+            arc = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(side, axis=0), axis=1))]
+            t = np.linspace(0.0, arc[-1], self.n_hull_half)
+            starboard = np.column_stack([np.interp(t, arc, side[:, j]) for j in (0, 1)])
+            port = starboard[:0:-1] * [-1, 1]
+            rings[i, :, 1:] = 1000.0 * np.vstack((port, starboard))
+            rings[i, :, 0] = 1000.0 * station
+        return rings
 
     def build_hull_shell(self) -> trimesh.Trimesh:
         """Build outer hull + topside shell below the sheer mold seam."""

@@ -95,13 +95,13 @@ def make_master_table(sr_4in: float, b_oa: float, bow_l: float, pod_l: float, st
     <tr><td>Catch Beam &ge; 10 cm Above WL (+0.8 / +1.0 / +1.2 m)</td><td class="hi">42.9 / 39.6 / 36.2 cm</td><td>45.3 / 42.4 / 38.3 cm</td><td>Kayak Cut (~40–42 cm)</td><td><span class="badge b-mesh">3D Mesh Slice</span></td></tr>
     <tr><td>Wing-Knee Channel &amp; Thigh Control</td><td class="hi">31.2 cm open center + 4.1 cm side hooks</td><td>Standard touring rim + spine ridge</td><td>Open keyhole + cheek-hung seat</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
     <tr><td>Seat, Footbrace &amp; Keel Architecture</td><td class="hi">10 mm pan on twin &plusmn;12.5 cm carbon foil tracks + 12&deg; wing footboard (-0.82 m) + 60 mm flush UD keel strap</td><td>Center plastic notched rail + SmartTrack toe pegs</td><td>Cheek-bolted 3-pos seat + 3-cam QR full footplate</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
-    <tr class="group-hdr"><td colspan="5">3. Calm-Water Speed &amp; OpenFOAM-v2512 Free-Surface RANS CFD (225 lb Seawater, Unvalidated Comparative)</td></tr>
+    <tr class="group-hdr"><td colspan="5">3. Calm-Water Speed &amp; Prior-Design OpenFOAM-v2512 Free-Surface RANS CFD (225 lb Seawater, Unvalidated Comparative)</td></tr>
     <tr><td>Speed @ 40 / 60 / 90 / 120 W (ITTC-57 + Michell)</td><td class="hi">4.46 / 5.08 / 5.67 / 6.17 kn</td><td>4.47 / 5.02 / 5.58 / 6.06 kn</td><td>&mdash; (no 3D scan)</td><td><span class="badge b-cfd">Analytical</span></td></tr>
     <tr><td>OpenFOAM Total Drag @ 5.50 kn (Fn 0.386)</td><td class="hi">20.58 &plusmn; 0.24 N (-3.7%, 58.2 W)</td><td>21.38 &plusmn; 0.09 N (60.5 W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
     <tr><td>OpenFOAM Pressure/Wave Drag @ 5.50 kn</td><td class="hi">3.82 N (-23.5% wave drag)</td><td>5.00 N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
     <tr><td>OpenFOAM Total Drag @ 6.20 kn (Fn 0.435)</td><td class="hi">26.02 &plusmn; 0.22 N (-4.2%, 83.0 W)</td><td>27.17 &plusmn; 0.07 N (86.7 W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
     <tr><td>OpenFOAM Pressure/Wave Drag @ 6.20 kn</td><td class="hi">5.30 N (-25.9% wave drag)</td><td>7.15 N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
-    <tr class="group-hdr"><td colspan="5">4. Multi-Load Stability &amp; Capytaine 3D Wave Seakeeping (Unvalidated Hydrostatic / Linear BEM)</td></tr>
+    <tr class="group-hdr"><td colspan="5">4. Multi-Load Stability &amp; Prior-Design Capytaine Wave Response</td></tr>
     <tr><td>Initial GM_T: 213 lb Carbon / 225 lb / 265 lb / 300 lb</td><td class="hi">5.53 / 4.40 / 3.33 / 2.50 cm</td><td>&mdash; / 5.68 / 4.30 / 3.01 cm</td><td>~(S18S ski hull: lower flare)</td><td><span class="badge b-mesh">3D Float / BEM</span></td></tr>
     <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (225 lb, KG=0.25m)</td><td class="hi">6.9 / 10.2 / 8.0 mm</td><td>8.9 / 13.4 / 12.2 mm</td><td>&mdash;</td><td><span class="badge b-mesh">3D Float</span></td></tr>
     <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (265 lb Baja)</td><td class="hi">5.2 / 7.5 / 4.3 mm</td><td>6.8 / 10.6 / 8.9 mm</td><td>&mdash; (330 lb max cap.)</td><td><span class="badge b-mesh">3D Float</span></td></tr>
@@ -144,7 +144,7 @@ def build_html(specs: dict, stiff: dict) -> str:
     <div class="kpi-grid">
       <div class="kpi"><div class="val">{sr_4in:.2f}</div><div class="lbl">Sound Rowers 4&quot; Ratio (&le; 10.99 FSK Cap)</div></div>
       <div class="kpi"><div class="val">27.0–29.4 lb</div><div class="lbl">TeXtreme + Rohacell Target Mass</div></div>
-      <div class="kpi"><div class="val">-25.9%</div><div class="lbl">Calc. OpenFOAM Wave Drag vs. 18X @ 6.2 kn</div></div>
+      <div class="kpi"><div class="val">-25.9%</div><div class="lbl">Prior-design OpenFOAM Wave Drag vs. 18X @ 6.2 kn</div></div>
       <div class="kpi"><div class="val">-23% to -26%</div><div class="lbl">Calc. Bow Plunges in Steep Chop (BEM)</div></div>
       <div class="kpi"><div class="val">{tot_l:.1f} L</div><div class="lbl">Sealed Dry Storage (2 BHs + 5.5 L Pod)</div></div>
       <div class="kpi"><div class="val">{defl_mm:.2f} mm</div><div class="lbl">Calc. Aft-Deck Flex @ 180 lbf (+64 g Grid)</div></div>
@@ -227,6 +227,10 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
       <div class="caption"><strong>Plate 1:</strong> Profile with 6/12/18 cm buttock lines, half-breadth waterlines (4.0&quot; Sound Rowers caliper contour vs. Epic 18X and Stellar S18R), 20-station split body plan, and 225 lb submerged Sectional Area Curve (<code>Cp = 0.599</code>).</div>
     </div>
     <div class="plate-box">
+      <img src="plates/forefoot-revision.png" alt="Original and revised bow STL under the same grazing light"/>
+      <div class="caption">The v0.1.1 forefoot keeps the rounded keel profile and fairs the diagonal crease visible on the original print.</div>
+    </div>
+    <div class="plate-box">
       <img src="plates/bow_roundover_vs_epic18x.png" alt="Bow Roundover vs Epic 18X"/>
       <div class="caption"><strong>Bow Stem Detail (1:1 mm):</strong> <code>r_LE = 3.8 mm</code> monotonic semicircular stem bullnose, <code>26 &times; 23 mm</code> upper nose crown fillet, and <code>135 &times; 56 mm</code> forefoot curve overlaid against Epic 18X scan geometry.</div>
     </div>
@@ -251,10 +255,11 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
   </section>
 
   <section id="cfd" class="card">
+    <p>Plates 5 and 6 report earlier simulations. The revised forefoot has fresh hydrostatic calculations. Its drag and wave response have yet to be simulated.</p>
     <h2>Plates 5, 6 &amp; 7 — OpenFOAM RANS CFD, Capytaine 3D Seakeeping &amp; X-Ray Cutaways</h2>
     <div class="plate-box">
       <img src="plates/plate5_openfoam_cfd.png" alt="Plate 5 OpenFOAM RANS CFD"/>
-      <div class="caption"><strong>Plate 5 (Calculated / Unvalidated Comparative):</strong> OpenFOAM-v2512 <code>snappyHexMesh</code> + <code>interFoam</code> VOF RANS at 225 lb seawater equilibrium (5.50 &amp; 6.20 kn).</div>
+      <div class="caption"><strong>Plate 5 (Calculated / Unvalidated Comparative):</strong> Prior-design OpenFOAM-v2512 <code>snappyHexMesh</code> + <code>interFoam</code> VOF RANS at 225 lb seawater equilibrium (5.50 &amp; 6.20 kn).</div>
     </div>
     <div class="plate-box">
       <img src="plates/plate6_seakeeping_and_windage.png" alt="Plate 6 Capytaine 3D Seakeeping"/>
@@ -318,13 +323,14 @@ def _body_sections_2() -> str:
     <h2>Latest Release CAD, Mold, .3MF &amp; Solver Downloads</h2>
     <p class="lead">Binary CAD/print packages resolve automatically to the newest tagged release on <a href="{REPO_URL}/releases/latest">GitHub Releases</a>; lightweight JSON/CSV/SVG datasets are also hosted directly alongside this page.</p>
     <div class="dl-grid">
+      <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Replacement bow · 1:8 H2S 3MF</strong><span>One fore section, bulkhead face down. Fits the v0.1.0 midbody and alignment keys.</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-plate.3mf"><strong>kayak-10-9-scale-1to8-h2s-plate.3mf</strong><span>Bambu Lab H2S single-plate 1:8 scale model (6 objects, 0 g supports)</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-stls.zip"><strong>kayak-10-9-scale-1to8-stls.zip</strong><span>Individual watertight 1:8 .stl sections + 683.75 mm uncut solid .stl</span></a>
-      <a class="dl-item" href="{REL_BASE}/kayak-10-9-builder-dxf-offsets.zip"><strong>kayak-10-9-builder-dxf-offsets.zip</strong><span>29-station station_molds.dxf, sections.dxf, offsets.csv, SVGs &amp; hull JSON</span></a>
+      <a class="dl-item" href="{REL_BASE}/kayak-10-9-builder-dxf-offsets.zip"><strong>kayak-10-9-builder-dxf-offsets.zip</strong><span>Finished 3D station curves and stem profile, base-hull patterns and offsets, and hull JSON</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-female-mold-stls.zip"><strong>kayak-10-9-female-mold-stls.zip</strong><span>Full-scale watertight female hull/deck mold .stl samples (H2S &amp; Voron 600&sup3;)</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-3d-assemblies.zip"><strong>kayak-10-9-3d-assemblies.zip</strong><span>All .glb 3D assemblies (boat, X-ray, strongback) + outer-shell.stl</span></a>
       <a class="dl-item" href="downloads/kayak-10-9.hull.json" download><strong>kayak-10-9.hull.json</strong><span>Canonical kayak-gen DistributionV2 parametric hull specification</span></a>
-      <a class="dl-item" href="downloads/offsets.csv" download><strong>offsets.csv</strong><span>Full-scale builder station half-breadth &amp; height offset table</span></a>
+      <a class="dl-item" href="downloads/offsets.csv" download><strong>offsets.csv</strong><span>Parametric base-hull offsets. Use finished-stations.dxf in the builder archive for the faired surface.</span></a>
       <a class="dl-item" href="downloads/openfoam-cfd-metrics.json" download><strong>openfoam-cfd-metrics.json</strong><span>OpenFOAM-v2512 interFoam RANS comparative drag &amp; wave dataset</span></a>
       <a class="dl-item" href="downloads/capytaine-seakeeping.json" download><strong>capytaine-seakeeping.json</strong><span>Capytaine 3.0 3D BEM JONSWAP seakeeping dataset</span></a>
     </div>

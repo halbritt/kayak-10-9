@@ -22,6 +22,7 @@ import trimesh
 from trimesh.visual.material import PBRMaterial
 from trimesh.visual.texture import TextureVisuals
 import vtk
+from shapely import Polygon as SectionPolygon, constrained_delaunay_triangles
 from deck_geometry import SculptedKayakSurface
 
 TAN_WEDGE = float(np.tan(np.deg2rad(8.0)))  # 8.0 deg self-locking gib/draw-wedge angle (7.1:1 mechanical advantage)
@@ -116,10 +117,7 @@ def _extrude_yz_loop_along_x(loop_yz: np.ndarray, x0: float, x1: float) -> trime
 
 
 def _precompute_tables(surf: SculptedKayakSurface) -> dict[str, np.ndarray]:
-    rings_mm = np.array([
-        surf.end_shape_xyz(np.column_stack((np.full(surf.hull_rings.shape[1], surf.xs[i]), surf.hull_rings[i]))) * 1000.0
-        for i in range(len(surf.xs))
-    ])
+    rings_mm = surf.mold_station_rings_mm()
     xs_mm = surf.xs * 1000.0
     z_raw, y_raw = np.zeros(len(xs_mm)), np.zeros(len(xs_mm))
     for i, xm in enumerate(xs_mm):
@@ -231,10 +229,27 @@ def _half_mold_loop_at_x(tbl: dict[str, np.ndarray], x_mm: float, sp: dict[str, 
     return pts if area > 0.0 else pts[::-1]
 
 
+def _mold_end_cap(loop_uv: np.ndarray, x_val: float, normal_x: float) -> trimesh.Trimesh:
+    # Preserve every boundary segment, including the collinear vertices at
+    # the alignment tongue. The adjacent loft uses those same vertices.
+    uv_all = loop_uv
+    index = {tuple(point): i for i, point in enumerate(uv_all)}
+    triangles = constrained_delaunay_triangles(SectionPolygon(loop_uv))
+    faces = np.array([
+        [index[point] for point in tri.exterior.coords[:3]]
+        for tri in triangles.geoms
+    ], dtype=int)
+    xyz = np.column_stack((np.full(len(uv_all), x_val), uv_all[:, 0], uv_all[:, 1]))
+    v0, v1, v2 = xyz[faces[:, 0]], xyz[faces[:, 1]], xyz[faces[:, 2]]
+    flip = (np.cross(v1 - v0, v2 - v0)[:, 0] * normal_x) < 0.0
+    faces[flip] = faces[flip][:, [0, 2, 1]]
+    return trimesh.Trimesh(vertices=xyz, faces=faces, process=False)
+
+
 def _loft_half_station(tbl: dict[str, np.ndarray], xs_k: np.ndarray, sp: dict[str, float], side: int) -> trimesh.Trimesh:
     loops = np.asarray([_half_mold_loop_at_x(tbl, float(xv), sp, side) for xv in xs_k])
-    c0 = _triangulate_loop_2d(loops[0], float(xs_k[0]), normal_x=-1.0)
-    c1 = _triangulate_loop_2d(loops[-1], float(xs_k[-1]), normal_x=+1.0)
+    c0 = _mold_end_cap(loops[0], float(xs_k[0]), normal_x=-1.0)
+    c1 = _mold_end_cap(loops[-1], float(xs_k[-1]), normal_x=+1.0)
     nx, m, _ = loops.shape
     vw = np.column_stack((np.repeat(xs_k, m), loops.reshape(-1, 2)))
     fw = []
@@ -247,6 +262,8 @@ def _loft_half_station(tbl: dict[str, np.ndarray], xs_k: np.ndarray, sp: dict[st
     solid.merge_vertices(digits_vertex=3)
     if solid.volume < 0.0:
         solid.invert()
+    if not solid.is_volume:
+        raise ValueError(f"Open or inverted mold half at x={xs_k[0]:.1f} mm, side={side}")
     return solid
 
 
