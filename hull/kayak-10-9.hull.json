@@ -162,7 +162,14 @@
         "aft_xi": 0.2
       },
       "shoulder_round_m": 0.06812556509299181,
-      "bilge_round_m": 0.08
+      "bilge_round_m": {
+        "schema_version": "1",
+        "kind": "ramp",
+        "forward": 0.07,
+        "aft": 0.0,
+        "forward_xi": -0.38,
+        "aft_xi": 0.05
+      }
     },
     "section_side_exponent": {
       "schema_version": "1",

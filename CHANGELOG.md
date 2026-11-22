@@ -2,6 +2,11 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## [v0.2.1] - 2026-11-22
+
+- Pinned keel depth and scaled `D³` bilge-batten span by submerged girth (`s_wl`) in `kayak-gen`, and replaced the uniform `0.08 m` bilge round with a longitudinal ramp (`forward: 0.07 -> aft: 0.0` over `xi = -0.38..+0.05`). Restores the full `10.88` Sound Rowers 4"-draft ratio (`5.4428 m / 50.05 cm`), `4.47 / 5.08 / 5.67 / 6.17 kn` calm-water speeds at `40 / 60 / 90 / 120 W` (`225 lb`), and `10.0 mm` `GZ(20°)` while keeping the forebody bilge and forward keel groove faired.
+- Added a regression test (`test_sound_rowers_ratio_and_keel_baseline_preserved`) pinning `SR_4in == 10.88`, `L_4in >= 5.442 m`, and zero keel lift, and regenerated all CAD, mold, `1:8` `.3mf`/`.stl`, hydrostatic, plate, studio render, and monograph deliverables.
+
 ## [v0.2.0] - 2026-11-22
 
 - Faired the submerged quarter-ellipse bilge ridge and forward centreline keel groove by setting `topsides.bilge_round_m = 0.08` (`kayak-gen` RFC 0089 stage 9 symmetric `D³` batten fairing). Sound Rowers 4"-draft ratio moves from `10.88` to `10.79 <= 10.99`, USCA 4"-beam is `9.16% >= 8.50%`, and wing-paddle catch beam stays within `1 mm` (`43.0 / 39.7 / 36.2 cm` at `+0.8 / +1.0 / +1.2 m`).

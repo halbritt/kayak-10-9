@@ -92,3 +92,15 @@ class ForefootTests(unittest.TestCase):
                 self.assertLessEqual(float(lo[0, 1] - lo[:, 1].min()), 1e-9)
                 self.assertGreater(float(k_stbd.min()), 0.4)
                 self.assertLess(dk_cm, 2.5)
+
+    def test_sound_rowers_ratio_and_keel_baseline_preserved(self):
+        surf = self.surface
+        shell = trimesh.util.concatenate((surf.build_hull_shell(), surf.build_deck_shell(cut_openings=False)))
+        shell.merge_vertices()
+        r4 = trimesh.intersections.mesh_plane(shell, [0, 0, 1], [0, 0, 0.1016]).reshape(-1, 3)
+        l4 = float(np.ptp(r4[:, 0]))
+        b4 = float(np.ptp(r4[:, 1]))
+        sr_4in = round(l4 / b4, 2)
+        self.assertAlmostEqual(float(shell.bounds[0, 2]), 0.0, places=5)
+        self.assertGreaterEqual(l4, 5.442)
+        self.assertEqual(sr_4in, 10.88)

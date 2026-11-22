@@ -82,7 +82,7 @@ def make_master_table(specs: dict, sr_4in: float, b_oa: float, bow_l: float, pod
   <thead>
     <tr>
       <th>Parameter / Metric</th>
-      <th>Kayak 10.9 (v0.2.0 Faired Bilge)</th>
+      <th>Kayak 10.9 (v0.2.1 Faired Forebody)</th>
       <th>Epic 18X / 18X Sport</th>
       <th>Stellar S18R G2</th>
       <th>Basis / Source</th>
@@ -198,10 +198,10 @@ def build_html(specs: dict, stiff: dict) -> str:
       </div>
     </div>
   </section>
-""" + _body_sections_1(sr_4in, b_oa, bow_l, cock_l, pod_l, stern_l, tot_l, defl_mm, master_tbl, svg_trim) + _body_sections_2()
+""" + _body_sections_1(sr_4in, b_oa, catch_1m, bow_l, cock_l, pod_l, stern_l, tot_l, defl_mm, master_tbl, svg_trim) + _body_sections_2()
 
 
-def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, pod_l: float, stern_l: float, tot_l: float, defl_mm: float, master_tbl: str, svg_trim: str) -> str:
+def _body_sections_1(sr_4in: float, b_oa: float, catch_1m: float, bow_l: float, cock_l: float, pod_l: float, stern_l: float, tot_l: float, defl_mm: float, master_tbl: str, svg_trim: str) -> str:
     return f"""
   <section id="viewer" class="card">
     <h2>Interactive In-Browser 3D CAD &amp; Tooling Assemblies</h2>
@@ -224,7 +224,7 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
   <section id="benchmarks" class="card">
     <h2>Master Benchmark Comparison — Kayak 10.9 vs. Epic 18X vs. Stellar S18R G2</h2>
     <p class="lead">
-      <strong>10.9</strong> pairs a <strong>{sr_4in:.2f}</strong> 4&quot; waterline ratio and <strong>39.7 cm</strong> wing-cut catch forward with a <strong>{b_oa:.1f} cm</strong> flared aft sheer,
+      <strong>10.9</strong> pairs a <strong>{sr_4in:.2f}</strong> 4&quot; waterline ratio and <strong>{catch_1m:.1f} cm</strong> wing-cut catch forward with a <strong>{b_oa:.1f} cm</strong> flared aft sheer,
       <strong>14.8 cm</strong> low rear deck, and <strong>{tot_l:.1f} L</strong> 2-bulkhead + carbon day-pod dry storage layout.
     </p>
     {master_tbl}
@@ -237,8 +237,8 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
       <div class="caption"><strong>Plate 1:</strong> Profile with 6/12/18 cm buttock lines, half-breadth waterlines (4.0&quot; Sound Rowers caliper contour vs. Epic 18X and Stellar S18R), 20-station split body plan, and 225 lb submerged Sectional Area Curve.</div>
     </div>
     <div class="plate-box">
-      <img src="plates/bilge-fairing-v020.png" alt="v0.2.0 submerged bilge fairing comparison"/>
-      <div class="caption"><strong>v0.2.0 Bilge Fairing (<code>bilge_round_m = 0.08 m</code>):</strong> Symmetric <code>D&sup3;</code> batten fairing removes the submerged quarter-ellipse chine and forward centreline keel groove while keeping the wing-paddle catch within 1 mm.</div>
+      <img src="plates/bilge-fairing-v020.png" alt="v0.2.1 submerged bilge fairing comparison"/>
+      <div class="caption"><strong>v0.2.1 Forebody Bilge Fairing (<code>forward: 0.07 &rarr; aft: 0.0</code>):</strong> Keel-pinned symmetric <code>D&sup3;</code> batten fairing removes the submerged quarter-ellipse chine and forward centreline keel groove while keeping the <code>10.88</code> Sound Rowers ratio and <code>5.08 / 5.67 / 6.17 kn</code> speeds intact.</div>
     </div>
     <div class="plate-box">
       <img src="plates/forefoot-revision.png" alt="Original and revised bow STL under the same grazing light"/>
@@ -269,7 +269,7 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
   </section>
 
   <section id="cfd" class="card">
-    <p>Plates 5 and 6 report earlier v0.1.0 simulations. The v0.2.0 faired-bilge hull has fresh hydrostatic and analytical resistance calculations; its RANS drag and BEM wave response have yet to be re-simulated.</p>
+    <p>Plates 5 and 6 report earlier v0.1.0 simulations. The v0.2.1 faired-forebody hull has fresh hydrostatic and analytical resistance calculations; its RANS drag and BEM wave response have yet to be re-simulated.</p>
     <h2>Plates 5, 6 &amp; 7 — OpenFOAM RANS CFD, Capytaine 3D Seakeeping &amp; X-Ray Cutaways</h2>
     <div class="plate-box">
       <img src="plates/plate5_openfoam_cfd.png" alt="Plate 5 OpenFOAM RANS CFD"/>
@@ -337,7 +337,7 @@ def _body_sections_2() -> str:
     <h2>Latest Release CAD, Mold, .3MF &amp; Solver Downloads</h2>
     <p class="lead">Binary CAD/print packages resolve automatically to the newest tagged release on <a href="{REPO_URL}/releases/latest">GitHub Releases</a>; lightweight JSON/CSV/SVG datasets are also hosted directly alongside this page.</p>
     <div class="dl-grid">
-      <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Bow section &middot; 1:8 H2S 3MF</strong><span>Fore section matching the v0.2.0 faired midbody (for v0.1.0 prints, use the v0.1.2 release bow).</span></a>
+      <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Bow section &middot; 1:8 H2S 3MF</strong><span>Fore section matching the v0.2.1 faired midbody (for v0.1.0 prints, use the v0.1.2 release bow).</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-plate.3mf"><strong>kayak-10-9-scale-1to8-h2s-plate.3mf</strong><span>Bambu Lab H2S single-plate 1:8 scale model (6 objects, 0 g supports)</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-stls.zip"><strong>kayak-10-9-scale-1to8-stls.zip</strong><span>Individual watertight 1:8 .stl sections + 683.75 mm uncut solid .stl</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-builder-dxf-offsets.zip"><strong>kayak-10-9-builder-dxf-offsets.zip</strong><span>Finished 3D station curves and stem profile, base-hull patterns and offsets, and hull JSON</span></a>

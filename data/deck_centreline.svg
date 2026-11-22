@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--   kayakgen build-export artifact (RFC 0051) -->
 <!--   kayakgen_version: 0.1.0 -->
-<!--   hull_sha256: 6a32bfb6e97d495aac7c9a38619fff392e041a3e1f8cabc1e583b320fc9b66ff -->
+<!--   hull_sha256: fb6760627bd155623b8df48f93534f780f97adab5bae053347bd0b14e94ad9f5 -->
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="5570.000mm" height="259.000mm" viewBox="0 0 5570.000 259.000">
   <title>deck_centreline</title>
   <g stroke="#cccccc" stroke-width="0.2" fill="none">
