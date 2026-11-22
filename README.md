@@ -38,7 +38,9 @@ python3 cad/build_model_1to8_h2s.py              # -> build/model_1to8_h2s/ (.3m
 python3 site/build_site.py --dist _site          # -> _site/index.html
 ```
 
-The v0.1.1 outer-shell STL and finished station DXF include the sculpted ends. The original kayak-gen offsets, profile SVGs and station molds describe the underlying parametric hull. The current hydrostatic summary uses the revised surface. OpenFOAM drag and Capytaine wave-response datasets are historical comparisons.
+Current source builds use the [whole-hull spline fit and full-size comparison](docs/surface-fairing/README.md). The tagged v0.2.1 downloads and their published specifications describe the preceding hull.
+
+The v0.1.1 outer-shell STL and finished station DXF include the sculpted ends. The original kayak-gen offsets, profile SVGs and station molds describe the underlying parametric hull. The hydrostatic summary in each release uses its finished surface. OpenFOAM drag and Capytaine wave-response datasets are historical comparisons.
 
 ## Epistemological Scope & Licenses
 

@@ -2,6 +2,10 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## Unreleased
+
+- Fit the finished hull and topsides on a common cubic surface. The six low forward waterlines pass through the former bilge-fairing transition without a reversal on the 50 mm gauge. Added full-hull lines, reflection bands and load checks against the released geometry. [Inspection and design controls](docs/surface-fairing/README.md)
+
 ## [v0.2.1] - 2026-11-22
 
 - Added `cad/build_hull_inspection_h2s.py` (`kayak-10-9-hull-inspection-h2s.3mf` and `kayak-10-9-hull-only-h2s.3mf`): a one-shot, single-piece `1:12` (`1" = 1'`, `454.9 mm` long, `326.2 mm` Z) Bambu Lab H2S bare-hull inspection print oriented at `45°` across the `340 x 320 mm` plate diagonal with keel, forefoot, and bilges facing UP (`+Z`, support-blocked) and organic tree supports enabled along 6 sheer-back stations (`-Z`) plus two `1:12` Bessel cradles.

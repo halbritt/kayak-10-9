@@ -1,0 +1,710 @@
+{
+  "v0.1.2": {
+    "sha256": "e6e7fe724261d6eb5962789166d805c38f4f6b7a7afdfc4185a2f41abde61425",
+    "cuts": {
+      "Waterlines 0.04": {
+        "peak_turn_change_deg": 0.5381202162091886,
+        "distance_aft_m": 1.1119999999998802,
+        "rms_turn_change_deg": 0.13884364887711256,
+        "max_signed_turn_forward_deg": 0.0937619405914626
+      },
+      "Waterlines 0.05": {
+        "peak_turn_change_deg": 0.9588998115654918,
+        "distance_aft_m": 5.1859999999994315,
+        "rms_turn_change_deg": 0.1357412096181689,
+        "max_signed_turn_forward_deg": 0.135191663155181
+      },
+      "Waterlines 0.06": {
+        "peak_turn_change_deg": 2.181695543920657,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.22020635476420153,
+        "max_signed_turn_forward_deg": 0.1498414840622851
+      },
+      "Waterlines 0.07": {
+        "peak_turn_change_deg": 1.4847219059229817,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.19086078149075253,
+        "max_signed_turn_forward_deg": 0.14881993356459247
+      },
+      "Waterlines 0.08": {
+        "peak_turn_change_deg": 1.128719490657914,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.18714291543284364,
+        "max_signed_turn_forward_deg": 0.16189896891380057
+      },
+      "Waterlines 0.09": {
+        "peak_turn_change_deg": 0.8655795657543486,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.18617239230210159,
+        "max_signed_turn_forward_deg": 0.13444864879844204
+      },
+      "Waterlines 0.1016": {
+        "peak_turn_change_deg": 0.7612162829660792,
+        "distance_aft_m": 5.343999999999415,
+        "rms_turn_change_deg": 0.1592314200451526,
+        "max_signed_turn_forward_deg": 0.08597710076394777
+      },
+      "Waterlines 0.13": {
+        "peak_turn_change_deg": 0.4443270757899119,
+        "distance_aft_m": 5.301999999999419,
+        "rms_turn_change_deg": 0.08277502120145604,
+        "max_signed_turn_forward_deg": -0.12635500204215486
+      },
+      "Waterlines 0.16": {
+        "peak_turn_change_deg": 0.3059383286659914,
+        "distance_aft_m": 0.23999999999997632,
+        "rms_turn_change_deg": 0.06304750472644122,
+        "max_signed_turn_forward_deg": -0.12440528889676498
+      },
+      "Buttocks 0.025": {
+        "peak_turn_change_deg": 6.614419441902071,
+        "distance_aft_m": 5.267999999999423,
+        "rms_turn_change_deg": 0.7282243595269108,
+        "max_signed_turn_forward_deg": -0.048084375015352315
+      },
+      "Buttocks 0.075": {
+        "peak_turn_change_deg": 3.4499985764818293,
+        "distance_aft_m": 5.093999999999442,
+        "rms_turn_change_deg": 0.41465202650604177,
+        "max_signed_turn_forward_deg": -0.1647221071278214
+      },
+      "Buttocks 0.125": {
+        "peak_turn_change_deg": 1.8343883381998123,
+        "distance_aft_m": 4.895999999999464,
+        "rms_turn_change_deg": 0.20931355414008557,
+        "max_signed_turn_forward_deg": -1.6601210587679962
+      },
+      "Buttocks 0.175": {
+        "peak_turn_change_deg": 0.9460276293810246,
+        "distance_aft_m": 4.655999999999491,
+        "rms_turn_change_deg": 0.15480452292668065,
+        "max_signed_turn_forward_deg": null
+      },
+      "Buttocks 0.225": {
+        "peak_turn_change_deg": 1.0695964286186284,
+        "distance_aft_m": 2.229999999999757,
+        "rms_turn_change_deg": 0.16363705530292952,
+        "max_signed_turn_forward_deg": null
+      },
+      "Diagonals 0.075": {
+        "peak_turn_change_deg": 2.422240858553467,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.23690642176484064,
+        "max_signed_turn_forward_deg": -0.05715342088556408
+      },
+      "Diagonals 0.125": {
+        "peak_turn_change_deg": 1.2416294095170362,
+        "distance_aft_m": 5.219999999999429,
+        "rms_turn_change_deg": 0.16179704309003112,
+        "max_signed_turn_forward_deg": -0.13276009171963885
+      },
+      "Diagonals 0.175": {
+        "peak_turn_change_deg": 0.7472053497759166,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.11693653282051016,
+        "max_signed_turn_forward_deg": -0.2789020899767613
+      },
+      "Diagonals 0.225": {
+        "peak_turn_change_deg": 0.5239656143592518,
+        "distance_aft_m": 0.18399999999998248,
+        "rms_turn_change_deg": 0.08747182772040298,
+        "max_signed_turn_forward_deg": -0.303302932162992
+      },
+      "Diagonals 0.275": {
+        "peak_turn_change_deg": 1.8976778164761257,
+        "distance_aft_m": 5.11599999999944,
+        "rms_turn_change_deg": 0.18885461573881207,
+        "max_signed_turn_forward_deg": -0.1874967922453257
+      }
+    },
+    "sections": [
+      {
+        "fraction": 0.06,
+        "keel_groove_mm": 0.5079606121114189,
+        "peak_abs_dk_ds_per_m2": 1104.224842774764
+      },
+      {
+        "fraction": 0.10888888888888888,
+        "keel_groove_mm": 0.2427601176177019,
+        "peak_abs_dk_ds_per_m2": 619.5062757335286
+      },
+      {
+        "fraction": 0.11608775137111518,
+        "keel_groove_mm": 0.21820493860819773,
+        "peak_abs_dk_ds_per_m2": 599.2874818389532
+      },
+      {
+        "fraction": 0.15777777777777777,
+        "keel_groove_mm": 0.11081321622560467,
+        "peak_abs_dk_ds_per_m2": 645.7650219243839
+      },
+      {
+        "fraction": 0.1983546617915905,
+        "keel_groove_mm": 0.05412828156530977,
+        "peak_abs_dk_ds_per_m2": 682.9689916069287
+      },
+      {
+        "fraction": 0.20666666666666667,
+        "keel_groove_mm": 0.04563198838816729,
+        "peak_abs_dk_ds_per_m2": 664.4474399802333
+      },
+      {
+        "fraction": 0.25319926873857407,
+        "keel_groove_mm": 0.008740514104136135,
+        "peak_abs_dk_ds_per_m2": 724.031646953013
+      },
+      {
+        "fraction": 0.25555555555555554,
+        "keel_groove_mm": 0.007090822481474815,
+        "peak_abs_dk_ds_per_m2": 707.8248655400483
+      },
+      {
+        "fraction": 0.3044444444444444,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 692.0451459067893
+      },
+      {
+        "fraction": 0.3263254113345521,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 707.0653353552261
+      },
+      {
+        "fraction": 0.35333333333333333,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 630.5943426757317
+      },
+      {
+        "fraction": 0.4022222222222222,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 474.7600972374359
+      },
+      {
+        "fraction": 0.4511111111111111,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 267.8019418766636
+      },
+      {
+        "fraction": 0.49999999999999994,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 113.08137865435914
+      },
+      {
+        "fraction": 0.5488888888888888,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 65.73297556113992
+      },
+      {
+        "fraction": 0.5977777777777777,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 94.08557624030661
+      },
+      {
+        "fraction": 0.6466666666666667,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 70.78298702413628
+      },
+      {
+        "fraction": 0.6955555555555555,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 33.41391522246821
+      },
+      {
+        "fraction": 0.7444444444444445,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 43.127293419478264
+      },
+      {
+        "fraction": 0.7933333333333332,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 67.21143225341805
+      },
+      {
+        "fraction": 0.8422222222222222,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 100.1078016860117
+      },
+      {
+        "fraction": 0.891111111111111,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 138.95879712463355
+      },
+      {
+        "fraction": 0.94,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 300.5783424154281
+      }
+    ]
+  },
+  "v0.2.1": {
+    "sha256": "1fb9835367315cb7863ddcd65dec66c7d01841df68b05c69e9adcd831c1fbaf9",
+    "cuts": {
+      "Waterlines 0.04": {
+        "peak_turn_change_deg": 0.6101280792396331,
+        "distance_aft_m": 1.231999999999867,
+        "rms_turn_change_deg": 0.1565042059234079,
+        "max_signed_turn_forward_deg": 0.2917294830135191
+      },
+      "Waterlines 0.05": {
+        "peak_turn_change_deg": 0.9588998115654918,
+        "distance_aft_m": 5.1859999999994315,
+        "rms_turn_change_deg": 0.15419639164665122,
+        "max_signed_turn_forward_deg": 0.4450020952343216
+      },
+      "Waterlines 0.06": {
+        "peak_turn_change_deg": 2.181695543920657,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.22936890321314646,
+        "max_signed_turn_forward_deg": 0.5149577331977216
+      },
+      "Waterlines 0.07": {
+        "peak_turn_change_deg": 1.4847219059229817,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.19290369112334577,
+        "max_signed_turn_forward_deg": 0.5058635708079092
+      },
+      "Waterlines 0.08": {
+        "peak_turn_change_deg": 1.128719490657914,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.16721855414537487,
+        "max_signed_turn_forward_deg": 0.1720003152884509
+      },
+      "Waterlines 0.09": {
+        "peak_turn_change_deg": 0.8655795657543486,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.16870633447300973,
+        "max_signed_turn_forward_deg": 0.3870306430156005
+      },
+      "Waterlines 0.1016": {
+        "peak_turn_change_deg": 0.7612162829660792,
+        "distance_aft_m": 5.343999999999415,
+        "rms_turn_change_deg": 0.1416859658546801,
+        "max_signed_turn_forward_deg": 0.27955577078909294
+      },
+      "Waterlines 0.13": {
+        "peak_turn_change_deg": 0.4443270757899119,
+        "distance_aft_m": 5.301999999999419,
+        "rms_turn_change_deg": 0.0919976058144349,
+        "max_signed_turn_forward_deg": 0.06084314789311093
+      },
+      "Waterlines 0.16": {
+        "peak_turn_change_deg": 0.3031399426646424,
+        "distance_aft_m": 0.23999999999997632,
+        "rms_turn_change_deg": 0.0636090740858597,
+        "max_signed_turn_forward_deg": -0.11401748348958583
+      },
+      "Buttocks 0.025": {
+        "peak_turn_change_deg": 6.614419441902071,
+        "distance_aft_m": 5.267999999999423,
+        "rms_turn_change_deg": 0.7287307824660659,
+        "max_signed_turn_forward_deg": -0.048497890606937044
+      },
+      "Buttocks 0.075": {
+        "peak_turn_change_deg": 3.4499985764818293,
+        "distance_aft_m": 5.093999999999442,
+        "rms_turn_change_deg": 0.4216324772478587,
+        "max_signed_turn_forward_deg": -0.17840548099297654
+      },
+      "Buttocks 0.125": {
+        "peak_turn_change_deg": 1.8343883381998123,
+        "distance_aft_m": 4.895999999999464,
+        "rms_turn_change_deg": 0.2151907214116882,
+        "max_signed_turn_forward_deg": -3.093890293147783
+      },
+      "Buttocks 0.175": {
+        "peak_turn_change_deg": 1.3838753031758633,
+        "distance_aft_m": 1.56799999999983,
+        "rms_turn_change_deg": 0.1950191048802628,
+        "max_signed_turn_forward_deg": null
+      },
+      "Buttocks 0.225": {
+        "peak_turn_change_deg": 0.9308348784317781,
+        "distance_aft_m": 2.2639999999997533,
+        "rms_turn_change_deg": 0.15719070196055887,
+        "max_signed_turn_forward_deg": null
+      },
+      "Diagonals 0.075": {
+        "peak_turn_change_deg": 2.422240858553467,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.23842505556094304,
+        "max_signed_turn_forward_deg": -0.002231112184533982
+      },
+      "Diagonals 0.125": {
+        "peak_turn_change_deg": 1.2416294095170362,
+        "distance_aft_m": 5.219999999999429,
+        "rms_turn_change_deg": 0.1729391182692951,
+        "max_signed_turn_forward_deg": 0.012069959427328752
+      },
+      "Diagonals 0.175": {
+        "peak_turn_change_deg": 0.7472053497759166,
+        "distance_aft_m": 5.2219999999994275,
+        "rms_turn_change_deg": 0.10677080162311435,
+        "max_signed_turn_forward_deg": 0.04722240836290122
+      },
+      "Diagonals 0.225": {
+        "peak_turn_change_deg": 0.5208058672937488,
+        "distance_aft_m": 0.18399999999998248,
+        "rms_turn_change_deg": 0.0943082837106594,
+        "max_signed_turn_forward_deg": -0.151838822773901
+      },
+      "Diagonals 0.275": {
+        "peak_turn_change_deg": 1.8976778164761257,
+        "distance_aft_m": 5.11599999999944,
+        "rms_turn_change_deg": 0.1842408237428693,
+        "max_signed_turn_forward_deg": -0.16073763608802705
+      }
+    },
+    "sections": [
+      {
+        "fraction": 0.06,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 257.26973284754825
+      },
+      {
+        "fraction": 0.10888888888888888,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 196.27098600796134
+      },
+      {
+        "fraction": 0.11608775137111518,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 203.1030501401326
+      },
+      {
+        "fraction": 0.15777777777777777,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 144.23032589488864
+      },
+      {
+        "fraction": 0.1983546617915905,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 134.18195837125046
+      },
+      {
+        "fraction": 0.20666666666666667,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 133.25873437642878
+      },
+      {
+        "fraction": 0.25319926873857407,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 148.2565594536902
+      },
+      {
+        "fraction": 0.25555555555555554,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 131.7211286122775
+      },
+      {
+        "fraction": 0.3044444444444444,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 146.3326820885983
+      },
+      {
+        "fraction": 0.3263254113345521,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 131.5958268805209
+      },
+      {
+        "fraction": 0.35333333333333333,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 140.0888910016166
+      },
+      {
+        "fraction": 0.4022222222222222,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 158.29312463854484
+      },
+      {
+        "fraction": 0.4511111111111111,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 188.09599423839836
+      },
+      {
+        "fraction": 0.49999999999999994,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 112.15517172278292
+      },
+      {
+        "fraction": 0.5488888888888888,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 65.73297556113992
+      },
+      {
+        "fraction": 0.5977777777777777,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 94.08557624030661
+      },
+      {
+        "fraction": 0.6466666666666667,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 70.78298702413628
+      },
+      {
+        "fraction": 0.6955555555555555,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 33.41391522246821
+      },
+      {
+        "fraction": 0.7444444444444445,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 43.127293419478264
+      },
+      {
+        "fraction": 0.7933333333333332,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 67.21143225341805
+      },
+      {
+        "fraction": 0.8422222222222222,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 100.1078016860117
+      },
+      {
+        "fraction": 0.891111111111111,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 138.95879712463355
+      },
+      {
+        "fraction": 0.94,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 300.5783424154281
+      }
+    ]
+  },
+  "Fitted": {
+    "sha256": "50cfb370a943f324f41c2b2dfdfa7ee44785a388ab7aa5f9a07f21959819ed24",
+    "cuts": {
+      "Waterlines 0.04": {
+        "peak_turn_change_deg": 0.36232698388594026,
+        "distance_aft_m": 5.005999999999451,
+        "rms_turn_change_deg": 0.06313419633408276,
+        "max_signed_turn_forward_deg": -0.04278853618217716
+      },
+      "Waterlines 0.05": {
+        "peak_turn_change_deg": 1.1069500002381156,
+        "distance_aft_m": 5.187999999999432,
+        "rms_turn_change_deg": 0.06987247430883979,
+        "max_signed_turn_forward_deg": -0.0018415363576411718
+      },
+      "Waterlines 0.06": {
+        "peak_turn_change_deg": 2.1695357425009436,
+        "distance_aft_m": 5.225999999999427,
+        "rms_turn_change_deg": 0.18193513259382124,
+        "max_signed_turn_forward_deg": -0.008662164876287282
+      },
+      "Waterlines 0.07": {
+        "peak_turn_change_deg": 1.462023855745092,
+        "distance_aft_m": 5.219999999999429,
+        "rms_turn_change_deg": 0.14146860850735227,
+        "max_signed_turn_forward_deg": -0.03468728463961827
+      },
+      "Waterlines 0.08": {
+        "peak_turn_change_deg": 1.0865621241734766,
+        "distance_aft_m": 5.219999999999429,
+        "rms_turn_change_deg": 0.13255793113236672,
+        "max_signed_turn_forward_deg": -0.053354002872395986
+      },
+      "Waterlines 0.09": {
+        "peak_turn_change_deg": 0.8603101130497106,
+        "distance_aft_m": 5.335999999999416,
+        "rms_turn_change_deg": 0.13089535648438894,
+        "max_signed_turn_forward_deg": -0.07333968654973046
+      },
+      "Waterlines 0.1016": {
+        "peak_turn_change_deg": 0.7489433714165669,
+        "distance_aft_m": 5.343999999999415,
+        "rms_turn_change_deg": 0.11214705850975001,
+        "max_signed_turn_forward_deg": -0.09144930184320246
+      },
+      "Waterlines 0.13": {
+        "peak_turn_change_deg": 0.4401306515280851,
+        "distance_aft_m": 5.29999999999942,
+        "rms_turn_change_deg": 0.07305115696818416,
+        "max_signed_turn_forward_deg": -0.12370260029467872
+      },
+      "Waterlines 0.16": {
+        "peak_turn_change_deg": 0.2953580481380045,
+        "distance_aft_m": 0.23799999999997654,
+        "rms_turn_change_deg": 0.046626381031790114,
+        "max_signed_turn_forward_deg": -0.14204757115757002
+      },
+      "Buttocks 0.025": {
+        "peak_turn_change_deg": 6.664471237438322,
+        "distance_aft_m": 5.267999999999423,
+        "rms_turn_change_deg": 0.7292802344577881,
+        "max_signed_turn_forward_deg": -0.060043471783185046
+      },
+      "Buttocks 0.075": {
+        "peak_turn_change_deg": 3.633535173336039,
+        "distance_aft_m": 5.091999999999443,
+        "rms_turn_change_deg": 0.4259660673118467,
+        "max_signed_turn_forward_deg": -0.19035339342372548
+      },
+      "Buttocks 0.125": {
+        "peak_turn_change_deg": 1.7342941760327264,
+        "distance_aft_m": 4.895999999999464,
+        "rms_turn_change_deg": 0.1974723014263724,
+        "max_signed_turn_forward_deg": -2.8040145964301018
+      },
+      "Buttocks 0.175": {
+        "peak_turn_change_deg": 1.0501991458441085,
+        "distance_aft_m": 4.655999999999491,
+        "rms_turn_change_deg": 0.14972181733338413,
+        "max_signed_turn_forward_deg": null
+      },
+      "Buttocks 0.225": {
+        "peak_turn_change_deg": 0.7893195901105816,
+        "distance_aft_m": 2.1999999999997604,
+        "rms_turn_change_deg": 0.12232055454864207,
+        "max_signed_turn_forward_deg": null
+      },
+      "Diagonals 0.075": {
+        "peak_turn_change_deg": 2.3974173880755414,
+        "distance_aft_m": 5.219999999999429,
+        "rms_turn_change_deg": 0.23418795977011694,
+        "max_signed_turn_forward_deg": -0.07327812932292423
+      },
+      "Diagonals 0.125": {
+        "peak_turn_change_deg": 1.2102529119781886,
+        "distance_aft_m": 5.217999999999428,
+        "rms_turn_change_deg": 0.17322807016502734,
+        "max_signed_turn_forward_deg": -0.12275335248559359
+      },
+      "Diagonals 0.175": {
+        "peak_turn_change_deg": 0.7289840876718297,
+        "distance_aft_m": 5.217999999999428,
+        "rms_turn_change_deg": 0.10028812597510144,
+        "max_signed_turn_forward_deg": -0.21008857271500972
+      },
+      "Diagonals 0.225": {
+        "peak_turn_change_deg": 0.5194182159329981,
+        "distance_aft_m": 0.18399999999998248,
+        "rms_turn_change_deg": 0.07767767923051046,
+        "max_signed_turn_forward_deg": -0.3567973422523236
+      },
+      "Diagonals 0.275": {
+        "peak_turn_change_deg": 1.9081626598140273,
+        "distance_aft_m": 5.11599999999944,
+        "rms_turn_change_deg": 0.18292472285041192,
+        "max_signed_turn_forward_deg": -0.1862390920594638
+      }
+    },
+    "sections": [
+      {
+        "fraction": 0.06,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 264.93527358348126
+      },
+      {
+        "fraction": 0.10888888888888888,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 196.27839877654296
+      },
+      {
+        "fraction": 0.11608775137111518,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 193.62201704908114
+      },
+      {
+        "fraction": 0.15777777777777777,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 150.8035399544969
+      },
+      {
+        "fraction": 0.1983546617915905,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 131.79368023811253
+      },
+      {
+        "fraction": 0.20666666666666667,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 129.65370133387725
+      },
+      {
+        "fraction": 0.25319926873857407,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 134.01800526888297
+      },
+      {
+        "fraction": 0.25555555555555554,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 134.671224554846
+      },
+      {
+        "fraction": 0.3044444444444444,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 130.0711813640314
+      },
+      {
+        "fraction": 0.3263254113345521,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 130.51547411782187
+      },
+      {
+        "fraction": 0.35333333333333333,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 140.06803877733043
+      },
+      {
+        "fraction": 0.4022222222222222,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 155.48883196709028
+      },
+      {
+        "fraction": 0.4511111111111111,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 152.57654445801515
+      },
+      {
+        "fraction": 0.49999999999999994,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 111.11347186474057
+      },
+      {
+        "fraction": 0.5488888888888888,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 79.25033540371693
+      },
+      {
+        "fraction": 0.5977777777777777,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 86.42950449089957
+      },
+      {
+        "fraction": 0.6466666666666667,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 76.59478933393252
+      },
+      {
+        "fraction": 0.6955555555555555,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 44.067785795708936
+      },
+      {
+        "fraction": 0.7444444444444445,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 53.60307275480967
+      },
+      {
+        "fraction": 0.7933333333333332,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 84.22171065914416
+      },
+      {
+        "fraction": 0.8422222222222222,
+        "keel_groove_mm": 0.006531931460707768,
+        "peak_abs_dk_ds_per_m2": 73.73680947903416
+      },
+      {
+        "fraction": 0.891111111111111,
+        "keel_groove_mm": 0.007114833209750232,
+        "peak_abs_dk_ds_per_m2": 132.67882104981354
+      },
+      {
+        "fraction": 0.94,
+        "keel_groove_mm": 0.0,
+        "peak_abs_dk_ds_per_m2": 319.88053834577323
+      }
+    ]
+  }
+}

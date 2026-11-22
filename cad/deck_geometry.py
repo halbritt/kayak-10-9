@@ -6,8 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
 from scipy.spatial import Delaunay
+from scipy.interpolate import interp1d
 import trimesh
 from kayakgen.model.hull import Hull
+from surface_fairing import fit_half_surface
 
 Z_KEEL_SHIFT = 0.1030  # shifts DistributionV2 z so keel min sits at z = 0.000 m
 Z_WL_225 = 0.08811     # 225 lb seawater calm waterline above keel baseline
@@ -85,25 +87,38 @@ def smoothstep(t: np.ndarray) -> np.ndarray:
     return c * c * (3.0 - 2.0 * c)
 
 
+FIT_STATIONS = 441
+FIT_HALF_RING = 129
+BEAM_AT_FOUR_INCHES_M = .500456  # Finished Kayak 10.9 design control.
+
+
+def _station_grid(length, count):
+    u = np.linspace(-1., 1., count)
+    return .5 * length * (.02 * u + .98 * np.sin(.5 * np.pi * u))
+
+
 class SculptedKayakSurface:
     """Precomputed tip-clustered parametric lookup for hull, sheer seam, and sculpted deck."""
 
-    def __init__(self, hull_json_path: Path, n_stations: int = 441, n_hull_half: int = 48) -> None:
+    def __init__(self, hull_json_path: Path, n_stations: int = FIT_STATIONS, n_hull_half: int = FIT_HALF_RING) -> None:
         self.hull = Hull.model_validate_json(hull_json_path.read_text())
         self.geom = self.hull.to_geometry()
         self.L = self.hull.length_m
         # Cosine tip clustering (~0.28 mm first step at tips) to resolve 3.8 mm stem bullnose & 24 mm nose fillet smoothly
-        u_st = np.linspace(-1.0, +1.0, n_stations)
-        self.xs = 0.5 * self.L * (0.02 * u_st + 0.98 * np.sin(0.5 * np.pi * u_st))
+        if min(n_stations, n_hull_half) < 2:
+            raise ValueError("At least two stations and two half-ring points are required")
+        output_stations, output_half = n_stations, n_hull_half
+        n_stations, n_hull_half = FIT_STATIONS, FIT_HALF_RING
+        self.xs = _station_grid(self.L, n_stations)
         self.xs[0] = -0.5 * self.L
         self.xs[-1] = +0.5 * self.L
-        self.n_hull_half = n_hull_half
+        self.n_hull_half = output_half
 
         seam_y = np.zeros(n_stations)
         seam_z = np.zeros(n_stations)
         keel_z = np.zeros(n_stations)
         deck_cl_z = np.zeros(n_stations)
-        hull_rings: list[np.ndarray] = []  # port seam -> keel -> stbd seam
+        half_rings: list[np.ndarray] = []  # keel to starboard seam
         deck_r_grid = np.linspace(0.0, 1.0, 65)  # r = |y| / max(seam_y, 1e-5)
         deck_z_table = np.zeros((n_stations, len(deck_r_grid)))
 
@@ -159,9 +174,20 @@ class SculptedKayakSurface:
                 ym = max(float(y_d[-1]), 1e-5)
                 deck_z_table[i] = np.interp(deck_r_grid * ym, y_d, z_d)
 
-            port = np.column_stack((-y_h[::-1], z_h[::-1]))
-            stbd = np.column_stack((y_h[1:], z_h[1:]))
-            hull_rings.append(np.vstack((port, stbd)))
+            half_rings.append(np.column_stack((y_h, z_h)))
+
+        half = fit_half_surface(self.xs, np.asarray(half_rings), .1016, BEAM_AT_FOUR_INCHES_M)
+        # Tessellation samples the same design net at every output resolution.
+        if output_stations != FIT_STATIONS:
+            target = _station_grid(self.L, output_stations)
+            seam_y, seam_z, keel_z, deck_cl_z = (
+                np.interp(target, self.xs, v) for v in (seam_y, seam_z, keel_z, deck_cl_z)
+            )
+            deck_z_table = interp1d(self.xs, deck_z_table, axis=0)(target)
+            half = interp1d(self.xs, half, axis=0)(target)
+            self.xs = target
+        if output_half != FIT_HALF_RING:
+            half = interp1d(np.linspace(0, 1, FIT_HALF_RING), half, axis=1)(np.linspace(0, 1, output_half))
 
         self.seam_y = seam_y
         self.seam_z = seam_z
@@ -169,7 +195,8 @@ class SculptedKayakSurface:
         self.deck_cl_z = deck_cl_z
         self.deck_r_grid = deck_r_grid
         self.deck_z_table = deck_z_table
-        self.hull_rings = np.asarray(hull_rings)  # (N_x, 2*n_hull_half - 1, 2)
+        port = half[:, :0:-1] * [-1, 1]
+        self.hull_rings = np.concatenate((port, half), axis=1)
 
     def seam_at(self, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         xa = np.asarray(x, dtype=float)
