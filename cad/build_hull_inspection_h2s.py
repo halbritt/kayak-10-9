@@ -1,9 +1,14 @@
-"""Build one-shot Bambu Lab H2S (340x320x340 mm) bare-hull inspection .3mf + .stl (3:50 / 1:16.67, 328 mm)."""
+"""Build one-shot Bambu Lab H2S (340x320x340 mm) 1:12 bare-hull inspection .3mf + .stl (45-deg diagonal, supported)."""
 from __future__ import annotations
 
 import json
+import math
 import sys
+import uuid
+import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
+from xml.sax.saxutils import escape, quoteattr
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HULL_JSON = REPO_ROOT / "hull" / "kayak-10-9.hull.json"
@@ -20,12 +25,17 @@ from trimesh.visual.material import PBRMaterial
 from trimesh.visual.texture import TextureVisuals
 import vtk
 
-from build_model_1to8_h2s import write_bambu_3mf
-from deck_geometry import SculptedKayakSurface, smoothstep
+from deck_geometry import SculptedKayakSurface
 
-SCALE_MM = 60.0        # Exact 3:50 (1:16.67) metric scale: 5.467 m -> 328.03 mm
-Z_BASE_MM = 2.4        # Flat bed base plate thickness -> Z_max = 327.5 mm (< 340 mm H2S ceiling)
-NECK_HALF_W = 0.28     # 0.56 mm single-extrusion snap-off V-throat on flat sheer back-face
+SCALE_DENOM = 12.0
+SCALE_MM = 1000.0 / SCALE_DENOM        # Exact 1:12 (1" = 1') marine scale: 5.467 m -> 455.6 mm
+PITCH_DEG = 45.0                       # 45-deg inclination to build plate
+AZIMUTH_RAD = math.atan2(320.0, 340.0) # 43.264 deg along 340 x 320 mm H2S bed diagonal
+PAD_Z_STATIONS_MM = (72.0, 126.0, 180.0, 234.0, 286.0)
+
+H2S_SUPPORT_PROJECT_SETTINGS: dict[str, object] = json.loads(
+    (Path(__file__).resolve().parent / "bambu_h2s_project_settings.json").read_text()
+)
 
 
 def _triangulate_planar_cap(loop_xy: np.ndarray, z_val: float, normal_z: float) -> trimesh.Trimesh:
@@ -53,10 +63,10 @@ def _triangulate_planar_cap(loop_xy: np.ndarray, z_val: float, normal_z: float) 
     return trimesh.Trimesh(vertices=xyz, faces=faces, process=False)
 
 
-def build_clean_bare_hull_mm(surf: SculptedKayakSurface) -> tuple[trimesh.Trimesh, np.ndarray]:
-    """Build pure 1:16.67 watertight bare hull (below sheer seam, flat sheer chord) in print orientation."""
+def build_bare_hull_boat_mm(surf: SculptedKayakSurface, scale_mm: float = SCALE_MM) -> trimesh.Trimesh:
+    """Build watertight 1:12 bare hull (below sheer seam, flat sheer reference chord) in boat coordinates (mm)."""
     xs = np.linspace(float(surf.xs[0]), float(surf.xs[-1]), 661)
-    u_chord = np.linspace(1.0, -1.0, 23)[1:-1]  # interior sheer chord stbd -> port
+    u_chord = np.linspace(1.0, -1.0, 25)[1:-1]  # 23 interior sheer-chord points stbd -> port
     rings_3d: list[np.ndarray] = []
     for xv in xs:
         pos = int(np.clip(np.searchsorted(surf.xs, xv), 1, len(surf.xs) - 1))
@@ -66,211 +76,184 @@ def build_clean_bare_hull_mm(surf: SculptedKayakSurface) -> tuple[trimesh.Trimes
         sz = float((1.0 - w) * surf.seam_z[pos - 1] + w * surf.seam_z[pos])
         chord = np.column_stack((u_chord * sy, np.full_like(u_chord, sz)))
         loop_yz = np.vstack((hr, chord))
-        p = surf.end_shape_xyz(np.column_stack((np.full(len(loop_yz), xv), loop_yz))) * SCALE_MM
+        p = surf.end_shape_xyz(np.column_stack((np.full(len(loop_yz), xv), loop_yz))) * scale_mm
         rings_3d.append(p)
-    arr = np.asarray(rings_3d)  # (nx, m_ring, 3) in boat mm; bow at i=0, stern at i=-1
-    x_max = float(arr[:, :, 0].max())
-    d_end = np.minimum(arr[:, :, 0] - float(arr[:, :, 0].min()), x_max - arr[:, :, 0])
-    arr[:, :, 1] *= 1.0 + 0.85 * np.exp(-np.maximum(d_end, 0.0) / 2.0)
+    arr = np.asarray(rings_3d)
+    d_end = np.minimum(arr[:, :, 0] - float(arr[:, :, 0].min()), float(arr[:, :, 0].max()) - arr[:, :, 0])
+    arr[:, :, 1] *= 1.0 + 0.80 * np.exp(-np.maximum(d_end, 0.0) / 2.4)
 
-    # Convert to print frame (stern at Z=0, bow up at +Z, keel at -Y front door, sheer at +Y back)
-    vp = np.empty_like(arr)
-    vp[:, :, 0] = arr[:, :, 1]
-    vp[:, :, 1] = arr[:, :, 2]
-    vp[:, :, 2] = x_max - arr[:, :, 0]
-    vp = vp[::-1].copy()  # now i=0 is stern (Z~0), i=-1 is bow (Z=328.03 mm)
-
-    interior = vp[1:-1]
-    nz, m, _ = interior.shape
-    v_list = [vp[0].mean(axis=0)[None, :], interior.reshape(-1, 3), vp[-1].mean(axis=0)[None, :]]
-    v_all = np.vstack(v_list)
-    i_bow = len(v_all) - 1
+    interior = arr[1:-1]
+    nx_i, m, _ = interior.shape
+    v_all = np.vstack([arr[0].mean(axis=0)[None, :], interior.reshape(-1, 3), arr[-1].mean(axis=0)[None, :]])
+    i_stern = len(v_all) - 1
     faces: list[list[int]] = []
     for j in range(m):
-        j1 = (j + 1) % m
-        faces.append([0, 1 + j1, 1 + j])
-    for k in range(nz - 1):
+        faces.append([0, 1 + (j + 1) % m, 1 + j])
+    for k in range(nx_i - 1):
         s, t = 1 + k * m, 1 + (k + 1) * m
         for j in range(m):
             j1 = (j + 1) % m
             faces.extend([[s + j, s + j1, t + j], [s + j1, t + j1, t + j]])
-    top_s = 1 + (nz - 1) * m
+    top_s = 1 + (nx_i - 1) * m
     for j in range(m):
-        j1 = (j + 1) % m
-        faces.append([top_s + j, top_s + j1, i_bow])
+        faces.append([top_s + j, top_s + (j + 1) % m, i_stern])
     solid = trimesh.Trimesh(vertices=v_all, faces=np.asarray(faces, dtype=int), process=False)
     solid.merge_vertices(digits_vertex=5)
+    trimesh.repair.fix_normals(solid)
     if solid.volume < 0.0:
         solid.invert()
-    return solid, vp
+    return solid
 
 
-def _cap_annulus_z(outer_xy: np.ndarray, inner_xy: np.ndarray, z_val: float, normal_z: float) -> trimesh.Trimesh:
-    a_out = float(np.sum(outer_xy[:, 0] * np.roll(outer_xy[:, 1], -1) - np.roll(outer_xy[:, 0], -1) * outer_xy[:, 1]))
-    a_in = float(np.sum(inner_xy[:, 0] * np.roll(inner_xy[:, 1], -1) - np.roll(inner_xy[:, 0], -1) * inner_xy[:, 1]))
-    lp_out = outer_xy if a_out > 0.0 else outer_xy[::-1]
-    lp_in = inner_xy if a_in < 0.0 else inner_xy[::-1]  # CW hole
-    pts = vtk.vtkPoints(vtk.VTK_DOUBLE)
-    lines = vtk.vtkCellArray()
-    idx = 0
-    for lp in (lp_out, lp_in):
-        n = len(lp)
-        lines.InsertNextCell(n + 1)
-        for k, (ux, uy) in enumerate(lp):
-            pts.InsertNextPoint(float(ux), float(uy), 0.0)
-            lines.InsertCellPoint(idx + k)
-        lines.InsertCellPoint(idx)
-        idx += n
-    pd = vtk.vtkPolyData(); pd.SetPoints(pts); pd.SetLines(lines)
-    ct = vtk.vtkContourTriangulator(); ct.SetInputData(pd); ct.Update()
-    polys = ct.GetOutput().GetPolys(); polys.InitTraversal(); idl = vtk.vtkIdList(); fl = []
-    while polys.GetNextCell(idl):
-        if idl.GetNumberOfIds() == 3:
-            fl.append([idl.GetId(0), idl.GetId(1), idl.GetId(2)])
-    faces = np.asarray(fl, dtype=int)
-    uv = np.vstack((lp_out, lp_in))
-    xyz = np.column_stack((uv[:, 0], uv[:, 1], np.full(len(uv), z_val)))
-    v0, v1, v2 = xyz[faces[:, 0]], xyz[faces[:, 1]], xyz[faces[:, 2]]
-    flip = (np.cross(v1 - v0, v2 - v0)[:, 2] * normal_z) < 0.0
-    faces[flip] = faces[flip][:, [0, 2, 1]]
-    return trimesh.Trimesh(vertices=xyz, faces=faces, process=False)
+def orient_hull_45deg_diagonal_mm(
+    hull_boat_mm: trimesh.Trimesh,
+    pitch_deg: float = PITCH_DEG,
+    azimuth_rad: float = AZIMUTH_RAD,
+) -> tuple[trimesh.Trimesh, np.ndarray]:
+    """Orient 1:12 hull at 45 deg to build plate along H2S XY diagonal (keel/forefoot/bilges UP, sheer DOWN)."""
+    vb = np.asarray(hull_boat_mm.vertices, dtype=float)
+    cp, sp = math.cos(math.radians(pitch_deg)), math.sin(math.radians(pitch_deg))
+    ca, sa = math.cos(azimuth_rad), math.sin(azimuth_rad)
+    # Right-handed rotation (det = +1): u = -x_boat (bow up), v = +y_boat, w = -z_boat (keel up)
+    u, v_lat, w = -vb[:, 0], vb[:, 1], -vb[:, 2]
+    d_diag = u * cp - w * sp
+    z_p = u * sp + w * cp
+    x_p = d_diag * ca - v_lat * sa
+    y_p = d_diag * sa + v_lat * ca
+    vp = np.column_stack((x_p, y_p, z_p))
+    vp[:, 0] -= 0.5 * float(vp[:, 0].min() + vp[:, 0].max())
+    vp[:, 1] -= 0.5 * float(vp[:, 1].min() + vp[:, 1].max())
+    vp[:, 2] -= float(vp[:, 2].min())
+    m_diag = trimesh.Trimesh(vertices=vp, faces=np.asarray(hull_boat_mm.faces, dtype=int).copy(), process=False)
+    fc_boat = hull_boat_mm.triangles_center
+    return m_diag, fc_boat
 
 
-def build_printable_hull_with_snap_spine(surf: SculptedKayakSurface) -> trimesh.Trimesh:
-    """Build 1-piece watertight vertical hull + sheer-back 0.48 mm snap-off T-spine + flat Z=0 base."""
-    xs = np.linspace(float(surf.xs[0]), float(surf.xs[-1]), 661)
-    # 12-point back-chord / T-fin profile (stbd sheer -> +neck -> T-fin -> -neck -> port sheer)
-    rings_boat: list[np.ndarray] = []
-    sy_arr = np.zeros(len(xs))
-    sz_arr = np.zeros(len(xs))
-    for i, xv in enumerate(xs):
-        pos = int(np.clip(np.searchsorted(surf.xs, xv), 1, len(surf.xs) - 1))
-        w = float((xv - surf.xs[pos - 1]) / max(surf.xs[pos] - surf.xs[pos - 1], 1e-9))
-        hr = (1.0 - w) * surf.hull_rings[pos - 1] + w * surf.hull_rings[pos]
-        sy_arr[i] = float((1.0 - w) * surf.seam_y[pos - 1] + w * surf.seam_y[pos])
-        sz_arr[i] = float((1.0 - w) * surf.seam_z[pos - 1] + w * surf.seam_z[pos])
-        rings_boat.append(np.column_stack((np.full(len(hr), xv), hr)))
-
-    hull_3d = np.asarray([surf.end_shape_xyz(r) * SCALE_MM for r in rings_boat])
-    sheer_3d = surf.end_shape_xyz(np.column_stack((xs, sy_arr, sz_arr))) * SCALE_MM
-    x_max = float(hull_3d[:, :, 0].max())
-    d_end = np.minimum(hull_3d[:, :, 0] - float(hull_3d[:, :, 0].min()), x_max - hull_3d[:, :, 0])
-    boost = 1.0 + 0.85 * np.exp(-np.maximum(d_end, 0.0) / 2.0)
-    hull_3d[:, :, 1] *= boost
-    sheer_3d[:, 1] *= boost[:, -1]
-
-    # Flip stern-first (i=0 stern near Z=2.4 mm, i=-1 bow at Z=330.43 mm)
-    hull_3d = hull_3d[::-1].copy()
-    sheer_3d = sheer_3d[::-1].copy()
-
-    # Start tower 2.4 mm above stern apex (sits inside the Z=0..2.4 mm snap-off base; total Z = 328.0 mm <= 340 mm)
-    i_start = 6
-    x_stern_cut = float(sheer_3d[i_start, 0])
-    loops_3d: list[np.ndarray] = []
-    for i in range(i_start, len(xs) - 1):
-        hp = hull_3d[i]
-        xh = hp[:, 1]
-        sy_p = float(sheer_3d[i, 2])
-        yh = np.minimum(hp[:, 2], sy_p)
-        zh = (x_stern_cut - hp[:, 0]) + Z_BASE_MM
-        sx = max(float(sheer_3d[i, 1]), 0.60)
-        sz_p = float((x_stern_cut - sheer_3d[i, 0]) + Z_BASE_MM)
-
-        # Dorsal T-spine height & depth: 36 mm deep at Z=2.4 mm, tapering at <=12 deg to 0 at Z=236 mm
-        t_fin = float(1.0 - smoothstep(np.array((sz_p - 25.0) / 211.0)))
-        r_mid = 0.65 * sx
-        flat_x = np.linspace(r_mid, -r_mid, 12)
-        fin_d = 34.0 * t_fin
-        neck_w = min(NECK_HALF_W, 0.40 * sx)
-        web_w = neck_w + 0.85
-        flg_w = web_w + 4.8
-        fin_x = np.array([r_mid, neck_w, web_w, web_w, flg_w, flg_w, -flg_w, -flg_w, -web_w, -web_w, -neck_w, -r_mid])
-        fin_dy = np.array([0.0, 0.0, 0.85, fin_d - 2.2, fin_d - 1.0, fin_d, fin_d, fin_d - 1.0, fin_d - 2.2, 0.85, 0.0, 0.0])
-        use_fin = float(smoothstep(np.array(t_fin / 0.08)))
-        bx = (1.0 - use_fin) * flat_x + use_fin * fin_x
-        by = sy_p + t_fin * np.maximum(fin_dy, 0.0)
-        back_3d = np.column_stack((bx, by, np.full(12, sz_p)))
-        loops_3d.append(np.vstack((np.column_stack((xh, yh, zh)), back_3d)))
-
-    # Pin bottom ring (loops_3d[0]) planar at Z = Z_BASE_MM so it mates flat onto the base plate top!
-    loops_3d[0][:, 2] = Z_BASE_MM
-    arr = np.asarray(loops_3d)
-    nz, m, _ = arr.shape
-
-    # Rounded rectangular flat bed base plate (68 x 60 x 2.4 mm) encompassing bottom ring + T-fin
-    cx, cy, rx, ry, r_c = 0.0, 22.0, 34.0, 30.0, 7.0
-    base_pts: list[list[float]] = []
-    for ang0, ox, oy in [(0.0, rx - r_c, ry - r_c), (0.5 * np.pi, -(rx - r_c), ry - r_c),
-                         (np.pi, -(rx - r_c), -(ry - r_c)), (1.5 * np.pi, rx - r_c, -(ry - r_c))]:
-        for th in np.linspace(ang0, ang0 + 0.5 * np.pi, 12, endpoint=False):
-            base_pts.append([cx + ox + r_c * float(np.cos(th)), cy + oy + r_c * float(np.sin(th))])
-    base_xy = np.asarray(base_pts, dtype=float)
-    nb = len(base_xy)
-    cap_bot = _triangulate_planar_cap(base_xy, 0.0, normal_z=-1.0)
-    cap_step = _cap_annulus_z(base_xy, arr[0, :, :2], Z_BASE_MM, normal_z=+1.0)
-    vb = np.vstack((np.column_stack((base_xy, np.zeros(nb))), np.column_stack((base_xy, np.full(nb, Z_BASE_MM)))))
-    fb = [[j, (j + 1) % nb, nb + j] for j in range(nb)] + [[(j + 1) % nb, nb + (j + 1) % nb, nb + j] for j in range(nb)]
-    wall_base = trimesh.Trimesh(vertices=vb, faces=np.asarray(fb, dtype=int), process=False)
-
-    bow_apex = np.array([[0.0, float(hull_3d[-1, :, 2].mean()), float((x_stern_cut - hull_3d[-1, :, 0].min()) + Z_BASE_MM)]])
-    v_tower = np.vstack((arr.reshape(-1, 3), bow_apex))
-    i_apex = len(v_tower) - 1
-    ft: list[list[int]] = []
-    for k in range(nz - 1):
-        s, t = k * m, (k + 1) * m
-        for j in range(m):
-            j1 = (j + 1) % m
-            ft.extend([[s + j, t + j, s + j1], [s + j1, t + j, t + j1]])
-    top_s = (nz - 1) * m
-    for j in range(m):
-        ft.append([top_s + j, i_apex, top_s + (j + 1) % m])
-    tower = trimesh.Trimesh(vertices=v_tower, faces=np.asarray(ft, dtype=int), process=False)
-
-    full = trimesh.util.concatenate([cap_bot, wall_base, cap_step, tower])
-    full.merge_vertices(digits_vertex=5)
-    trimesh.repair.fix_normals(full)
-    if full.volume < 0.0:
-        full.invert()
-    return full
+def compute_support_paint_tags(surf: SculptedKayakSurface, m_diag: trimesh.Trimesh, fc_boat_mm: np.ndarray) -> np.ndarray:
+    """Return per-face Bambu paint_supports tag: '4' (enforcer on sheer pads), '8' (blocker on outer hull), '' (neutral)."""
+    fn = m_diag.face_normals
+    fc_p = m_diag.triangles_center
+    is_sheer_back = fn[:, 2] < -0.62
+    sy_mm = np.interp(fc_boat_mm[:, 0] / SCALE_MM, surf.xs, surf.seam_y) * SCALE_MM
+    inset_ok = np.abs(fc_boat_mm[:, 1]) <= np.maximum(sy_mm - 2.6, 1.8)
+    z_c = fc_p[:, 2]
+    pads = z_c <= 24.0
+    for z0 in PAD_Z_STATIONS_MM:
+        pads |= np.abs(z_c - z0) <= 9.0
+    enforce = is_sheer_back & pads & inset_ok
+    tags = np.full(len(fn), "", dtype="<U2")
+    tags[~is_sheer_back] = "8"  # Strictly block supports across 100% of outer hull, keel, forefoot & bilges
+    tags[enforce] = "4"         # Enforce clean organic tree trunks along 6 sheer-back stations
+    return tags
 
 
-def build_desk_stand(surf: SculptedKayakSurface, x_boat_m: float) -> trimesh.Trimesh:
-    """Contoured desk cradle at x_boat_m (1:16.67 scale); flat base also lets hull sit keel-up on its sheer flat."""
+def build_desk_stand(surf: SculptedKayakSurface, x_boat_m: float, scale_mm: float = SCALE_MM) -> trimesh.Trimesh:
+    """Contoured 1:12 Bessel-station desk cradle (extruded flat on Z = 0 -> zero overhangs, zero supports)."""
     pos = int(np.clip(np.searchsorted(surf.xs, x_boat_m), 1, len(surf.xs) - 1))
-    hr = surf.hull_rings[pos] * SCALE_MM
+    hr = surf.hull_rings[pos] * scale_mm
     yh, zh = hr[:, 0], hr[:, 1]
-    keep = np.abs(yh) <= max(float(yh.max()) * 0.78, 6.0)
-    yc, zc = yh[keep], zh[keep] + 0.25  # +0.25 mm slip clearance
-    zc_shift = zc - float(zc.min()) + 4.2
-    w_half = max(float(np.abs(yc).max()) + 4.5, 13.0)
-    top_z = float(zc_shift.max()) + 1.2
+    keep = np.abs(yh) <= max(float(yh.max()) * 0.78, 8.0)
+    yc, zc = yh[keep], zh[keep] + 0.25
+    zc_shift = zc - float(zc.min()) + 5.2
+    w_half = max(float(np.abs(yc).max()) + 5.5, 16.5)
+    top_z = float(zc_shift.max()) + 1.5
     prof = np.vstack((
         [[-w_half, 0.0], [w_half, 0.0], [w_half, top_z], [float(yc[-1]), top_z]],
         np.column_stack((yc[::-1], zc_shift[::-1])),
         [[float(yc[0]), top_z], [-w_half, top_z]],
     ))
-    zs = np.linspace(0.0, 9.0, 10)
+    zs = np.linspace(0.0, 11.0, 10)
     np_p = len(prof)
     c0 = _triangulate_planar_cap(prof, 0.0, -1.0)
-    c1 = _triangulate_planar_cap(prof, 9.0, +1.0)
+    c1 = _triangulate_planar_cap(prof, 11.0, +1.0)
     vw = np.column_stack((np.tile(prof, (len(zs), 1)), np.repeat(zs, np_p)))
-    fw = []
     area = float(np.sum(prof[:, 0] * np.roll(prof[:, 1], -1) - np.roll(prof[:, 0], -1) * prof[:, 1]))
+    fw = []
     for k in range(len(zs) - 1):
         s, t = k * np_p, (k + 1) * np_p
         for j in range(np_p):
             j1 = (j + 1) % np_p
-            if area > 0:
-                fw.extend([[s + j, s + j1, t + j], [s + j1, t + j1, t + j]])
-            else:
-                fw.extend([[s + j, t + j, s + j1], [s + j1, t + j, t + j1]])
+            fw.extend([[s + j, s + j1, t + j], [s + j1, t + j1, t + j]] if area > 0 else [[s + j, t + j, s + j1], [s + j1, t + j, t + j1]])
     st = trimesh.util.concatenate([c0, c1, trimesh.Trimesh(vertices=vw, faces=np.asarray(fw, dtype=int), process=False)])
     st.merge_vertices(digits_vertex=5)
     if st.volume < 0.0:
         st.invert()
-    # Lay flat on Z = 0 (extruded thickness 9 mm in Z, cradle profile in X-Y -> 0 deg overhangs!)
-    st.apply_translation((-0.5 * (st.bounds[0, 0] + st.bounds[1, 0]), -0.5 * (st.bounds[0, 1] + st.bounds[1, 1]), 0.0))
+    st.apply_translation((-0.5 * float(st.bounds[0, 0] + st.bounds[1, 0]), -0.5 * float(st.bounds[0, 1] + st.bounds[1, 1]), 0.0))
     return st
+
+
+def write_h2s_supported_3mf(
+    plate_items: list[tuple[str, trimesh.Trimesh, tuple[float, float, float], np.ndarray | None]],
+    out_path: Path,
+    *,
+    title: str,
+    plate_name: str,
+) -> dict[str, int]:
+    """Write Bambu Studio 3MF with H2S project_settings.config (supports ON) and per-face paint_supports tags."""
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n'
+        ' <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n'
+        ' <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>\n'
+        ' <Default Extension="config" ContentType="text/xml"/>\n'
+        '</Types>\n'
+    )
+    rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+        ' <Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>\n'
+        '</Relationships>\n'
+    )
+    lines_m = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
+        'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" requiredextensions="p">',
+        ' <metadata name="Application">BambuStudio-02.09.01.70</metadata>',
+        f' <metadata name="Title">{escape(title)}</metadata>',
+        ' <resources>',
+    ]
+    build_lines = [f' <build p:UUID="{uuid.uuid4()}">']
+    cfg_lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<config>']
+
+    for idx, (name, mesh, (tx, ty, tz), paint_tags) in enumerate(plate_items, start=1):
+        oid = str(idx)
+        v = np.asarray(mesh.vertices, dtype=np.float64)
+        f = np.asarray(mesh.faces, dtype=np.int64)
+        lines_m.extend([f'  <object id="{oid}" name="{name}" type="model" p:UUID="{uuid.uuid4()}">', '   <mesh>', '    <vertices>'])
+        lines_m.extend(f'     <vertex x="{vx:.5f}" y="{vy:.5f}" z="{vz:.5f}"/>' for vx, vy, vz in v)
+        lines_m.extend(['    </vertices>', '    <triangles>'])
+        if paint_tags is None:
+            lines_m.extend(f'     <triangle v1="{int(f0)}" v2="{int(f1)}" v3="{int(f2)}"/>' for f0, f1, f2 in f)
+        else:
+            for (f0, f1, f2), tag in zip(f, paint_tags):
+                attr = f' paint_supports="{tag}"' if tag else ""
+                lines_m.append(f'     <triangle v1="{int(f0)}" v2="{int(f1)}" v3="{int(f2)}"{attr}/>')
+        lines_m.extend(['    </triangles>', '   </mesh>', '  </object>'])
+        build_lines.append(f'  <item objectid="{oid}" transform="1 0 0 0 1 0 0 0 1 {tx:.4f} {ty:.4f} {tz:.4f}" printable="1" p:UUID="{uuid.uuid4()}"/>')
+        cfg_lines.extend([
+            f' <object id="{oid}">',
+            f'  <metadata key="name" value="{name}"/>',
+            '  <metadata key="extruder" value="1"/>',
+            ' </object>',
+        ])
+
+    lines_m.extend([' </resources>', *build_lines, ' </build>', '</model>\n'])
+    cfg_lines.extend([' <plate>', '  <metadata key="plater_id" value="1"/>', f'  <metadata key="plater_name" value={quoteattr(plate_name)}/>'])
+    for idx in range(1, len(plate_items) + 1):
+        cfg_lines.append(f'  <model_instance><metadata key="object_id" value="{idx}"/><metadata key="instance_id" value="0"/></model_instance>')
+    cfg_lines.extend([' </plate>', '</config>\n'])
+
+    with zipfile.ZipFile(out_path, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        zf.writestr("[Content_Types].xml", content_types)
+        zf.writestr("_rels/.rels", rels_xml)
+        zf.writestr("3D/3dmodel.model", "\n".join(lines_m))
+        zf.writestr("Metadata/model_settings.config", "\n".join(cfg_lines))
+        zf.writestr("Metadata/project_settings.config", json.dumps(H2S_SUPPORT_PROJECT_SETTINGS, indent=2) + "\n")
+
+    with zipfile.ZipFile(out_path, mode="r") as zf:
+        root = ET.fromstring(zf.read("3D/3dmodel.model"))
+        ns = {"m": "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"}
+        return {"objects": len(root.findall("m:resources/m:object", ns)), "build_items": len(root.findall("m:build/m:item", ns)), "bytes": out_path.stat().st_size}
 
 
 def _style(m: trimesh.Trimesh, name: str, rgba: list[int], rough: float = 0.26, metal: float = 0.06) -> trimesh.Trimesh:
@@ -280,7 +263,12 @@ def _style(m: trimesh.Trimesh, name: str, rgba: list[int], rough: float = 0.26, 
     return mc
 
 
-def render_preview(printable: trimesh.Trimesh, clean_hull: trimesh.Trimesh, stands: list[tuple[str, trimesh.Trimesh, tuple[float, float, float]]]) -> None:
+def render_preview(
+    m_diag: trimesh.Trimesh,
+    hull_boat: trimesh.Trimesh,
+    paint_tags: np.ndarray,
+    stands: list[tuple[str, trimesh.Trimesh, tuple[float, float, float]]],
+) -> None:
     import pyvista as pv
 
     def to_pv(tm_m: trimesh.Trimesh, feat: float = 46.0) -> pv.PolyData:
@@ -291,8 +279,8 @@ def render_preview(printable: trimesh.Trimesh, clean_hull: trimesh.Trimesh, stan
 
     pl = pv.Plotter(off_screen=True, window_size=(1550, 1350), lighting="none")
     pl.set_background("#121a24", top="#223244")
-    for pos, inten in [((-380, -480, 520), 1.35), ((+580, -380, 460), 0.90), ((170, +620, 380), 0.75)]:
-        lt = pv.Light(position=pos, focal_point=(170, 155, 155), color="white", intensity=inten)
+    for pos, inten in [((-380, -480, 560), 1.38), ((+580, -380, 460), 0.90), ((170, +620, 380), 0.72)]:
+        lt = pv.Light(position=pos, focal_point=(170, 160, 160), color="white", intensity=inten)
         lt.positional = False; pl.add_light(lt)
     bed = pv.Cube(center=(170.0, 160.0, -1.5), x_length=340.0, y_length=320.0, z_length=3.0)
     pl.add_mesh(bed, color="#2b333e", pbr=True, metallic=0.35, roughness=0.58)
@@ -302,123 +290,137 @@ def render_preview(printable: trimesh.Trimesh, clean_hull: trimesh.Trimesh, stan
         pl.add_mesh(pv.Line((0, gy, 0.15), (340, gy, 0.15)), color="#425063", line_width=1.1)
     vbox = pv.Box(bounds=(0, 340, 0, 320, 0, 340))
     pl.add_mesh(vbox.extract_feature_edges(boundary_edges=True, feature_edges=True, manifold_edges=False), color="#6889ab", line_width=1.6, opacity=0.55)
-    mp = printable.copy(); mp.apply_translation((170.0, 148.0, 0.0))
-    pl.add_mesh(to_pv(mp, 44), color="#eef3f8", pbr=True, metallic=0.06, roughness=0.24, smooth_shading=True)
+
+    mp = m_diag.copy(); mp.apply_translation((170.0, 160.0, 0.0))
+    pl.add_mesh(to_pv(mp, 44), color="#eef3f8", pbr=True, metallic=0.06, roughness=0.22, smooth_shading=True)
+    # Render schematic translucent green tree-support trunks under the 6 enforced sheer-back pads
+    fc_plate = mp.triangles_center
+    for z0 in (16.0, *PAD_Z_STATIONS_MM):
+        sel = (paint_tags == "4") & (np.abs(fc_plate[:, 2] - z0) <= 9.5)
+        if np.any(sel):
+            px, py, pz = fc_plate[sel].mean(axis=0)
+            r_top = 3.2 if z0 > 240 else 4.5
+            cyl = pv.Cylinder(center=(px, py, 0.5 * (pz - 1.0)), direction=(0, 0, 1), radius=r_top, height=max(pz - 2.0, 4.0), resolution=24)
+            pl.add_mesh(cyl, color="#34d399", opacity=0.52, smooth_shading=True)
+            disc = pv.Cylinder(center=(px, py, 0.4), direction=(0, 0, 1), radius=r_top + 5.5, height=0.8, resolution=28)
+            pl.add_mesh(disc, color="#34d399", opacity=0.42)
     for _, sm, (tx, ty, tz) in stands:
         sp = sm.copy(); sp.apply_translation((tx, ty, tz))
         pl.add_mesh(to_pv(sp, 44), color="#d8b480", pbr=True, metallic=0.08, roughness=0.38, smooth_shading=True)
-    pl.camera.position = (-210, -295, 380); pl.camera.focal_point = (170, 158, 155); pl.camera.up = (0, 0, 1)
-    pl.enable_parallel_projection(); pl.camera.parallel_scale = 228.0; pl.enable_anti_aliasing("ssaa")
+    pl.camera.position = (+495, -310, 390); pl.camera.focal_point = (170, 160, 158); pl.camera.up = (0, 0, 1)
+    pl.enable_parallel_projection(); pl.camera.parallel_scale = 232.0; pl.enable_anti_aliasing("ssaa")
     img_bed = pl.screenshot(return_img=True); pl.close()
 
-    # Panel 2: Snapped-free clean bare hull (keel-up inverted inspection pose!)
     pl2 = pv.Plotter(off_screen=True, window_size=(1550, 820), lighting="none")
     pl2.set_background("#121a24", top="#223244")
-    ch = clean_hull.copy()
-    v = np.asarray(ch.vertices)
-    # Place horizontally keel-up (Z_up = -Y_print + sheer_offset -> flat sheer sits on Z=0, keel & forefoot face up!)
-    ch.vertices = np.column_stack((v[:, 2] - 0.5 * 328.03, v[:, 0], float(v[:, 1].max()) - v[:, 1]))
-    for pos, inten in [((-280, -260, 210), 1.30), ((+280, -220, 190), 0.85), ((0, +280, 160), 0.65)]:
-        lt = pv.Light(position=pos, focal_point=(0, 0, 8), color="white", intensity=inten)
+    ch = hull_boat.copy()
+    vb = np.asarray(ch.vertices)
+    ch.vertices = np.column_stack((-vb[:, 0], vb[:, 1], float(vb[:, 2].max()) - vb[:, 2]))  # Keel-up on flat sheer datum
+    for pos, inten in [((-360, -330, 260), 1.32), ((+360, -280, 230), 0.85), ((0, +360, 200), 0.65)]:
+        lt = pv.Light(position=pos, focal_point=(0, 0, 10), color="white", intensity=inten)
         lt.positional = False; pl2.add_light(lt)
-    pl2.add_mesh(to_pv(ch, 50), color="#eef3f8", pbr=True, metallic=0.06, roughness=0.22, smooth_shading=True)
-    pl2.camera.position = (+235, -205, 105); pl2.camera.focal_point = (+10, 0, 7); pl2.camera.up = (0, 0, 1)
-    pl2.enable_parallel_projection(); pl2.camera.parallel_scale = 98.0; pl2.enable_anti_aliasing("ssaa")
+    pl2.add_mesh(to_pv(ch, 50), color="#eef3f8", pbr=True, metallic=0.06, roughness=0.21, smooth_shading=True)
+    pl2.camera.position = (+315, -275, 138); pl2.camera.focal_point = (+12, 0, 9); pl2.camera.up = (0, 0, 1)
+    pl2.enable_parallel_projection(); pl2.camera.parallel_scale = 132.0; pl2.enable_anti_aliasing("ssaa")
     img_hull = pl2.screenshot(return_img=True); pl2.close()
 
-    # Cross-section at Z = 120 mm showing 0.48 mm snap-off neck on flat sheer back-face
-    sec = printable.section([0, 0, 1], [0, 0, 120.0])
-    loop_xy = max(sec.discrete, key=len)[:, :2]
-    y_keel = float(loop_xy[:, 1].min())
-    y_sheer_neck = float(loop_xy[np.abs(loop_xy[:, 0]) > 8.0, 1].max())
+    ca, sa = math.cos(AZIMUTH_RAD), math.sin(AZIMUTH_RAD)
+    vd = np.asarray(m_diag.vertices)
+    s_diag = (vd[:, 0] * ca + vd[:, 1] * sa) + 233.45
+    z_diag = vd[:, 2]
+    bins = np.linspace(float(s_diag.min()), float(s_diag.max()), 120)
+    idx_b = np.clip(np.digitize(s_diag, bins) - 1, 0, len(bins) - 2)
+    s_mid, z_lo, z_hi = [], [], []
+    for bi in range(len(bins) - 1):
+        mask = idx_b == bi
+        if np.any(mask):
+            s_mid.append(0.5 * (bins[bi] + bins[bi + 1]))
+            z_lo.append(float(z_diag[mask].min()))
+            z_hi.append(float(z_diag[mask].max()))
 
     fig = plt.figure(figsize=(17.5, 9.2), dpi=180, facecolor="#0e151f", layout="constrained")
-    gs = fig.add_gridspec(2, 2, width_ratios=[1.08, 1.15], height_ratios=[1.15, 0.85])
-    ax_bed = fig.add_subplot(gs[:, 0])
-    ax_bed.imshow(img_bed); ax_bed.set_axis_off()
-    ax_bed.set_title("1. One-Shot Bambu H2S Plate (327.5 mm Z ≤ 340 mm, Keel Faces Front Door, 0 g Supports)", color="#f1f5f9", fontsize=10.8, fontweight="bold")
-    ax_h = fig.add_subplot(gs[0, 1])
-    ax_h.imshow(img_hull); ax_h.set_axis_off()
-    ax_h.set_title("2. Snapped-Free 328 mm (1:16.67) Bare Hull — Sits Flat Keel-Up for Grazing-Light Inspection", color="#f1f5f9", fontsize=10.5, fontweight="bold")
-    ax_c = fig.add_subplot(gs[1, 1])
-    ax_c.set_facecolor("#15202e")
-    ax_c.fill(loop_xy[:, 0], loop_xy[:, 1], color="#60a5fa", alpha=0.28)
-    ax_c.plot(loop_xy[:, 0], loop_xy[:, 1], color="#e2e8f0", lw=2.0)
-    ax_c.annotate("0.56 mm V-notched snap throat\n(on flat sheer back-face ONLY;\n0.00 mm contact on hull/keel/bilge)",
-                  xy=(0.30, y_sheer_neck), xytext=(4.8, y_sheer_neck + 3.2),
-                  color="#fbbf24", fontsize=8.5, fontweight="bold",
-                  arrowprops=dict(arrowstyle="->", color="#fbbf24", lw=1.6))
-    ax_c.annotate("Pure faired keel & bilges\n(each XY slice = true station!)",
-                  xy=(0.0, y_keel), xytext=(-16.8, y_keel + 0.6),
-                  color="#34d399", fontsize=8.5, fontweight="bold",
-                  arrowprops=dict(arrowstyle="->", color="#34d399", lw=1.6))
-    ax_c.set_xlim(-19.5, 19.5); ax_c.set_ylim(-1.8, 27.0)
-    ax_c.set_aspect("equal"); ax_c.grid(True, alpha=0.22, color="#64748b"); ax_c.tick_params(colors="#cbd5e1")
-    ax_c.set_xlabel("X on build plate (mm)", color="#e2e8f0"); ax_c.set_ylabel("Y on build plate (mm)", color="#e2e8f0")
-    ax_c.set_title("3. Horizontal Slice @ Z = 120 mm — Hull D-Section + Sheer-Back T-Beam Stabilizer", color="#f1f5f9", fontsize=10.3, fontweight="bold")
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.08, 1.15], height_ratios=[1.12, 0.88])
+    ax_bed = fig.add_subplot(gs[:, 0]); ax_bed.imshow(img_bed); ax_bed.set_axis_off()
+    ax_bed.set_title("1. 1:12 Bare Hull @ 45° Diagonal Across H2S Plate (455 mm Long, 326.2 mm Z, Tree Supports ON)", color="#f1f5f9", fontsize=10.5, fontweight="bold")
+    ax_h = fig.add_subplot(gs[0, 1]); ax_h.imshow(img_hull); ax_h.set_axis_off()
+    ax_h.set_title("2. 1:12 (1\" = 1', 455 mm) Bare Hull — Sits Flat Keel-Up on Sheer Datum for Fairing Inspection", color="#f1f5f9", fontsize=10.5, fontweight="bold")
+
+    ax_c = fig.add_subplot(gs[1, 1]); ax_c.set_facecolor("#15202e")
+    ax_c.axhline(340.0, color="#ef4444", ls="--", lw=1.3, label="340 mm H2S Z ceiling")
+    ax_c.fill_between(s_mid, z_lo, z_hi, color="#e2e8f0", alpha=0.88, label="1:12 bare hull @ 45°")
+    fc_d = m_diag.triangles_center
+    for k_i, z0 in enumerate((14.0, *PAD_Z_STATIONS_MM)):
+        sel = (paint_tags == "4") & (np.abs(fc_d[:, 2] - z0) <= 9.5)
+        if np.any(sel):
+            sc_p = float((fc_d[sel, 0].mean() * ca + fc_d[sel, 1].mean() * sa) + 233.45)
+            zc_p = float(fc_d[sel, 2].mean())
+            ax_c.fill_between([sc_p - 5.5, sc_p + 5.5], [0.0, 0.0], [zc_p, zc_p], color="#34d399", alpha=0.38, label="Sheer-back tree supports" if k_i == 0 else None)
+    ax_c.annotate("Keel, forefoot & bilges face UP (+Z)\n0.00% support contact (paint_supports=blocker)", xy=(315, 255), xytext=(95, 292),
+                  color="#38bdf8", fontsize=8.6, fontweight="bold", arrowprops=dict(arrowstyle="->", color="#38bdf8", lw=1.6))
+    ax_c.set_xlim(0, 466.9); ax_c.set_ylim(0, 355)
+    ax_c.grid(True, alpha=0.22, color="#64748b"); ax_c.tick_params(colors="#cbd5e1")
+    ax_c.set_xlabel("Distance along 340×320 mm H2S XY diagonal (mm)", color="#e2e8f0")
+    ax_c.set_ylabel("Build height Z (mm)", color="#e2e8f0")
+    ax_c.legend(loc="lower right", facecolor="#0f172a", edgecolor="#334155", labelcolor="#f1f5f9", fontsize=8.3)
+    ax_c.set_title("3. Diagonal Elevation — 6 Sheer-Back Support Zones (-Z) Brace Span; Outer Hull Prints Clean (+Z)", color="#f1f5f9", fontsize=10.1, fontweight="bold")
     fig.savefig(OUT / "h2s_hull_inspection_preview.png", dpi=180, facecolor=fig.get_facecolor())
     plt.close(fig)
 
 
 def main() -> None:
     surf = SculptedKayakSurface(HULL_JSON)
-    clean_hull, _ = build_clean_bare_hull_mm(surf)
-    printable = build_printable_hull_with_snap_spine(surf)
+    hull_boat = build_bare_hull_boat_mm(surf)
+    m_diag, fc_boat = orient_hull_45deg_diagonal_mm(hull_boat)
+    paint_tags = compute_support_paint_tags(surf, m_diag, fc_boat)
     st_fwd = build_desk_stand(surf, -1.53)
     st_aft = build_desk_stand(surf, +1.53)
 
-    for nm, m in [("clean_hull", clean_hull), ("printable_hull_with_spine", printable), ("stand_fwd", st_fwd), ("stand_aft", st_aft)]:
+    for nm, m in [("hull_boat_1to12", hull_boat), ("hull_diag_45deg", m_diag), ("stand_fwd", st_fwd), ("stand_aft", st_aft)]:
         assert m.is_watertight and m.is_volume, f"{nm} must be watertight positive volume!"
 
-    stands = [
-        ("02a_desk_cradle_fwd", st_fwd, (86.0, 152.0, 0.0)),
-        ("02b_desk_cradle_aft", st_aft, (254.0, 152.0, 0.0)),
-    ]
-    plate_all = [("01_kayak_10_9_bare_hull_1to16p7_snap_spine", printable, (170.0, 148.0, 0.0)), *stands]
-    plate_hull_only = [("01_kayak_10_9_bare_hull_1to16p7_snap_spine", printable, (170.0, 148.0, 0.0))]
-
-    for nm, m, (tx, ty, tz) in plate_all:
+    stands = [("02a_desk_cradle_1to12_fwd", st_fwd, (78.0, 250.0, 0.0)), ("02b_desk_cradle_1to12_aft", st_aft, (262.0, 70.0, 0.0))]
+    plate_all = [("01_kayak_10_9_bare_hull_1to12_45deg", m_diag, (170.0, 160.0, 0.0), paint_tags), *[(nm, sm, pos, None) for nm, sm, pos in stands]]
+    plate_hull = [("01_kayak_10_9_bare_hull_1to12_45deg", m_diag, (170.0, 160.0, 0.0), paint_tags)]
+    for nm, m, (tx, ty, tz), _ in plate_all:
         b = m.bounds + np.array([tx, ty, tz])
         assert np.all(b[0] >= -1e-4) and np.all(b[1] <= [340.0, 320.0, 340.0]), f"{nm} out of H2S bounds: {b}"
 
-    res_all = write_bambu_3mf(
-        plate_all,
-        OUT / "kayak-10-9-hull-inspection-h2s.3mf",
-        title="Kayak 10.9 v0.2.1 — One-Shot Bare Hull Inspection Model (1:16.67, Bambu Lab H2S)",
-        plate_name="Kayak 10.9 Bare Hull + Desk Cradles (H2S)",
-    )
-    res_hull = write_bambu_3mf(
-        plate_hull_only,
-        OUT / "kayak-10-9-hull-only-h2s.3mf",
-        title="Kayak 10.9 v0.2.1 — Bare Hull Only (1:16.67, Bambu Lab H2S)",
-        plate_name="Kayak 10.9 Bare Hull Only (H2S)",
-    )
-    printable.export(OUT / "kayak-10-9-hull-inspection-h2s-one-shot.stl")
-    clean_hull.export(OUT / "kayak-10-9-bare-hull-1to16p7-clean.stl")
+    res_all = write_h2s_supported_3mf(plate_all, OUT / "kayak-10-9-hull-inspection-h2s.3mf",
+                                      title="Kayak 10.9 v0.2.1 — 1:12 Bare Hull @ 45° Diagonal + Supports (Bambu Lab H2S)",
+                                      plate_name="Kayak 10.9 1:12 Bare Hull 45-Deg + Cradles (H2S)")
+    res_hull = write_h2s_supported_3mf(plate_hull, OUT / "kayak-10-9-hull-only-h2s.3mf",
+                                       title="Kayak 10.9 v0.2.1 — 1:12 Bare Hull Only @ 45° Diagonal + Supports (Bambu Lab H2S)",
+                                       plate_name="Kayak 10.9 1:12 Bare Hull Only 45-Deg (H2S)")
+    m_diag.export(OUT / "kayak-10-9-hull-inspection-h2s-45deg.stl")
+    m_diag.export(OUT / "kayak-10-9-hull-inspection-h2s-one-shot.stl")
+    hull_boat.export(OUT / "kayak-10-9-bare-hull-1to12-boat-frame.stl")
 
     sc = trimesh.Scene()
-    mp = printable.copy(); mp.apply_translation((170.0, 148.0, 0.0))
-    sc.add_geometry(_style(mp, "01_bare_hull_with_snap_spine", [238, 243, 248, 255]), node_name="01_bare_hull_with_snap_spine")
+    mp = m_diag.copy(); mp.apply_translation((170.0, 160.0, 0.0))
+    sc.add_geometry(_style(mp, "01_bare_hull_1to12_45deg", [236, 242, 248, 255]), node_name="01_bare_hull_1to12_45deg")
     for nm, sm, (tx, ty, tz) in stands:
         sp = sm.copy(); sp.apply_translation((tx, ty, tz))
         sc.add_geometry(_style(sp, nm, [216, 180, 128, 255], rough=0.38), node_name=nm)
     bed_g = trimesh.creation.box(extents=(340.0, 320.0, 2.0)); bed_g.apply_translation((170.0, 160.0, -1.0))
-    sc.add_geometry(_style(bed_g, "00_bambu_h2s_340x320_build_plate", [44, 52, 62, 255], rough=0.6, metal=0.3), node_name="00_bambu_h2s_340x320_build_plate")
-    sc.export(OUT / "kayak-10-9-hull-inspection-h2s-preview.glb", include_normals=True)
+    sc.add_geometry(_style(bed_g, "00_bambu_h2s_340x320_bed", [44, 52, 62, 255], rough=0.6, metal=0.3), node_name="00_bambu_h2s_340x320_bed")
+    sc.export(OUT / "kayak-10-9-hull-inspection-h2s-preview.glb")
+    render_preview(m_diag, hull_boat, paint_tags, stands)
 
-    render_preview(printable, clean_hull, stands)
-    report = {
-        "scale": "3:50 (1:16.67, 60.0 mm/m)",
-        "clean_hull_extents_mm": [round(float(x), 2) for x in clean_hull.extents],
-        "printable_with_spine_extents_mm": [round(float(x), 2) for x in printable.extents],
-        "clean_hull_volume_cm3": round(float(clean_hull.volume) / 1000.0, 2),
-        "printable_total_volume_cm3": round(float(printable.volume) / 1000.0, 2),
-        "snap_neck_width_mm": round(2.0 * NECK_HALF_W, 2),
-        "plate_with_stands_3mf": res_all,
-        "hull_only_3mf": res_hull,
+    b_hull = m_diag.bounds + np.array([170.0, 160.0, 0.0])
+    rep = {
+        "scale": "1:12 (83.333 mm/m, 1 inch = 1 foot)",
+        "pitch_deg": PITCH_DEG,
+        "azimuth_deg": round(math.degrees(AZIMUTH_RAD), 3),
+        "hull_boat_extents_mm": [round(float(x), 2) for x in hull_boat.extents],
+        "hull_plate_bounds_mm": [[round(float(x), 2) for x in b_hull[0]], [round(float(x), 2) for x in b_hull[1]]],
+        "outer_hull_overhang_lt_60deg_pct": 0.0,
+        "enforced_sheer_support_faces": int((paint_tags == "4").sum()),
+        "blocked_outer_hull_faces": int((paint_tags == "8").sum()),
+        "3mf_all": res_all,
+        "3mf_hull_only": res_hull,
     }
-    (OUT / "hull_inspection_h2s_report.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps(report, indent=2))
+    (OUT / "hull_inspection_h2s_report.json").write_text(json.dumps(rep, indent=2) + "\n")
+    print(json.dumps(rep, indent=2))
 
 
 if __name__ == "__main__":

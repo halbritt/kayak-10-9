@@ -337,7 +337,7 @@ def _body_sections_2() -> str:
     <h2>Latest Release CAD, Mold, .3MF &amp; Solver Downloads</h2>
     <p class="lead">Binary CAD/print packages resolve automatically to the newest tagged release on <a href="{REPO_URL}/releases/latest">GitHub Releases</a>; lightweight JSON/CSV/SVG datasets are also hosted directly alongside this page.</p>
     <div class="dl-grid">
-      <a class="dl-item" href="{REL_BASE}/kayak-10-9-hull-inspection-h2s.3mf"><strong>One-Shot Bare Hull &middot; 1:16.67 H2S 3MF</strong><span>Single-piece 327.5 mm vertical bare hull + sheer-back snap-off T-spine + desk cradles (0 g supports).</span></a>
+      <a class="dl-item" href="{REL_BASE}/kayak-10-9-hull-inspection-h2s.3mf"><strong>One-Shot Bare Hull &middot; 1:12 H2S 45&deg; 3MF</strong><span>Single-piece 454.9 mm (1:12) bare hull at 45&deg; across the H2S diagonal; keel/forefoot/bilges UP, tree supports enabled on sheer back + cradles.</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Bow section &middot; 1:8 H2S 3MF</strong><span>Fore section matching the v0.2.1 faired midbody (for v0.1.0 prints, use the v0.1.2 release bow).</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-plate.3mf"><strong>kayak-10-9-scale-1to8-h2s-plate.3mf</strong><span>Bambu Lab H2S single-plate 1:8 scale model (6 objects, 0 g supports)</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-stls.zip"><strong>kayak-10-9-scale-1to8-stls.zip</strong><span>Individual watertight 1:8 .stl sections + 683.75 mm uncut solid .stl</span></a>
