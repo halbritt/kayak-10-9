@@ -10,6 +10,7 @@ import trimesh
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cad"))
 from deck_geometry import SculptedKayakSurface
+import build_hull_inspection_h2s as hull_h2s
 import build_hull_mold_strongback_assy as full_mold
 import build_stepped_cradle_strongback as stepped_mold
 
@@ -104,3 +105,12 @@ class ForefootTests(unittest.TestCase):
         self.assertAlmostEqual(float(shell.bounds[0, 2]), 0.0, places=5)
         self.assertGreaterEqual(l4, 5.442)
         self.assertEqual(sr_4in, 10.88)
+
+    def test_one_shot_h2s_bare_hull_fits_build_volume(self):
+        clean_hull, _ = hull_h2s.build_clean_bare_hull_mm(self.surface)
+        printable = hull_h2s.build_printable_hull_with_snap_spine(self.surface)
+        self.assertTrue(clean_hull.is_watertight and clean_hull.is_volume)
+        self.assertTrue(printable.is_watertight and printable.is_volume)
+        placed = printable.bounds + np.array([170.0, 148.0, 0.0])
+        self.assertTrue(np.all(placed[0] >= -1e-4))
+        self.assertTrue(np.all(placed[1] <= np.array([340.0, 320.0, 340.0])))

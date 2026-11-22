@@ -4,6 +4,7 @@ All notable changes to **Kayak 10.9** are documented in this file.
 
 ## [v0.2.1] - 2026-11-22
 
+- Added `cad/build_hull_inspection_h2s.py` (`kayak-10-9-hull-inspection-h2s.3mf` and `kayak-10-9-hull-only-h2s.3mf`): a one-shot, single-piece `3:50` (`1:16.67`, `327.5 mm` Z) Bambu Lab H2S bare-hull inspection print stabilized solely along the flat sheer back-face via a `0.56 mm` V-notched snap-off T-beam spine (`0 g` supports, zero contact on the outer hull, keel, bilges, or forefoot) plus two contoured desk cradles.
 - Pinned keel depth and scaled `D³` bilge-batten span by submerged girth (`s_wl`) in `kayak-gen`, and replaced the uniform `0.08 m` bilge round with a longitudinal ramp (`forward: 0.07 -> aft: 0.0` over `xi = -0.38..+0.05`). Restores the full `10.88` Sound Rowers 4"-draft ratio (`5.4428 m / 50.05 cm`), `4.47 / 5.08 / 5.67 / 6.17 kn` calm-water speeds at `40 / 60 / 90 / 120 W` (`225 lb`), and `10.0 mm` `GZ(20°)` while keeping the forebody bilge and forward keel groove faired.
 - Added a regression test (`test_sound_rowers_ratio_and_keel_baseline_preserved`) pinning `SR_4in == 10.88`, `L_4in >= 5.442 m`, and zero keel lift, and regenerated all CAD, mold, `1:8` `.3mf`/`.stl`, hydrostatic, plate, studio render, and monograph deliverables.
 
