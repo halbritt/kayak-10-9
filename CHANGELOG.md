@@ -2,6 +2,10 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## Glue collar accessory · 2026-11-21
+
+- Added a standalone H2S plate with four split collars for clamping both joints of the 1:8 model with small bar clamps.
+
 ## [v0.1.2] - 2026-11-21
 
 - Traversed forward bow mold stations along the connected outer-shell section curve instead of sorting vertices by height, eliminating the `1.56 mm` keel zigzag where the bow rocker lifts `z(y=0)` slightly above adjacent keel points.

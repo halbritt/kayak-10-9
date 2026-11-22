@@ -8,6 +8,7 @@ import sys
 import uuid
 import xml.etree.ElementTree as ET
 import zipfile
+from xml.sax.saxutils import escape, quoteattr
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -103,7 +104,13 @@ def _cap_with_blind_sockets_x(
     return trimesh.util.concatenate(parts)
 
 
-def write_bambu_3mf(plate_items: list[tuple[str, trimesh.Trimesh, tuple[float, float, float]]], out_path: Path) -> dict[str, int]:
+def write_bambu_3mf(
+    plate_items: list[tuple[str, trimesh.Trimesh, tuple[float, float, float]]],
+    out_path: Path,
+    *,
+    title: str = "Kayak 10.9 — 1:8 Scale Model (Bambu Lab H2S Single-Plate Vertical Print)",
+    plate_name: str = "Kayak 10.9 1:8 H2S Plate",
+) -> dict[str, int]:
     """Write spec-compliant multi-object 3MF Core 1.2 + Bambu/Slic3r model_settings.config archive."""
     content_types = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -125,7 +132,7 @@ def write_bambu_3mf(plate_items: list[tuple[str, trimesh.Trimesh, tuple[float, f
         '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
         'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" requiredextensions="p">',
         ' <metadata name="Application">KayakGen-1to8-H2S-Builder</metadata>',
-        ' <metadata name="Title">Kayak 10.9 — 1:8 Scale Model (Bambu Lab H2S Single-Plate Vertical Print)</metadata>',
+        f' <metadata name="Title">{escape(title)}</metadata>',
         ' <resources>',
     ]
     build_lines = [f' <build p:UUID="{uuid.uuid4()}">']
@@ -163,7 +170,7 @@ def write_bambu_3mf(plate_items: list[tuple[str, trimesh.Trimesh, tuple[float, f
     lines_m.append('</model>\n')
     cfg_lines.append(' <plate>')
     cfg_lines.append('  <metadata key="plater_id" value="1"/>')
-    cfg_lines.append('  <metadata key="plater_name" value="Kayak 10.9 1:8 H2S Plate"/>')
+    cfg_lines.append(f'  <metadata key="plater_name" value={quoteattr(plate_name)}/>')
     for idx in range(1, len(plate_items) + 1):
         cfg_lines.append(f'  <model_instance><metadata key="object_id" value="{idx}"/><metadata key="instance_id" value="0"/></model_instance>')
     cfg_lines.append(' </plate>')

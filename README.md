@@ -10,6 +10,7 @@ Heavy 3D meshes, slicer plates, and full-scale CAD exports are published on **[G
 
 | Deliverable | Direct `"Latest"` Download | Contents |
 | --- | --- | --- |
+| **Glue collars for small bar clamps** | [Download the H2S clamp-ring 3MF](https://github.com/halbritt/kayak-10-9/releases/download/glue-collars-v1/kayak-10-9-scale-1to8-h2s-glue-collars.3mf) | Four split collars for the two model joints. [Placement and use](docs/glue-collars.md) |
 | **Replacement bow · 1:8 H2S** | [Download the bow-only 3MF](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-scale-1to8-h2s-bow.3mf) | One fore section with the v0.1.0 joint, sockets and scale. Print bulkhead face down. |
 | **1:8 Scale Bambu Lab H2S `.3MF`** | [`kayak-10-9-scale-1to8-h2s-plate.3mf`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-scale-1to8-h2s-plate.3mf) | Single-plate (`340 x 320 x 340 mm`) support-free vertical bulkhead-split `1:8` scale model (`683.8 x 70.3 x 42.1 mm`), `6x` octagonal shear keys, and `2x` Bessel-station desk stands |
 | **1:8 Scale Watertight `.STL` Set** | [`kayak-10-9-scale-1to8-stls.zip`](https://github.com/halbritt/kayak-10-9/releases/latest/download/kayak-10-9-scale-1to8-stls.zip) | Individual watertight `.stl` sections (`01_bow`, `02_cockpit`, `03_stern`, keys, stands) + uncut `683.75 mm` solid `.stl` |
