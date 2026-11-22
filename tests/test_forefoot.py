@@ -4,10 +4,14 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+from shapely.geometry import LineString, Point
+import trimesh
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cad"))
 from deck_geometry import SculptedKayakSurface
+import build_hull_mold_strongback_assy as full_mold
+import build_stepped_cradle_strongback as stepped_mold
 
 
 class ForefootTests(unittest.TestCase):
@@ -35,3 +39,36 @@ class ForefootTests(unittest.TestCase):
         actual_z = surf.end_shape_xyz(points)[:, 2]
         expected_z = keel + 0.056 * (1 - 1 / np.hypot(1, 1 - d / 0.135))
         np.testing.assert_allclose(actual_z, expected_z, atol=1e-12)
+
+    def test_mold_station_rings_follow_outer_shell_curve(self):
+        surf = self.surface
+        shell = trimesh.util.concatenate((surf.build_hull_shell(), surf.build_deck_shell(cut_openings=False)))
+        rings_mm = surf.mold_station_rings_mm()
+        mid = surf.n_hull_half - 1
+        for i in np.flatnonzero((surf.xs > -2.725) & (surf.xs < -2.485)):
+            x_m = float(rings_mm[i, 0, 0]) / 1000.0
+            section = shell.section([1, 0, 0], [x_m, 0, 0])
+            curve_mm = LineString(max(section.discrete, key=len)[:, 1:] * 1000.0)
+            stbd_y = rings_mm[i, mid:, 1]
+            max_dist_mm = max(curve_mm.distance(Point(pt)) for pt in rings_mm[i, :, 1:])
+            with self.subTest(station_mm=round(x_m * 1000.0, 2)):
+                self.assertAlmostEqual(float(stbd_y[0]), 0.0, places=5)
+                self.assertTrue(np.all(np.diff(stbd_y[:12]) >= -1e-6))
+                self.assertLess(max_dist_mm, 0.02)
+
+    def test_forward_mold_cavities_match_outer_shell(self):
+        surf = self.surface
+        shell = trimesh.util.concatenate((surf.build_hull_shell(), surf.build_deck_shell(cut_openings=False)))
+        tbl_step = stepped_mold._precompute_tables(surf)
+        tbl_full = full_mold._precompute_mold_tables(surf)
+        for x_mm in (-2615.0, -2580.0, -2550.0, -2495.0, -2460.0):
+            section = shell.section([1, 0, 0], [x_mm / 1000.0, 0, 0])
+            curve_mm = LineString(max(section.discrete, key=len)[:, 1:] * 1000.0)
+            cav_stbd, zm, _ = stepped_mold._hull_stbd_curve_at_x(tbl_step, x_mm)
+            loop_full = full_mold._mold_loop_at_x_mm(tbl_full, x_mm)
+            cav_full = loop_full[(np.abs(loop_full[:, 0]) <= float(cav_stbd[-1, 0]) - 0.5) & (loop_full[:, 1] > 40.0)]
+            max_dev_step = max(curve_mm.distance(Point(pt)) for pt in cav_stbd[1:])
+            max_dev_full = max(curve_mm.distance(Point(pt)) for pt in cav_full)
+            with self.subTest(x_mm=x_mm, zm_mm=round(zm, 2)):
+                self.assertLess(max_dev_step, 0.15)
+                self.assertLess(max_dev_full, 0.15)

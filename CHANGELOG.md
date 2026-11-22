@@ -2,6 +2,11 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## [v0.1.2] - 2026-11-21
+
+- Traversed forward bow mold stations along the connected outer-shell section curve instead of sorting vertices by height, eliminating the `1.56 mm` keel zigzag where the bow rocker lifts `z(y=0)` slightly above adjacent keel points.
+- Preserved curve order in both strongback mold generators via `SculptedKayakSurface.mold_stbd_section_mm` and regenerated the full-scale stepped-cradle and full-width mold assemblies.
+
 ## [v0.1.1] - 2026-11-21
 
 - Faired the diagonal pinch where the stem turns into the keel. The surface now has a continuous tangent across the original crease and retains the 135 × 56 mm elliptical forefoot profile.

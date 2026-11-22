@@ -12,7 +12,6 @@ HULL_JSON = REPO_ROOT / "hull" / "kayak-10-9.hull.json"
 BUILD_ROOT = REPO_ROOT / "build"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 OUT = BUILD_ROOT / "mold_strongback_assy"
-OUT.mkdir(parents=True, exist_ok=True)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -98,9 +97,9 @@ def _precompute_mold_tables(surf: SculptedKayakSurface) -> dict[str, np.ndarray]
     rings_mm = surf.mold_station_rings_mm()
     xs_mm = surf.xs * 1000.0
     z_raw, y_raw = np.zeros(len(xs_mm)), np.zeros(len(xs_mm))
+    mid = surf.n_hull_half - 1
     for i, xm in enumerate(xs_mm):
-        stbd = rings_mm[i][rings_mm[i][:, 1] >= -1e-4][:, 1:]
-        stbd = stbd[np.argsort(stbd[:, 1])]
+        stbd = rings_mm[i, mid:, 1:]
         cand = stbd[:, 1] <= (118.0 if xm < -1300.0 else 198.0)
         iw = int(np.argmax(np.where(cand, stbd[:, 0], -1.0)))
         y_raw[i], z_raw[i] = float(stbd[iw, 0]), float(stbd[iw, 1])
@@ -120,16 +119,9 @@ def _mold_loop_at_x_mm(tbl: dict[str, np.ndarray], x_mm: float) -> np.ndarray:
     i1 = int(np.clip(np.searchsorted(xs_mm, xc), 1, len(xs_mm) - 1))
     w = float((xc - xs_mm[i1 - 1]) / max(xs_mm[i1] - xs_mm[i1 - 1], 1e-6))
     ring = (1.0 - w) * rings_mm[i1 - 1] + w * rings_mm[i1]
-    stbd = ring[ring[:, 1] >= -1e-4][:, 1:]
-    stbd = stbd[np.argsort(stbd[:, 1])]
-    stbd[0, 0] = 0.0
-
     zm = float(np.interp(x_mm, tbl["xg"], tbl["zg"]))
     ym_fair = float(np.interp(x_mm, tbl["xg"], tbl["yg"]))
-    y_at_zm = float(np.interp(zm, stbd[:, 1], stbd[:, 0]))
-    sub = stbd[stbd[:, 1] < zm]
-    hs = np.vstack((sub, [[y_at_zm, zm]])) if len(sub) >= 2 else np.array([[0.0, zm - 1.0], [max(y_at_zm, 0.5), zm]])
-    hs[:, 0] = np.maximum.accumulate(np.maximum(hs[:, 0], 0.0))
+    hs = SculptedKayakSurface.mold_stbd_section_mm(ring, zm)
     hs_r = _resample_2d(hs, 56)
 
     # Smoothly close inner cavity into solid end dam across |x| in [2734.0, 2735.6] mm (zero internal ghost wall!)
@@ -366,6 +358,7 @@ def render_studio_and_ortho(parts: dict[str, trimesh.Trimesh], edges_x: np.ndarr
 
 
 def main() -> None:
+    OUT.mkdir(parents=True, exist_ok=True)
     surf = SculptedKayakSurface(HULL_JSON)
     edges_x = np.linspace(-2754.0, +2754.0, 18)  # 17 stations x 324.0 mm = 5,508 mm (each <= 340 mm H2S Z-height!)
     parts = build_strongback_and_trestles(surf, edges_x)

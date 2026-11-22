@@ -289,17 +289,32 @@ class SculptedKayakSurface:
         # Bow rings bend longitudinally during fairing. The tooling loft uses
         # flat stations, so intersect those planes with the finished surface.
         shell = trimesh.util.concatenate((self.build_hull_shell(), self.build_deck_shell(cut_openings=False)))
+        shell.merge_vertices()
         end_x = self.xs[0] + 0.250
         bow = shell.submesh([shell.triangles[:, :, 0].min(axis=1) <= end_x], append=True)
         for i in np.flatnonzero(self.xs < end_x):
             station = max(self.xs[i], self.xs[0] + 0.00005)
-            edges = trimesh.intersections.mesh_plane(bow, [1, 0, 0], [station, 0, 0])
-            yz = np.unique(edges.reshape(-1, 3)[:, 1:].round(10), axis=0)
-            side = yz[yz[:, 0] >= 0.0]
-            side = side[side[:, 1].argsort()]
+            sec = bow.section([1, 0, 0], [station, 0, 0])
+            loop = max(sec.discrete, key=len)[:, 1:]
+            if np.linalg.norm(loop[0] - loop[-1]) < 1e-12:
+                loop = loop[:-1]
+            area = 0.5 * np.sum(loop[:, 0] * np.roll(loop[:, 1], -1) - np.roll(loop[:, 0], -1) * loop[:, 1])
+            if area < 0.0:
+                loop = loop[::-1]
+            cl = np.flatnonzero(np.abs(loop[:, 0]) <= 1e-7)
+            rolled = np.roll(loop, -int(cl[np.argmin(loop[cl, 1])]), axis=0)
+            i_top = int(np.flatnonzero(np.abs(rolled[1:, 0]) <= 1e-7)[0]) + 1
+            side = rolled[: i_top + 1].copy()
+            side[0, 0] = 0.0
+            z_seam = float(self.seam_z[i])
             # Where rake moves the stem above the mold parting line, retain
             # its lowest point so the tooling can close the cavity there.
-            side = side[:max(1, side[:, 1].searchsorted(self.seam_z[i], side="right"))]
+            if side[0, 1] >= z_seam:
+                side = side[:1]
+            elif side[-1, 1] > z_seam:
+                k = int(np.flatnonzero(side[:, 1] >= z_seam)[0])
+                alpha = (z_seam - side[k - 1, 1]) / (side[k, 1] - side[k - 1, 1])
+                side = np.vstack((side[:k], [side[k - 1] + alpha * (side[k] - side[k - 1])]))
             arc = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(side, axis=0), axis=1))]
             t = np.linspace(0.0, arc[-1], self.n_hull_half)
             starboard = np.column_stack([np.interp(t, arc, side[:, j]) for j in (0, 1)])
@@ -307,6 +322,25 @@ class SculptedKayakSurface:
             rings[i, :, 1:] = 1000.0 * np.vstack((port, starboard))
             rings[i, :, 0] = 1000.0 * station
         return rings
+
+    @staticmethod
+    def mold_stbd_section_mm(ring_mm: np.ndarray, z_part_mm: float) -> np.ndarray:
+        """Extract ordered keel-to-parting-line starboard cavity curve (mm) without z-sorting."""
+        stbd = ring_mm[len(ring_mm) // 2 :, 1:].copy()
+        stbd[0, 0] = 0.0
+        if stbd[0, 1] >= z_part_mm:
+            hs = np.array([[0.0, z_part_mm - 1.0], [max(float(stbd[0, 0]), 0.5), z_part_mm]])
+        elif stbd[-1, 1] <= z_part_mm:
+            hs = np.vstack((stbd, [[float(stbd[-1, 0]), z_part_mm]]))
+        else:
+            k = int(np.flatnonzero(stbd[:, 1] >= z_part_mm)[0])
+            dz = float(stbd[k, 1] - stbd[k - 1, 1])
+            alpha = (z_part_mm - float(stbd[k - 1, 1])) / dz if dz > 1e-9 else 0.0
+            pt = stbd[k - 1] + alpha * (stbd[k] - stbd[k - 1])
+            pt[1] = z_part_mm
+            hs = np.vstack((stbd[:k], [pt]))
+        hs[:, 0] = np.maximum.accumulate(np.maximum(hs[:, 0], 0.0))
+        return hs
 
     def build_hull_shell(self) -> trimesh.Trimesh:
         """Build outer hull + topside shell below the sheer mold seam."""
