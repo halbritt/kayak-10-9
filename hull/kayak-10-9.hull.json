@@ -161,7 +161,8 @@
         "forward_xi": -0.35,
         "aft_xi": 0.2
       },
-      "shoulder_round_m": 0.06812556509299181
+      "shoulder_round_m": 0.06812556509299181,
+      "bilge_round_m": 0.08
     },
     "section_side_exponent": {
       "schema_version": "1",

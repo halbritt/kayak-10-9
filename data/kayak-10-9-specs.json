@@ -1,9 +1,9 @@
 {
   "model": "sporty-tourer-fsk-d10-finished",
   "L_oa_m": 5.47,
-  "B_oa_cm": 56.23,
-  "SR_4in": 10.88,
-  "USCA_4in_pct": 9.15,
+  "B_oa_cm": 56.25,
+  "SR_4in": 10.79,
+  "USCA_4in_pct": 9.16,
   "keyhole_inner_cm": [
     84.0,
     42.0
@@ -12,12 +12,12 @@
   "aft_coaming_lip_above_225wl_cm": 15.6,
   "rear_deck_at_day_hatch_above_225wl_cm": 14.8,
   "compartments_liters": {
-    "bow_compartment_L": 98.3,
-    "cockpit_foot_and_seat_well_L": 154.3,
+    "bow_compartment_L": 96.9,
+    "cockpit_foot_and_seat_well_L": 154.0,
     "day_pod_L": 5.5,
-    "stern_compartment_L": 149.5
+    "stern_compartment_L": 148.3
   },
-  "total_sealed_buoyancy_liters": 253.3,
+  "total_sealed_buoyancy_liters": 250.7,
   "baja_40lb_trim_balanced_split_lb": {
     "bow_hatch": 16.0,
     "day_pod": 4.0,
@@ -28,95 +28,95 @@
     "label": "fsk-d10-finished",
     "L_oa_m": 5.47,
     "B_oa_cm": 56.2,
-    "D_max_cm": 33.7,
-    "fsk_4in_ratio": 10.88,
-    "b_4in_cm": 50.05,
-    "usca_4in_beam_pct": 9.15,
-    "mesh_plan_hollow_deg": 0.48,
-    "plan_hollow_deg": 0.8,
-    "foot_clear_height_cm": 26.09,
-    "foot_clear_width_at_25cm": 29.72,
+    "D_max_cm": 33.6,
+    "fsk_4in_ratio": 10.79,
+    "b_4in_cm": 50.11,
+    "usca_4in_beam_pct": 9.16,
+    "mesh_plan_hollow_deg": 1.12,
+    "plan_hollow_deg": 1.92,
+    "foot_clear_height_cm": 26.22,
+    "foot_clear_width_at_25cm": 29.87,
     "upper_knuckle_deg": 9.36,
-    "waterline_knuckle_deg": 1.18,
-    "upper_hollow_deg": 0.08,
+    "waterline_knuckle_deg": 1.19,
+    "upper_hollow_deg": 0.48,
     "foredeck_drop_at_10cm_mm": 15.1,
     "crown_fwd_aft": [
       2.69,
       9.73
     ],
     "kn_225": {
-      "40": 4.46,
-      "60": 5.08,
-      "90": 5.67,
-      "120": 6.17
+      "40": 4.48,
+      "60": 5.07,
+      "90": 5.66,
+      "120": 6.16
     },
     "catch_beams_225_cm": {
-      "+0.0": 52.7,
-      "+0.8": 42.9,
-      "+0.9": 41.2,
-      "+1.0": 39.6,
-      "+1.1": 37.8,
+      "+0.0": 52.5,
+      "+0.8": 43.0,
+      "+0.9": 41.3,
+      "+1.0": 39.7,
+      "+1.1": 38.0,
       "+1.2": 36.2
     },
     "transition_beams_cm": {
       "+1.2": 36.2,
-      "+1.0": 39.6,
-      "+0.8": 42.9,
-      "+0.6": 45.7,
-      "+0.4": 48.4,
-      "+0.2": 50.4,
-      "+0.0": 52.7,
-      "-0.2": 54.1,
-      "-0.4": 55.1
+      "+1.0": 39.7,
+      "+0.8": 43.0,
+      "+0.6": 45.8,
+      "+0.4": 48.3,
+      "+0.2": 50.7,
+      "+0.0": 52.5,
+      "-0.2": 54.0,
+      "-0.4": 55.2
     },
     "transition_dB_per_20cm": [
-      3.4,
+      3.5,
       3.3,
       2.8,
-      2.7,
-      2.0,
-      2.3,
-      1.4,
-      1.0
+      2.5,
+      2.4,
+      1.8,
+      1.5,
+      1.2
     ],
     "heel_bow_pitch_deg": {
-      "15deg": -0.073,
-      "25deg": -0.197
+      "15deg": -0.069,
+      "25deg": -0.193
     },
     "load_225": {
-      "T_cm": 8.82,
-      "Bwl_cm": 48.05,
-      "wet_m2": 2.022,
-      "GM_cm": 4.4,
+      "T_cm": 8.92,
+      "Bwl_cm": 48.24,
+      "wet_m2": 1.984,
+      "GM_cm": 3.5,
       "gz_10_20_30_40_mm": [
-        6.9,
-        10.2,
-        8.0,
-        -1.2
+        5.8,
+        9.2,
+        7.4,
+        -1.5
       ]
     },
     "load_265": {
-      "T_cm": 9.8,
-      "Bwl_cm": 49.55,
-      "wet_m2": 2.148,
-      "GM_cm": 3.33,
+      "T_cm": 9.92,
+      "Bwl_cm": 49.79,
+      "wet_m2": 2.114,
+      "GM_cm": 2.65,
       "gz_10_20_30_40_mm": [
-        5.2,
-        7.5,
-        4.3,
-        -5.5
+        4.4,
+        6.7,
+        3.9,
+        -5.8
       ]
     },
     "load_300": {
-      "T_cm": 10.64,
-      "Bwl_cm": 50.69,
-      "wet_m2": 2.252,
-      "GM_cm": 2.5,
+      "T_cm": 10.77,
+      "Bwl_cm": 50.97,
+      "wet_m2": 2.221,
+      "GM_cm": 2.06,
       "gz_10_20_30_40_mm": [
-        4.0,
-        5.4,
-        1.4,
-        -9.1
+        3.4,
+        4.8,
+        1.1,
+        -9.3
       ]
     }
   }

@@ -67,14 +67,22 @@ def make_svg_trim(bow_l: float, pod_l: float, stern_l: float) -> str:
 """
 
 
-def make_master_table(sr_4in: float, b_oa: float, bow_l: float, pod_l: float, stern_l: float, tot_l: float) -> str:
+def make_master_table(specs: dict, sr_4in: float, b_oa: float, bow_l: float, pod_l: float, stern_l: float, tot_l: float) -> str:
+    h3 = specs["hydro_3load"]
+    b4 = float(h3["b_4in_cm"])
+    usca = float(specs["USCA_4in_pct"])
+    cb = h3["catch_beams_225_cm"]
+    kn = h3["kn_225"]
+    l225, l265, l300 = h3["load_225"], h3["load_265"], h3["load_300"]
+    g225 = " / ".join(f"{v:.1f}" for v in l225["gz_10_20_30_40_mm"][:3])
+    g265 = " / ".join(f"{v:.1f}" for v in l265["gz_10_20_30_40_mm"][:3])
     return f"""
 <div class="table-wrap">
 <table>
   <thead>
     <tr>
       <th>Parameter / Metric</th>
-      <th>Kayak 10.9 (Final Revision)</th>
+      <th>Kayak 10.9 (v0.2.0 Faired Bilge)</th>
       <th>Epic 18X / 18X Sport</th>
       <th>Stellar S18R G2</th>
       <th>Basis / Source</th>
@@ -83,28 +91,28 @@ def make_master_table(sr_4in: float, b_oa: float, bow_l: float, pod_l: float, st
   <tbody>
     <tr class="group-hdr"><td colspan="5">1. Principal Dimensions &amp; Race-Class Eligibility</td></tr>
     <tr><td>Overall Length (L_oa)</td><td class="hi">5.470 m CAD (5.480 m w/ gudgeon)</td><td>5.480 m (18&apos; 0&quot;)</td><td>5.480 m (17&apos; 11.8&quot;)</td><td><span class="badge b-mesh">3D Mesh + Maker</span></td></tr>
-    <tr><td>Overall Max Beam (B_oa)</td><td class="hi">{b_oa:.2f} cm (22.14&quot;)</td><td>55.88 cm (22.00&quot;)</td><td>51.20 cm (20.16&quot;)</td><td><span class="badge b-mesh">3D Mesh + Maker</span></td></tr>
-    <tr><td>4&quot; Caliper Beam (B_4in @ 10.16 cm)</td><td class="hi">50.05 cm (19.70&quot;)</td><td>51.80 cm (scan)</td><td>~50.5 cm (derived)</td><td><span class="badge b-mesh">4&quot; Plane Slice</span></td></tr>
+    <tr><td>Overall Max Beam (B_oa)</td><td class="hi">{b_oa:.2f} cm ({b_oa / 2.54:.2f}&quot;)</td><td>55.88 cm (22.00&quot;)</td><td>51.20 cm (20.16&quot;)</td><td><span class="badge b-mesh">3D Mesh + Maker</span></td></tr>
+    <tr><td>4&quot; Caliper Beam (B_4in @ 10.16 cm)</td><td class="hi">{b4:.2f} cm ({b4 / 2.54:.2f}&quot;)</td><td>51.80 cm (scan)</td><td>~50.5 cm (derived)</td><td><span class="badge b-mesh">4&quot; Plane Slice</span></td></tr>
     <tr><td>Sound Rowers 4&quot;-Draft Ratio (&le; 10.99 FSK)</td><td class="hi">{sr_4in:.2f} (FSK Legal)</td><td>10.58 scan (10.16 SR list)</td><td>10.74 (SR Official List)</td><td><span class="badge b-mesh">SR Class Rule</span></td></tr>
-    <tr><td>USCA 4&quot; Beam / L_oa (&ge; 8.50% Sea Kayak)</td><td class="hi">9.15% (Pass)</td><td>9.45% (Pass)</td><td>~9.2% (USCA Listed)</td><td><span class="badge b-mesh">USCA Class Rule</span></td></tr>
-    <tr><td>Max Depth / Bow / Rear Deck Above 225 lb WL</td><td class="hi">33.7 cm / 24.6 cm / 14.8 cm</td><td>33.1 cm / 23.2 cm / 13.1 cm</td><td>32.0 cm OA (maker)</td><td><span class="badge b-mesh">3D Mesh + Maker</span></td></tr>
+    <tr><td>USCA 4&quot; Beam / L_oa (&ge; 8.50% Sea Kayak)</td><td class="hi">{usca:.2f}% (Pass)</td><td>9.45% (Pass)</td><td>~9.2% (USCA Listed)</td><td><span class="badge b-mesh">USCA Class Rule</span></td></tr>
+    <tr><td>Max Depth / Bow / Rear Deck Above 225 lb WL</td><td class="hi">{h3["D_max_cm"]:.1f} cm / 24.6 cm / 14.8 cm</td><td>33.1 cm / 23.2 cm / 13.1 cm</td><td>32.0 cm OA (maker)</td><td><span class="badge b-mesh">3D Mesh + Maker</span></td></tr>
     <tr class="group-hdr"><td colspan="5">2. Layup Mass, Storage &amp; Cockpit Ergonomics</td></tr>
     <tr><td>Lightest Composite Weight (Ready to Paddle)</td><td class="hi">27.0 lb prepreg / 29.4 lb vac-bag</td><td>39.0 lb Ultra (41.7 lb Perf.)</td><td>34.2 lb Alpha (34.4 lb Excel)</td><td><span class="badge b-spec">BOM / Maker</span></td></tr>
     <tr><td>Sealed Dry Storage &amp; Bulkhead Layout</td><td class="hi">{tot_l:.1f} L ({bow_l:.1f} Bow + {pod_l:.1f} Carbon Pod + {stern_l:.1f} Stern; 2 BHs)</td><td>206.0 L (87 Bow + 36 Ctr Day + 83 Stern)</td><td>206.0 L (81 Bow + 125 Stern; NO Day Hatch)</td><td><span class="badge b-mesh">3D Volume / Maker</span></td></tr>
     <tr><td>Cockpit Inner Keyhole Opening</td><td class="hi">84.0 &times; 42.0 cm (recessed aft well)</td><td>85.1 &times; 40.6 cm (33.5&quot;&times;16.0&quot;)</td><td>85.1 &times; 43.9 cm (33.5&quot;&times;17.3&quot;)</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
-    <tr><td>Catch Beam &ge; 10 cm Above WL (+0.8 / +1.0 / +1.2 m)</td><td class="hi">42.9 / 39.6 / 36.2 cm</td><td>45.3 / 42.4 / 38.3 cm</td><td>Kayak Cut (~40–42 cm)</td><td><span class="badge b-mesh">3D Mesh Slice</span></td></tr>
+    <tr><td>Catch Beam &ge; 10 cm Above WL (+0.8 / +1.0 / +1.2 m)</td><td class="hi">{cb["+0.8"]:.1f} / {cb["+1.0"]:.1f} / {cb["+1.2"]:.1f} cm</td><td>45.3 / 42.4 / 38.3 cm</td><td>Kayak Cut (~40–42 cm)</td><td><span class="badge b-mesh">3D Mesh Slice</span></td></tr>
     <tr><td>Wing-Knee Channel &amp; Thigh Control</td><td class="hi">31.2 cm open center + 4.1 cm side hooks</td><td>Standard touring rim + spine ridge</td><td>Open keyhole + cheek-hung seat</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
     <tr><td>Seat, Footbrace &amp; Keel Architecture</td><td class="hi">10 mm pan on twin &plusmn;12.5 cm carbon foil tracks + 12&deg; wing footboard (-0.82 m) + 60 mm flush UD keel strap</td><td>Center plastic notched rail + SmartTrack toe pegs</td><td>Cheek-bolted 3-pos seat + 3-cam QR full footplate</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
     <tr class="group-hdr"><td colspan="5">3. Calm-Water Speed &amp; Prior-Design OpenFOAM-v2512 Free-Surface RANS CFD (225 lb Seawater, Unvalidated Comparative)</td></tr>
-    <tr><td>Speed @ 40 / 60 / 90 / 120 W (ITTC-57 + Michell)</td><td class="hi">4.46 / 5.08 / 5.67 / 6.17 kn</td><td>4.47 / 5.02 / 5.58 / 6.06 kn</td><td>&mdash; (no 3D scan)</td><td><span class="badge b-cfd">Analytical</span></td></tr>
+    <tr><td>Speed @ 40 / 60 / 90 / 120 W (ITTC-57 + Michell)</td><td class="hi">{kn["40"]:.2f} / {kn["60"]:.2f} / {kn["90"]:.2f} / {kn["120"]:.2f} kn</td><td>4.47 / 5.02 / 5.58 / 6.06 kn</td><td>&mdash; (no 3D scan)</td><td><span class="badge b-cfd">Analytical</span></td></tr>
     <tr><td>OpenFOAM Total Drag @ 5.50 kn (Fn 0.386)</td><td class="hi">20.58 &plusmn; 0.24 N (-3.7%, 58.2 W)</td><td>21.38 &plusmn; 0.09 N (60.5 W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
     <tr><td>OpenFOAM Pressure/Wave Drag @ 5.50 kn</td><td class="hi">3.82 N (-23.5% wave drag)</td><td>5.00 N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
     <tr><td>OpenFOAM Total Drag @ 6.20 kn (Fn 0.435)</td><td class="hi">26.02 &plusmn; 0.22 N (-4.2%, 83.0 W)</td><td>27.17 &plusmn; 0.07 N (86.7 W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
     <tr><td>OpenFOAM Pressure/Wave Drag @ 6.20 kn</td><td class="hi">5.30 N (-25.9% wave drag)</td><td>7.15 N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
     <tr class="group-hdr"><td colspan="5">4. Multi-Load Stability &amp; Prior-Design Capytaine Wave Response</td></tr>
-    <tr><td>Initial GM_T: 213 lb Carbon / 225 lb / 265 lb / 300 lb</td><td class="hi">5.53 / 4.40 / 3.33 / 2.50 cm</td><td>&mdash; / 5.68 / 4.30 / 3.01 cm</td><td>~(S18S ski hull: lower flare)</td><td><span class="badge b-mesh">3D Float / BEM</span></td></tr>
-    <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (225 lb, KG=0.25m)</td><td class="hi">6.9 / 10.2 / 8.0 mm</td><td>8.9 / 13.4 / 12.2 mm</td><td>&mdash;</td><td><span class="badge b-mesh">3D Float</span></td></tr>
-    <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (265 lb Baja)</td><td class="hi">5.2 / 7.5 / 4.3 mm</td><td>6.8 / 10.6 / 8.9 mm</td><td>&mdash; (330 lb max cap.)</td><td><span class="badge b-mesh">3D Float</span></td></tr>
+    <tr><td>Initial GM_T: 225 lb / 265 lb / 300 lb</td><td class="hi">{l225["GM_cm"]:.2f} / {l265["GM_cm"]:.2f} / {l300["GM_cm"]:.2f} cm</td><td>5.68 / 4.30 / 3.01 cm</td><td>~(S18S ski hull: lower flare)</td><td><span class="badge b-mesh">3D Float / BEM</span></td></tr>
+    <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (225 lb, KG=0.25m)</td><td class="hi">{g225} mm</td><td>8.9 / 13.4 / 12.2 mm</td><td>&mdash;</td><td><span class="badge b-mesh">3D Float</span></td></tr>
+    <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (265 lb Baja)</td><td class="hi">{g265} mm</td><td>6.8 / 10.6 / 8.9 mm</td><td>&mdash; (330 lb max cap.)</td><td><span class="badge b-mesh">3D Float</span></td></tr>
     <tr><td>Head-Chop Bow Dips/min (4.5 kn, Hs 0.35m Tp 2.5s)</td><td class="hi">11.2 /min (213 lb) | 11.8 /min (225 lb)</td><td>15.3 /min (225 lb)</td><td>&mdash;</td><td><span class="badge b-cfd">Capytaine BEM</span></td></tr>
     <tr><td>Seat Vertical Slamming Accel RMS (4.5 kn Head Chop)</td><td class="hi">1.23 m/s&sup2; (-15% empty, -26% @ 265 lb)</td><td>1.44 m/s&sup2; (1.66 @ 265 lb)</td><td>&mdash;</td><td><span class="badge b-cfd">Capytaine BEM</span></td></tr>
     <tr><td>Beam-Wind Rudder Trim @ 5.0 kn (15 kn / 22 kn Wind)</td><td class="hi">2.12&deg; / 4.55&deg; (-44% vs 18X)</td><td>3.77&deg; / 8.11&deg;</td><td>Over-stern / Under-stern opt.</td><td><span class="badge b-cfd">Munk + Aero</span></td></tr>
@@ -121,8 +129,10 @@ def build_html(specs: dict, stiff: dict) -> str:
     bow_l, cock_l, pod_l, stern_l = vols["bow_compartment_L"], vols["cockpit_foot_and_seat_well_L"], vols["day_pod_L"], vols["stern_compartment_L"]
     tot_l = float(specs["total_sealed_buoyancy_liters"])
     defl_mm = float(stiff["rear_deck_stiffener"]["cruciform_ud_rib_plus_arch_beam"]["deflection_mm"])
-    master_tbl = make_master_table(sr_4in, b_oa, bow_l, pod_l, stern_l, tot_l)
+    master_tbl = make_master_table(specs, sr_4in, b_oa, bow_l, pod_l, stern_l, tot_l)
     svg_trim = make_svg_trim(bow_l, pod_l, stern_l)
+    usca_pct = float(specs["USCA_4in_pct"])
+    catch_1m = float(specs["hydro_3load"]["catch_beams_225_cm"]["+1.0"])
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -137,7 +147,7 @@ def build_html(specs: dict, stiff: dict) -> str:
     <span class="eyebrow">Open-Hardware Design Monograph &bull; USCA &amp; Sound Rowers FSK Class</span>
     <h1>Kayak 10.9 — Naval Architecture &amp; Composite Build Package</h1>
     <p class="subtitle">
-      A class-maxed 18-foot Fast Sea Kayak (5.470 m CAD / 5.480 m w/ gudgeon &times; {b_oa:.2f} cm, Sound Rowers 4&quot; ratio {sr_4in:.2f} &le; 10.99, USCA 4&quot; beam 9.15% &ge; 8.5%)
+      A class-maxed 18-foot Fast Sea Kayak (5.470 m CAD / 5.480 m w/ gudgeon &times; {b_oa:.2f} cm, Sound Rowers 4&quot; ratio {sr_4in:.2f} &le; 10.99, USCA 4&quot; beam {usca_pct:.2f}% &ge; 8.5%)
       designed with <a href="{KAYAKGEN_URL}" style="color:#a7f3d0">kayak-gen</a> for wing-paddle flatwater/bay speed and minimalist watermaker expeditions, benchmarked against the
       <strong>Epic 18X / 18X Sport</strong> and <strong>Stellar S18R G2</strong>. Source &amp; releases: <a href="{REPO_URL}" style="color:#a7f3d0">github.com/halbritt/kayak-10-9</a>.
     </p>
@@ -214,7 +224,7 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
   <section id="benchmarks" class="card">
     <h2>Master Benchmark Comparison — Kayak 10.9 vs. Epic 18X vs. Stellar S18R G2</h2>
     <p class="lead">
-      <strong>10.9</strong> pairs a <strong>{sr_4in:.2f}</strong> 4&quot; waterline ratio and <strong>39.6 cm</strong> wing-cut catch forward with a <strong>{b_oa:.1f} cm</strong> flared aft sheer,
+      <strong>10.9</strong> pairs a <strong>{sr_4in:.2f}</strong> 4&quot; waterline ratio and <strong>39.7 cm</strong> wing-cut catch forward with a <strong>{b_oa:.1f} cm</strong> flared aft sheer,
       <strong>14.8 cm</strong> low rear deck, and <strong>{tot_l:.1f} L</strong> 2-bulkhead + carbon day-pod dry storage layout.
     </p>
     {master_tbl}
@@ -224,7 +234,11 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
     <h2>Plate 1 &amp; Plate 2 — Lines Plan, Rounded Bow Stem &amp; General Arrangement</h2>
     <div class="plate-box">
       <img src="plates/plate1_lines_plan.png" alt="Plate 1 Lines Plan"/>
-      <div class="caption"><strong>Plate 1:</strong> Profile with 6/12/18 cm buttock lines, half-breadth waterlines (4.0&quot; Sound Rowers caliper contour vs. Epic 18X and Stellar S18R), 20-station split body plan, and 225 lb submerged Sectional Area Curve (<code>Cp = 0.599</code>).</div>
+      <div class="caption"><strong>Plate 1:</strong> Profile with 6/12/18 cm buttock lines, half-breadth waterlines (4.0&quot; Sound Rowers caliper contour vs. Epic 18X and Stellar S18R), 20-station split body plan, and 225 lb submerged Sectional Area Curve.</div>
+    </div>
+    <div class="plate-box">
+      <img src="plates/bilge-fairing-v020.png" alt="v0.2.0 submerged bilge fairing comparison"/>
+      <div class="caption"><strong>v0.2.0 Bilge Fairing (<code>bilge_round_m = 0.08 m</code>):</strong> Symmetric <code>D&sup3;</code> batten fairing removes the submerged quarter-ellipse chine and forward centreline keel groove while keeping the wing-paddle catch within 1 mm.</div>
     </div>
     <div class="plate-box">
       <img src="plates/forefoot-revision.png" alt="Original and revised bow STL under the same grazing light"/>
@@ -255,7 +269,7 @@ def _body_sections_1(sr_4in: float, b_oa: float, bow_l: float, cock_l: float, po
   </section>
 
   <section id="cfd" class="card">
-    <p>Plates 5 and 6 report earlier simulations. The revised forefoot has fresh hydrostatic calculations. Its drag and wave response have yet to be simulated.</p>
+    <p>Plates 5 and 6 report earlier v0.1.0 simulations. The v0.2.0 faired-bilge hull has fresh hydrostatic and analytical resistance calculations; its RANS drag and BEM wave response have yet to be re-simulated.</p>
     <h2>Plates 5, 6 &amp; 7 — OpenFOAM RANS CFD, Capytaine 3D Seakeeping &amp; X-Ray Cutaways</h2>
     <div class="plate-box">
       <img src="plates/plate5_openfoam_cfd.png" alt="Plate 5 OpenFOAM RANS CFD"/>
@@ -323,7 +337,7 @@ def _body_sections_2() -> str:
     <h2>Latest Release CAD, Mold, .3MF &amp; Solver Downloads</h2>
     <p class="lead">Binary CAD/print packages resolve automatically to the newest tagged release on <a href="{REPO_URL}/releases/latest">GitHub Releases</a>; lightweight JSON/CSV/SVG datasets are also hosted directly alongside this page.</p>
     <div class="dl-grid">
-      <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Replacement bow · 1:8 H2S 3MF</strong><span>One fore section, bulkhead face down. Fits the v0.1.0 midbody and alignment keys.</span></a>
+      <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Bow section &middot; 1:8 H2S 3MF</strong><span>Fore section matching the v0.2.0 faired midbody (for v0.1.0 prints, use the v0.1.2 release bow).</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-plate.3mf"><strong>kayak-10-9-scale-1to8-h2s-plate.3mf</strong><span>Bambu Lab H2S single-plate 1:8 scale model (6 objects, 0 g supports)</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-stls.zip"><strong>kayak-10-9-scale-1to8-stls.zip</strong><span>Individual watertight 1:8 .stl sections + 683.75 mm uncut solid .stl</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-builder-dxf-offsets.zip"><strong>kayak-10-9-builder-dxf-offsets.zip</strong><span>Finished 3D station curves and stem profile, base-hull patterns and offsets, and hull JSON</span></a>

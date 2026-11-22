@@ -301,6 +301,14 @@ class SculptedKayakSurface:
             area = 0.5 * np.sum(loop[:, 0] * np.roll(loop[:, 1], -1) - np.roll(loop[:, 0], -1) * loop[:, 1])
             if area < 0.0:
                 loop = loop[::-1]
+            aug: list[np.ndarray] = []
+            for k in range(len(loop)):
+                p0, p1 = loop[k], loop[(k + 1) % len(loop)]
+                aug.append(p0)
+                if (p0[0] < -1e-7 and p1[0] > 1e-7) or (p0[0] > 1e-7 and p1[0] < -1e-7):
+                    zc = float(p0[1] - p0[0] * (p1[1] - p0[1]) / (p1[0] - p0[0]))
+                    aug.append(np.array([0.0, zc]))
+            loop = np.asarray(aug, dtype=float)
             cl = np.flatnonzero(np.abs(loop[:, 0]) <= 1e-7)
             rolled = np.roll(loop, -int(cl[np.argmin(loop[cl, 1])]), axis=0)
             i_top = int(np.flatnonzero(np.abs(rolled[1:, 0]) <= 1e-7)[0]) + 1

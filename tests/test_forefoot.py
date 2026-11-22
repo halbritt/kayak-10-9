@@ -72,3 +72,23 @@ class ForefootTests(unittest.TestCase):
             with self.subTest(x_mm=x_mm, zm_mm=round(zm, 2)):
                 self.assertLess(max_dev_step, 0.15)
                 self.assertLess(max_dev_full, 0.15)
+
+    def test_forward_bilge_and_keel_are_faired(self):
+        geom = self.surface.geom
+        for x_m in (-2.10, -1.65, -1.35, -0.95):
+            lo, up = geom.half_section_outline(x_m)
+            comb = np.vstack((lo, up[1:]))
+            s = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(comb, axis=0), axis=1))]
+            su = np.linspace(0.0, float(s[-1]), 64)
+            yu, zu = np.interp(su, s, comb[:, 0]), np.interp(su, s, comb[:, 1])
+            sm = np.r_[-su[:0:-1], su]
+            ym, zm = np.r_[-yu[:0:-1], yu], np.r_[zu[:0:-1], zu]
+            dy, dz = np.gradient(ym, sm), np.gradient(zm, sm)
+            ddy, ddz = np.gradient(dy, sm), np.gradient(dz, sm)
+            kap = (dy * ddz - dz * ddy) / np.maximum((dy * dy + dz * dz) ** 1.5, 1e-12)
+            k_stbd = kap[len(su) - 1 : len(su) - 1 + 36]
+            dk_cm = float(np.abs(np.gradient(k_stbd, su[:36])).max() * 0.01)
+            with self.subTest(x_m=x_m):
+                self.assertLessEqual(float(lo[0, 1] - lo[:, 1].min()), 1e-9)
+                self.assertGreater(float(k_stbd.min()), 0.4)
+                self.assertLess(dk_cm, 2.5)

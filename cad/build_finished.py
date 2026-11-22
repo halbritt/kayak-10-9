@@ -75,7 +75,7 @@ def main() -> None:
                 alphaMode="BLEND" if rgba[-1] < 255 else None,
             ))
             scene.add_geometry(part, node_name=name, geom_name=name)
-        scene.export(out / f"{MODEL}-{view}.glb")
+        scene.export(out / f"{MODEL}-{view}.glb", include_normals=True)
 
 
 if __name__ == "__main__":

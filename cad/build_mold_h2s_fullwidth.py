@@ -85,13 +85,16 @@ def build_h2s_fullwidth_deck(geom, xs_m: np.ndarray) -> tuple[trimesh.Trimesh, t
         stbd_dn = np.column_stack((-port_up[::-1, 0], port_up[::-1, 1]))
         rings.append(np.vstack((fl_stbd, cav_stbd, cav_port, fl_port, port_up, top_flat, stbd_dn)))
 
+    rings_arr = np.asarray(rings)
+    v_tube = max(136.0, round(float(rings_arr[:, :, 1].min()) + 24.0, 1))
+    v_bolt = v_tube + 30.0
     holes = [
-        (-148.5, 136.0, 12.90), (+148.5, 136.0, 12.90),  # Outboard 1.000" steel alignment-tube bores
-        (-98.0, 336.0, 12.90), (+98.0, 336.0, 12.90),    # Inverted-bench 1.000" steel alignment-tube bores
-        (-148.5, 166.0, 4.25), (+148.5, 166.0, 4.25),    # Side M8 section clamping bores
-        (-48.0, 342.0, 4.25), (+48.0, 342.0, 4.25),      # Crown-base M8 section clamping bores
+        (-148.5, v_tube, 12.90), (+148.5, v_tube, 12.90),  # Outboard 1.000" steel alignment-tube bores
+        (-98.0, 336.0, 12.90), (+98.0, 336.0, 12.90),      # Inverted-bench 1.000" steel alignment-tube bores
+        (-148.5, v_bolt, 4.25), (+148.5, v_bolt, 4.25),    # Side M8 section clamping bores
+        (-48.0, 342.0, 4.25), (+48.0, 342.0, 4.25),        # Crown-base M8 section clamping bores
     ]
-    uvz = _loft_mold_block(np.asarray(rings), holes, (xs_m - xs_m[0]) * 1000.0)
+    uvz = _loft_mold_block(rings_arr, holes, (xs_m - xs_m[0]) * 1000.0)
     return uvz, _center_on_h2s_bed(uvz), holes
 
 

@@ -2,6 +2,12 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## [v0.2.0] - 2026-11-22
+
+- Faired the submerged quarter-ellipse bilge ridge and forward centreline keel groove by setting `topsides.bilge_round_m = 0.08` (`kayak-gen` RFC 0089 stage 9 symmetric `D³` batten fairing). Sound Rowers 4"-draft ratio moves from `10.88` to `10.79 <= 10.99`, USCA 4"-beam is `9.16% >= 8.50%`, and wing-paddle catch beam stays within `1 mm` (`43.0 / 39.7 / 36.2 cm` at `+0.8 / +1.0 / +1.2 m`).
+- Added smooth vertex normals to `kayak-10-9-finished.glb` and `kayak-10-9-xray-cutaway.glb`, exact `y = 0` plane-slice crossing interpolation in `SculptedKayakSurface.mold_station_rings_mm`, and dynamic alignment-bore clearance in `cad/build_mold_h2s_fullwidth.py`.
+- Regenerated all builder patterns/offsets, finished outer shell, 8-part boat `.glb`s, sample female molds, both full-scale strongback mold assemblies, `1:8` H2S `.3mf`/`.stl` packages, hydrostatic specs, plates, 4K studio renders, and monograph. Because `v0.2.0` fairs the full hull bilge across all three `1:8` sections, print the full `v0.2.0` plate for a matched model (existing `v0.1.0` prints can still pair with the [`v0.1.2` bow-only `.3mf`](https://github.com/halbritt/kayak-10-9/releases/download/v0.1.2/kayak-10-9-scale-1to8-h2s-bow.3mf)).
+
 ## Glue collar accessory · 2026-11-21
 
 - Added a standalone H2S plate with four split collars for clamping both joints of the 1:8 model with small bar clamps.
