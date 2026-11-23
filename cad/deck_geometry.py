@@ -6,10 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
 from scipy.spatial import Delaunay
-from scipy.interpolate import interp1d
 import trimesh
 from kayakgen.model.hull import Hull
-from surface_fairing import fit_half_surface
+from kayakgen.model.surface_fairing import cosine_station_grid, interp_linear_axis
 
 Z_KEEL_SHIFT = 0.1030  # shifts DistributionV2 z so keel min sits at z = 0.000 m
 Z_WL_225 = 0.08811     # 225 lb seawater calm waterline above keel baseline
@@ -93,8 +92,7 @@ BEAM_AT_FOUR_INCHES_M = .500456  # Finished Kayak 10.9 design control.
 
 
 def _station_grid(length, count):
-    u = np.linspace(-1., 1., count)
-    return .5 * length * (.02 * u + .98 * np.sin(.5 * np.pi * u))
+    return cosine_station_grid(length, count)
 
 
 class SculptedKayakSurface:
@@ -104,14 +102,18 @@ class SculptedKayakSurface:
         self.hull = Hull.model_validate_json(hull_json_path.read_text())
         self.geom = self.hull.to_geometry()
         self.L = self.hull.length_m
-        # Cosine tip clustering (~0.28 mm first step at tips) to resolve 3.8 mm stem bullnose & 24 mm nose fillet smoothly
         if min(n_stations, n_hull_half) < 2:
             raise ValueError("At least two stations and two half-ring points are required")
         output_stations, output_half = n_stations, n_hull_half
         n_stations, n_hull_half = FIT_STATIONS, FIT_HALF_RING
-        self.xs = _station_grid(self.L, n_stations)
-        self.xs[0] = -0.5 * self.L
-        self.xs[-1] = +0.5 * self.L
+        has_sf = self.hull.distribution_v2 is not None and self.hull.distribution_v2.surface_fairing is not None
+        if has_sf:
+            self.xs, half_kg, _, _, _ = self.geom.faired_hull_seam_net(
+                n_stations=n_stations, n_half_girth=n_hull_half
+            )
+        else:
+            self.xs = _station_grid(self.L, n_stations)
+            half_kg = None
         self.n_hull_half = output_half
 
         seam_y = np.zeros(n_stations)
@@ -124,32 +126,41 @@ class SculptedKayakSurface:
 
         for i, x in enumerate(self.xs):
             xc = float(np.clip(x, -0.5 * self.L + 1e-5, 0.5 * self.L - 1e-5))
-            lower, upper = self.geom.half_section_outline(xc)
             pts_up, mid = self.geom._upper_outline(xc)
             idx_mid = int(np.argmin(np.linalg.norm(pts_up - mid, axis=1)))
 
-            # Monotonic circular-cap leading-edge stem bullnose (y_cap=3.8 mm bow / 2.4 mm stern; zero aft bulge!)
             d_end = max(0.5 * self.L - abs(float(x)), 0.0)
             y_cap = 0.0038 if x < 0.0 else 0.0024
             fade_b = float(1.0 - smoothstep(np.array((d_end - 0.080) / 0.140)))
             y_bull = y_cap * float(np.sqrt(np.tanh(d_end / (0.5 * y_cap)))) * fade_b
-            z_lo, z_hi = float(lower[0, 1]), float(pts_up[-1, 1])
-            span_z = max(z_hi - z_lo, 1e-4)
+            z_hi = float(pts_up[-1, 1])
 
-            # Starboard keel -> waterline -> shoulder mold seam
-            stbd_low = np.vstack((lower, pts_up[1 : idx_mid + 1]))
-            if y_bull > 0.0 and 0 < i < n_stations - 1:
-                tz = np.clip((stbd_low[:, 1] - z_lo) / span_z, 0.0, 1.0)
-                stbd_low[:, 0] = np.hypot(stbd_low[:, 0], y_bull * (np.sin(np.pi * tz) ** 0.55))
-            stbd_low[:, 1] += Z_KEEL_SHIFT
-            seg = np.concatenate(([0.0], np.cumsum(np.linalg.norm(np.diff(stbd_low, axis=0), axis=1))))
-            s_u = np.linspace(0.0, float(seg[-1]), n_hull_half)
-            y_h = np.interp(s_u, seg, stbd_low[:, 0])
-            z_h = np.interp(s_u, seg, stbd_low[:, 1])
-            if i == 0 or i == n_stations - 1:
-                y_h[:] = 0.0
+            if half_kg is not None:
+                stbd = half_kg[i].copy()
+                z_lo = float(stbd[0, 1])
+                span_z = max(z_hi - z_lo, 1e-4)
+                if y_bull > 0.0 and 0 < i < n_stations - 1:
+                    tz = np.clip((stbd[:, 1] - z_lo) / span_z, 0.0, 1.0)
+                    stbd[:, 0] = np.hypot(stbd[:, 0], y_bull * (np.sin(np.pi * tz) ** 0.55))
+                    stbd[0, 0] = 0.0
+                y_h, z_h = stbd[:, 0], stbd[:, 1] + Z_KEEL_SHIFT
             else:
-                y_h[0] = 0.0
+                lower, _ = self.geom.half_section_outline(xc)
+                z_lo = float(lower[0, 1])
+                span_z = max(z_hi - z_lo, 1e-4)
+                stbd_low = np.vstack((lower, pts_up[1 : idx_mid + 1]))
+                if y_bull > 0.0 and 0 < i < n_stations - 1:
+                    tz = np.clip((stbd_low[:, 1] - z_lo) / span_z, 0.0, 1.0)
+                    stbd_low[:, 0] = np.hypot(stbd_low[:, 0], y_bull * (np.sin(np.pi * tz) ** 0.55))
+                stbd_low[:, 1] += Z_KEEL_SHIFT
+                seg = np.concatenate(([0.0], np.cumsum(np.linalg.norm(np.diff(stbd_low, axis=0), axis=1))))
+                s_u = np.linspace(0.0, float(seg[-1]), n_hull_half)
+                y_h = np.interp(s_u, seg, stbd_low[:, 0])
+                z_h = np.interp(s_u, seg, stbd_low[:, 1])
+                if i == 0 or i == n_stations - 1:
+                    y_h[:] = 0.0
+                else:
+                    y_h[0] = 0.0
 
             seam_y[i] = float(y_h[-1])
             seam_z[i] = float(z_h[-1])
@@ -176,18 +187,20 @@ class SculptedKayakSurface:
 
             half_rings.append(np.column_stack((y_h, z_h)))
 
-        half = fit_half_surface(self.xs, np.asarray(half_rings), .1016, BEAM_AT_FOUR_INCHES_M)
+        half = np.asarray(half_rings, dtype=float)
         # Tessellation samples the same design net at every output resolution.
         if output_stations != FIT_STATIONS:
             target = _station_grid(self.L, output_stations)
             seam_y, seam_z, keel_z, deck_cl_z = (
                 np.interp(target, self.xs, v) for v in (seam_y, seam_z, keel_z, deck_cl_z)
             )
-            deck_z_table = interp1d(self.xs, deck_z_table, axis=0)(target)
-            half = interp1d(self.xs, half, axis=0)(target)
+            deck_z_table = interp_linear_axis(self.xs, deck_z_table, target, axis=0)
+            half = interp_linear_axis(self.xs, half, target, axis=0)
             self.xs = target
         if output_half != FIT_HALF_RING:
-            half = interp1d(np.linspace(0, 1, FIT_HALF_RING), half, axis=1)(np.linspace(0, 1, output_half))
+            half = interp_linear_axis(
+                np.linspace(0.0, 1.0, FIT_HALF_RING), half, np.linspace(0.0, 1.0, output_half), axis=1
+            )
 
         self.seam_y = seam_y
         self.seam_z = seam_z

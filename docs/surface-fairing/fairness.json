@@ -471,239 +471,239 @@
       }
     ]
   },
-  "Fitted": {
-    "sha256": "50cfb370a943f324f41c2b2dfdfa7ee44785a388ab7aa5f9a07f21959819ed24",
+  "v0.2.2": {
+    "sha256": "fcbf0bdbe06a7bff2d8d8e7d44469cbfac9311e74857d6f95099245e37366d2f",
     "cuts": {
       "Waterlines 0.04": {
-        "peak_turn_change_deg": 0.36232698388594026,
-        "distance_aft_m": 5.005999999999451,
-        "rms_turn_change_deg": 0.06313419633408276,
-        "max_signed_turn_forward_deg": -0.04278853618217716
+        "peak_turn_change_deg": 0.36483259459678774,
+        "distance_aft_m": 0.623999999999934,
+        "rms_turn_change_deg": 0.043754172720310965,
+        "max_signed_turn_forward_deg": -0.08699946322414417
       },
       "Waterlines 0.05": {
-        "peak_turn_change_deg": 1.1069500002381156,
+        "peak_turn_change_deg": 1.1025907343454244,
         "distance_aft_m": 5.187999999999432,
-        "rms_turn_change_deg": 0.06987247430883979,
-        "max_signed_turn_forward_deg": -0.0018415363576411718
+        "rms_turn_change_deg": 0.05888626479416299,
+        "max_signed_turn_forward_deg": -0.03611330850856565
       },
       "Waterlines 0.06": {
-        "peak_turn_change_deg": 2.1695357425009436,
+        "peak_turn_change_deg": 2.1807715931320115,
         "distance_aft_m": 5.225999999999427,
-        "rms_turn_change_deg": 0.18193513259382124,
-        "max_signed_turn_forward_deg": -0.008662164876287282
+        "rms_turn_change_deg": 0.17970464299060787,
+        "max_signed_turn_forward_deg": -0.03344532954714035
       },
       "Waterlines 0.07": {
-        "peak_turn_change_deg": 1.462023855745092,
+        "peak_turn_change_deg": 1.4831776304350237,
         "distance_aft_m": 5.219999999999429,
-        "rms_turn_change_deg": 0.14146860850735227,
-        "max_signed_turn_forward_deg": -0.03468728463961827
+        "rms_turn_change_deg": 0.1395167315098389,
+        "max_signed_turn_forward_deg": -0.03920568184302726
       },
       "Waterlines 0.08": {
-        "peak_turn_change_deg": 1.0865621241734766,
+        "peak_turn_change_deg": 1.1102907770409496,
         "distance_aft_m": 5.219999999999429,
-        "rms_turn_change_deg": 0.13255793113236672,
-        "max_signed_turn_forward_deg": -0.053354002872395986
+        "rms_turn_change_deg": 0.13144490085718125,
+        "max_signed_turn_forward_deg": -0.05231919291887065
       },
       "Waterlines 0.09": {
-        "peak_turn_change_deg": 0.8603101130497106,
-        "distance_aft_m": 5.335999999999416,
-        "rms_turn_change_deg": 0.13089535648438894,
-        "max_signed_turn_forward_deg": -0.07333968654973046
+        "peak_turn_change_deg": 0.8652524700173911,
+        "distance_aft_m": 5.219999999999429,
+        "rms_turn_change_deg": 0.13053515451138345,
+        "max_signed_turn_forward_deg": -0.071688517367713
       },
       "Waterlines 0.1016": {
-        "peak_turn_change_deg": 0.7489433714165669,
+        "peak_turn_change_deg": 0.7489118317161862,
         "distance_aft_m": 5.343999999999415,
-        "rms_turn_change_deg": 0.11214705850975001,
-        "max_signed_turn_forward_deg": -0.09144930184320246
+        "rms_turn_change_deg": 0.11253847235718933,
+        "max_signed_turn_forward_deg": -0.09133436332595568
       },
       "Waterlines 0.13": {
-        "peak_turn_change_deg": 0.4401306515280851,
+        "peak_turn_change_deg": 0.44007293649153384,
         "distance_aft_m": 5.29999999999942,
-        "rms_turn_change_deg": 0.07305115696818416,
-        "max_signed_turn_forward_deg": -0.12370260029467872
+        "rms_turn_change_deg": 0.07479625622832466,
+        "max_signed_turn_forward_deg": -0.128552984964417
       },
       "Waterlines 0.16": {
-        "peak_turn_change_deg": 0.2953580481380045,
-        "distance_aft_m": 0.23799999999997654,
-        "rms_turn_change_deg": 0.046626381031790114,
-        "max_signed_turn_forward_deg": -0.14204757115757002
+        "peak_turn_change_deg": 0.3045593725774741,
+        "distance_aft_m": 0.23999999999997632,
+        "rms_turn_change_deg": 0.047798676763970475,
+        "max_signed_turn_forward_deg": -0.1294175320213341
       },
       "Buttocks 0.025": {
-        "peak_turn_change_deg": 6.664471237438322,
+        "peak_turn_change_deg": 6.6646205107680005,
         "distance_aft_m": 5.267999999999423,
-        "rms_turn_change_deg": 0.7292802344577881,
-        "max_signed_turn_forward_deg": -0.060043471783185046
+        "rms_turn_change_deg": 0.727410217246343,
+        "max_signed_turn_forward_deg": -0.06169669835266878
       },
       "Buttocks 0.075": {
-        "peak_turn_change_deg": 3.633535173336039,
+        "peak_turn_change_deg": 3.4599842376944174,
         "distance_aft_m": 5.091999999999443,
-        "rms_turn_change_deg": 0.4259660673118467,
-        "max_signed_turn_forward_deg": -0.19035339342372548
+        "rms_turn_change_deg": 0.41486960577328474,
+        "max_signed_turn_forward_deg": -0.20007586070736502
       },
       "Buttocks 0.125": {
-        "peak_turn_change_deg": 1.7342941760327264,
+        "peak_turn_change_deg": 1.849858781185139,
         "distance_aft_m": 4.895999999999464,
-        "rms_turn_change_deg": 0.1974723014263724,
-        "max_signed_turn_forward_deg": -2.8040145964301018
+        "rms_turn_change_deg": 0.20130588944260583,
+        "max_signed_turn_forward_deg": -2.8567633510112986
       },
       "Buttocks 0.175": {
-        "peak_turn_change_deg": 1.0501991458441085,
-        "distance_aft_m": 4.655999999999491,
-        "rms_turn_change_deg": 0.14972181733338413,
+        "peak_turn_change_deg": 1.1213050005211862,
+        "distance_aft_m": 4.65799999999949,
+        "rms_turn_change_deg": 0.1512124416186085,
         "max_signed_turn_forward_deg": null
       },
       "Buttocks 0.225": {
-        "peak_turn_change_deg": 0.7893195901105816,
-        "distance_aft_m": 2.1999999999997604,
-        "rms_turn_change_deg": 0.12232055454864207,
+        "peak_turn_change_deg": 0.8133453823051164,
+        "distance_aft_m": 2.20199999999976,
+        "rms_turn_change_deg": 0.11963423787357229,
         "max_signed_turn_forward_deg": null
       },
       "Diagonals 0.075": {
-        "peak_turn_change_deg": 2.3974173880755414,
+        "peak_turn_change_deg": 2.381063233248682,
         "distance_aft_m": 5.219999999999429,
-        "rms_turn_change_deg": 0.23418795977011694,
-        "max_signed_turn_forward_deg": -0.07327812932292423
+        "rms_turn_change_deg": 0.23215352868661712,
+        "max_signed_turn_forward_deg": -0.05047097730134832
       },
       "Diagonals 0.125": {
-        "peak_turn_change_deg": 1.2102529119781886,
+        "peak_turn_change_deg": 1.229388971566302,
         "distance_aft_m": 5.217999999999428,
-        "rms_turn_change_deg": 0.17322807016502734,
-        "max_signed_turn_forward_deg": -0.12275335248559359
+        "rms_turn_change_deg": 0.17358989281473025,
+        "max_signed_turn_forward_deg": -0.13094585170785178
       },
       "Diagonals 0.175": {
-        "peak_turn_change_deg": 0.7289840876718297,
+        "peak_turn_change_deg": 0.7479219735577112,
         "distance_aft_m": 5.217999999999428,
-        "rms_turn_change_deg": 0.10028812597510144,
-        "max_signed_turn_forward_deg": -0.21008857271500972
+        "rms_turn_change_deg": 0.09965225531948993,
+        "max_signed_turn_forward_deg": -0.22933687949893156
       },
       "Diagonals 0.225": {
-        "peak_turn_change_deg": 0.5194182159329981,
+        "peak_turn_change_deg": 0.5193862033893746,
         "distance_aft_m": 0.18399999999998248,
-        "rms_turn_change_deg": 0.07767767923051046,
-        "max_signed_turn_forward_deg": -0.3567973422523236
+        "rms_turn_change_deg": 0.07670784891665978,
+        "max_signed_turn_forward_deg": -0.3602466934856453
       },
       "Diagonals 0.275": {
-        "peak_turn_change_deg": 1.9081626598140273,
+        "peak_turn_change_deg": 1.8601018210123463,
         "distance_aft_m": 5.11599999999944,
-        "rms_turn_change_deg": 0.18292472285041192,
-        "max_signed_turn_forward_deg": -0.1862390920594638
+        "rms_turn_change_deg": 0.17912760576579473,
+        "max_signed_turn_forward_deg": -0.15041172869970426
       }
     },
     "sections": [
       {
         "fraction": 0.06,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 264.93527358348126
+        "peak_abs_dk_ds_per_m2": 265.75804976280176
       },
       {
         "fraction": 0.10888888888888888,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 196.27839877654296
+        "peak_abs_dk_ds_per_m2": 193.09048872062925
       },
       {
         "fraction": 0.11608775137111518,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 193.62201704908114
+        "peak_abs_dk_ds_per_m2": 190.48305598780664
       },
       {
         "fraction": 0.15777777777777777,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 150.8035399544969
+        "peak_abs_dk_ds_per_m2": 146.77806174593923
       },
       {
         "fraction": 0.1983546617915905,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 131.79368023811253
+        "peak_abs_dk_ds_per_m2": 143.69369087433148
       },
       {
         "fraction": 0.20666666666666667,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 129.65370133387725
+        "peak_abs_dk_ds_per_m2": 134.66564025986307
       },
       {
         "fraction": 0.25319926873857407,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 134.01800526888297
+        "peak_abs_dk_ds_per_m2": 128.1256764679379
       },
       {
         "fraction": 0.25555555555555554,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 134.671224554846
+        "peak_abs_dk_ds_per_m2": 127.65282493163618
       },
       {
         "fraction": 0.3044444444444444,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 130.0711813640314
+        "peak_abs_dk_ds_per_m2": 128.8048549361202
       },
       {
         "fraction": 0.3263254113345521,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 130.51547411782187
+        "peak_abs_dk_ds_per_m2": 118.15783692219541
       },
       {
         "fraction": 0.35333333333333333,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 140.06803877733043
+        "peak_abs_dk_ds_per_m2": 117.48163674181546
       },
       {
         "fraction": 0.4022222222222222,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 155.48883196709028
+        "peak_abs_dk_ds_per_m2": 160.040511059635
       },
       {
         "fraction": 0.4511111111111111,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 152.57654445801515
+        "peak_abs_dk_ds_per_m2": 167.18783541988597
       },
       {
         "fraction": 0.49999999999999994,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 111.11347186474057
+        "peak_abs_dk_ds_per_m2": 109.94027630933381
       },
       {
         "fraction": 0.5488888888888888,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 79.25033540371693
+        "peak_abs_dk_ds_per_m2": 73.31119834482016
       },
       {
         "fraction": 0.5977777777777777,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 86.42950449089957
+        "peak_abs_dk_ds_per_m2": 85.53334908667793
       },
       {
         "fraction": 0.6466666666666667,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 76.59478933393252
+        "peak_abs_dk_ds_per_m2": 77.22961327686212
       },
       {
         "fraction": 0.6955555555555555,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 44.067785795708936
+        "peak_abs_dk_ds_per_m2": 45.12228352025865
       },
       {
         "fraction": 0.7444444444444445,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 53.60307275480967
+        "peak_abs_dk_ds_per_m2": 46.02922675369654
       },
       {
         "fraction": 0.7933333333333332,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 84.22171065914416
+        "peak_abs_dk_ds_per_m2": 70.91639674752928
       },
       {
         "fraction": 0.8422222222222222,
-        "keel_groove_mm": 0.006531931460707768,
-        "peak_abs_dk_ds_per_m2": 73.73680947903416
+        "keel_groove_mm": 0.007740689061744299,
+        "peak_abs_dk_ds_per_m2": 102.4273158880935
       },
       {
         "fraction": 0.891111111111111,
-        "keel_groove_mm": 0.007114833209750232,
-        "peak_abs_dk_ds_per_m2": 132.67882104981354
+        "keel_groove_mm": 0.008849457333363897,
+        "peak_abs_dk_ds_per_m2": 160.20919751524994
       },
       {
         "fraction": 0.94,
         "keel_groove_mm": 0.0,
-        "peak_abs_dk_ds_per_m2": 319.88053834577323
+        "peak_abs_dk_ds_per_m2": 307.3581576515145
       }
     ]
   }

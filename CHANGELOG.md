@@ -2,9 +2,11 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
-## Unreleased
+## [v0.2.2] - 2026-11-22
 
-- Fit the finished hull and topsides on a common cubic surface. The six low forward waterlines pass through the former bilge-fairing transition without a reversal on the 50 mm gauge. Added full-hull lines, reflection bands and load checks against the released geometry. [Inspection and design controls](docs/surface-fairing/README.md)
+- Wired `hull/kayak-10-9.hull.json` to `kayak-gen` `DistributionV2Spec.surface_fairing` (`b67aa6c`, RFC 0091) so the parametric hull, `kayakgen build-export` station offsets/molds, all H2S/Voron female mold cavities, scale prints, and finished boat shells share one cubic B-spline hull surface from keel to sheer and bow to stern.
+- Excluded singular raked stem tips (`end_distance < 0.22 m`) from the `12 x 22` least-squares B-spline domain (`end_blend_m = 0.35`, `target_beam_m = 0.500456`). Eliminates the `+0.506°` outward waterline reversal at `0.867 m` aft of bow from `v0.2.1` AND removes the `+0.322°` `0.48 m` entry ripple and `3.45° -> 3.63°` `75 mm` aft-buttock sharpening (`3.46°` in `v0.2.2`) from `7b5f2d2`, while keeping the low aft coaming (`15.6 cm` above `225 lb` WL), `10.88` Sound Rowers 4"-draft ratio, `225/265/300 lb` drafts (`<= 0.017 mm` delta), and `GZ` righting arms (`<= 0.009 mm` delta) intact. [Inspection and design controls](docs/surface-fairing/README.md)
+- Regenerated all builder DXF/offset exports, finished outer shell (`fcbf0bdb...`) and 8-part `.glb`s, sample female molds, stepped-cradle and full-width strongbacks, `1:8` and `1:12` `45°` H2S `.3mf`/`.stl` packages, hydrostatic specs, plates, 4K studio renders, and monograph assets.
 
 ## [v0.2.1] - 2026-11-22
 

@@ -178,6 +178,9 @@
       "aft": 1.1958772290315158,
       "forward_xi": -0.4589222038716594,
       "aft_xi": 0.42936653865876717
+    },
+    "surface_fairing": {
+      "target_beam_m": 0.500456
     }
   },
   "hull_class": "sea_kayak"

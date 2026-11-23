@@ -82,7 +82,7 @@ def make_master_table(specs: dict, sr_4in: float, b_oa: float, bow_l: float, pod
   <thead>
     <tr>
       <th>Parameter / Metric</th>
-      <th>Kayak 10.9 (v0.2.1 Faired Forebody)</th>
+      <th>Kayak 10.9 (v0.2.2 Whole-Hull Faired)</th>
       <th>Epic 18X / 18X Sport</th>
       <th>Stellar S18R G2</th>
       <th>Basis / Source</th>
@@ -237,8 +237,8 @@ def _body_sections_1(sr_4in: float, b_oa: float, catch_1m: float, bow_l: float, 
       <div class="caption"><strong>Plate 1:</strong> Profile with 6/12/18 cm buttock lines, half-breadth waterlines (4.0&quot; Sound Rowers caliper contour vs. Epic 18X and Stellar S18R), 20-station split body plan, and 225 lb submerged Sectional Area Curve.</div>
     </div>
     <div class="plate-box">
-      <img src="plates/bilge-fairing-v020.png" alt="v0.2.1 submerged bilge fairing comparison"/>
-      <div class="caption"><strong>v0.2.1 Forebody Bilge Fairing (<code>forward: 0.07 &rarr; aft: 0.0</code>):</strong> Keel-pinned symmetric <code>D&sup3;</code> batten fairing removes the submerged quarter-ellipse chine and forward centreline keel groove while keeping the <code>10.88</code> Sound Rowers ratio and <code>5.08 / 5.67 / 6.17 kn</code> speeds intact.</div>
+      <img src="plates/bilge-fairing-v020.png" alt="v0.2.2 whole-hull fairing comparison"/>
+      <div class="caption"><strong>v0.2.2 Whole-Hull Cubic B-Spline Fairing (<code>kayak-gen</code> RFC 0091):</strong> Fits keel-to-sheer and bow-to-stern on one smooth net, eliminating both the <code>v0.1.2</code> submerged bilge chine and the <code>v0.2.1</code> <code>0.867 m</code> span-transition reversal while preserving the <code>10.88</code> Sound Rowers ratio, low aft coaming, and <code>5.08 / 5.67 / 6.17 kn</code> speeds.</div>
     </div>
     <div class="plate-box">
       <img src="plates/forefoot-revision.png" alt="Original and revised bow STL under the same grazing light"/>
@@ -269,7 +269,7 @@ def _body_sections_1(sr_4in: float, b_oa: float, catch_1m: float, bow_l: float, 
   </section>
 
   <section id="cfd" class="card">
-    <p>Plates 5 and 6 report earlier v0.1.0 simulations. The v0.2.1 faired-forebody hull has fresh hydrostatic and analytical resistance calculations; its RANS drag and BEM wave response have yet to be re-simulated.</p>
+    <p>Plates 5 and 6 report earlier v0.1.0 simulations. The v0.2.2 whole-hull faired surface has fresh hydrostatic and analytical resistance calculations; its RANS drag and BEM wave response have yet to be re-simulated.</p>
     <h2>Plates 5, 6 &amp; 7 — OpenFOAM RANS CFD, Capytaine 3D Seakeeping &amp; X-Ray Cutaways</h2>
     <div class="plate-box">
       <img src="plates/plate5_openfoam_cfd.png" alt="Plate 5 OpenFOAM RANS CFD"/>
@@ -338,14 +338,14 @@ def _body_sections_2() -> str:
     <p class="lead">Binary CAD/print packages resolve automatically to the newest tagged release on <a href="{REPO_URL}/releases/latest">GitHub Releases</a>; lightweight JSON/CSV/SVG datasets are also hosted directly alongside this page.</p>
     <div class="dl-grid">
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-hull-inspection-h2s.3mf"><strong>One-Shot Bare Hull &middot; 1:12 H2S 45&deg; 3MF</strong><span>Single-piece 454.9 mm (1:12) bare hull at 45&deg; across the H2S diagonal; keel/forefoot/bilges UP, tree supports enabled on sheer back + cradles.</span></a>
-      <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Bow section &middot; 1:8 H2S 3MF</strong><span>Fore section matching the v0.2.1 faired midbody (for v0.1.0 prints, use the v0.1.2 release bow).</span></a>
+      <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-bow.3mf"><strong>Bow section &middot; 1:8 H2S 3MF</strong><span>Fore section matching the v0.2.2 whole-hull faired midbody (for v0.1.0 prints, use the v0.1.2 release bow).</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-h2s-plate.3mf"><strong>kayak-10-9-scale-1to8-h2s-plate.3mf</strong><span>Bambu Lab H2S single-plate 1:8 scale model (6 objects, 0 g supports)</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-scale-1to8-stls.zip"><strong>kayak-10-9-scale-1to8-stls.zip</strong><span>Individual watertight 1:8 .stl sections + 683.75 mm uncut solid .stl</span></a>
-      <a class="dl-item" href="{REL_BASE}/kayak-10-9-builder-dxf-offsets.zip"><strong>kayak-10-9-builder-dxf-offsets.zip</strong><span>Finished 3D station curves and stem profile, base-hull patterns and offsets, and hull JSON</span></a>
+      <a class="dl-item" href="{REL_BASE}/kayak-10-9-builder-dxf-offsets.zip"><strong>kayak-10-9-builder-dxf-offsets.zip</strong><span>Finished 3D station curves and stem profile, whole-hull faired patterns and offsets, and hull JSON</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-female-mold-stls.zip"><strong>kayak-10-9-female-mold-stls.zip</strong><span>Full-scale watertight female hull/deck mold .stl samples (H2S &amp; Voron 600&sup3;)</span></a>
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-3d-assemblies.zip"><strong>kayak-10-9-3d-assemblies.zip</strong><span>All .glb 3D assemblies (boat, X-ray, strongback) + outer-shell.stl</span></a>
       <a class="dl-item" href="downloads/kayak-10-9.hull.json" download><strong>kayak-10-9.hull.json</strong><span>Canonical kayak-gen DistributionV2 parametric hull specification</span></a>
-      <a class="dl-item" href="downloads/offsets.csv" download><strong>offsets.csv</strong><span>Parametric base-hull offsets. Use finished-stations.dxf in the builder archive for the faired surface.</span></a>
+      <a class="dl-item" href="downloads/offsets.csv" download><strong>offsets.csv</strong><span>Whole-hull faired parametric offsets (use finished-stations.dxf in the builder archive for sculpted stem tips)</span></a>
       <a class="dl-item" href="downloads/openfoam-cfd-metrics.json" download><strong>openfoam-cfd-metrics.json</strong><span>OpenFOAM-v2512 interFoam RANS comparative drag &amp; wave dataset</span></a>
       <a class="dl-item" href="downloads/capytaine-seakeeping.json" download><strong>capytaine-seakeeping.json</strong><span>Capytaine 3.0 3D BEM JONSWAP seakeeping dataset</span></a>
     </div>

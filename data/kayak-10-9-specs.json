@@ -1,7 +1,7 @@
 {
   "model": "sporty-tourer-fsk-d10-finished",
   "L_oa_m": 5.47,
-  "B_oa_cm": 56.23,
+  "B_oa_cm": 56.26,
   "SR_4in": 10.88,
   "USCA_4in_pct": 9.15,
   "keyhole_inner_cm": [
@@ -27,18 +27,18 @@
   "hydro_3load": {
     "label": "fsk-d10-finished",
     "L_oa_m": 5.47,
-    "B_oa_cm": 56.2,
+    "B_oa_cm": 56.3,
     "D_max_cm": 33.7,
     "fsk_4in_ratio": 10.88,
     "b_4in_cm": 50.05,
     "usca_4in_beam_pct": 9.15,
-    "mesh_plan_hollow_deg": 0.54,
-    "plan_hollow_deg": 1.2,
+    "mesh_plan_hollow_deg": 0.0,
+    "plan_hollow_deg": 2.95,
     "foot_clear_height_cm": 26.24,
     "foot_clear_width_at_25cm": 29.95,
     "upper_knuckle_deg": 9.36,
-    "waterline_knuckle_deg": 1.22,
-    "upper_hollow_deg": 0.08,
+    "waterline_knuckle_deg": 1.84,
+    "upper_hollow_deg": 0.05,
     "foredeck_drop_at_10cm_mm": 15.1,
     "crown_fwd_aft": [
       2.69,
@@ -51,41 +51,41 @@
       "120": 6.17
     },
     "catch_beams_225_cm": {
-      "+0.0": 52.4,
-      "+0.8": 43.1,
+      "+0.0": 52.7,
+      "+0.8": 43.0,
       "+0.9": 41.5,
-      "+1.0": 39.8,
-      "+1.1": 38.0,
-      "+1.2": 36.3
+      "+1.0": 39.9,
+      "+1.1": 38.3,
+      "+1.2": 36.5
     },
     "transition_beams_cm": {
-      "+1.2": 36.3,
-      "+1.0": 39.8,
-      "+0.8": 43.1,
-      "+0.6": 45.9,
-      "+0.4": 48.6,
+      "+1.2": 36.5,
+      "+1.0": 39.9,
+      "+0.8": 43.0,
+      "+0.6": 46.0,
+      "+0.4": 48.7,
       "+0.2": 50.8,
-      "+0.0": 52.4,
-      "-0.2": 54.0,
+      "+0.0": 52.7,
+      "-0.2": 54.2,
       "-0.4": 55.2
     },
     "transition_dB_per_20cm": [
-      3.5,
-      3.3,
-      2.8,
+      3.4,
+      3.1,
+      3.0,
       2.7,
-      2.2,
-      1.6,
-      1.6,
-      1.2
+      2.1,
+      1.9,
+      1.5,
+      1.0
     ],
     "heel_bow_pitch_deg": {
       "15deg": -0.07,
       "25deg": -0.191
     },
     "load_225": {
-      "T_cm": 8.87,
-      "Bwl_cm": 48.12,
+      "T_cm": 8.86,
+      "Bwl_cm": 48.14,
       "wet_m2": 2.012,
       "GM_cm": 4.11,
       "gz_10_20_30_40_mm": [
@@ -97,7 +97,7 @@
     },
     "load_265": {
       "T_cm": 9.85,
-      "Bwl_cm": 49.62,
+      "Bwl_cm": 49.61,
       "wet_m2": 2.139,
       "GM_cm": 3.14,
       "gz_10_20_30_40_mm": [
