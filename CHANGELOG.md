@@ -2,6 +2,11 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## [v0.2.3] - 2026-11-24
+
+- Re-ran matched **OpenFOAM-v2606** (`_481094f-20260618`, `snappyHexMesh` `354,132` cells + 6-rank `interFoam` `kOmegaSST`) and **Capytaine 3.0.0** (`1,408`-panel 3D linear BEM JONSWAP seakeeping + Munk/aerodynamic crosswind rudder trim) on the `v0.2.2` whole-hull faired surface (`fcbf0bdb...`) vs. the Epic 18X scan, updating `data/openfoam-cfd-metrics.json`, `data/capytaine-seakeeping.json`, `data/windage-and-stiffener.json`, and Plates 1–8 (`20.50 ± 0.10 N @ 5.50 kn`, `-4.1%` vs. 18X; `25.86 ± 0.04 N @ 6.20 kn`, `-4.8%` total / `-22.2%` wave drag vs. 18X; `-22%` to `-26%` fewer head-chop bow dips; `2.11° / 4.54°` rudder trim at `15 / 22 kn` beam wind). Hull and CAD geometry are unchanged from `v0.2.2`.
+- Checked the complete naval-architecture, OpenFOAM-v2606 CFD, Capytaine 3.0 BEM, 8-plate, 4K studio-render, and release-packaging toolchain into `cad/` (`hydro.py`, `openfoam_dicts.py`, `run_openfoam_cfd.py`, `run_capytaine_seakeeping.py`, `build_specs_and_ga.py`, `build_plates.py`, `render_studio.py`, `package_release.py`) and `data/benchmarks/` with zero external `~/.cache` or `openfoam2512` dependencies, wired `site/build_site.py` directly to the JSON datasets, and added `tests/test_naval_arch_pipeline.py`.
+
 ## [v0.2.2] - 2026-11-22
 
 - Wired `hull/kayak-10-9.hull.json` to `kayak-gen` `DistributionV2Spec.surface_fairing` (`b67aa6c`, RFC 0091) so the parametric hull, `kayakgen build-export` station offsets/molds, all H2S/Voron female mold cavities, scale prints, and finished boat shells share one cubic B-spline hull surface from keel to sheer and bow to stern.

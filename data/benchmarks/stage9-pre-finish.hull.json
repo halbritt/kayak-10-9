@@ -1,0 +1,112 @@
+{
+  "schema_version": "1",
+  "name": "Sporty tourer deck study",
+  "length_m": 5.47,
+  "beam_oa_m": 0.498,
+  "beam_wl_m": 0.498,
+  "draft_m": 0.103,
+  "deck_height_m": 0.19,
+  "Cp": 0.58,
+  "Cm": 0.6666666666666666,
+  "deck_flatness": 8.0,
+  "center_box_ratio": 0.0,
+  "bow_rake": 1.0,
+  "stern_rake": 1.0,
+  "LCB_frac": 0.5,
+  "rocker_bow_m": 0.0,
+  "rocker_stern_m": 0.0,
+  "geometry_kind": "distribution_v2",
+  "distribution_v2": {
+    "schema_version": "1",
+    "waterline_half_breadth": {
+      "schema_version": "1",
+      "kind": "polynomial",
+      "coefficients": [
+        0.249,
+        0.04482,
+        -0.21912,
+        -0.0394416,
+        -0.02988,
+        -0.005378399999999999
+      ]
+    },
+    "draft_profile": {
+      "schema_version": "1",
+      "kind": "polynomial",
+      "coefficients": [
+        0.103,
+        0.0,
+        -0.04532
+      ]
+    },
+    "section_area_curve": {
+      "schema_version": "1",
+      "kind": "polynomial",
+      "coefficients": [
+        0.0
+      ]
+    },
+    "deck_freeboard": {
+      "schema_version": "1",
+      "kind": "ramp",
+      "forward": 0.2269353265278576,
+      "aft": 0.1705196030139396,
+      "forward_xi": -0.35,
+      "aft_xi": 0.35
+    },
+    "rocker": {
+      "schema_version": "1",
+      "kind": "polynomial",
+      "coefficients": [
+        0.0,
+        0.0,
+        0.008,
+        -0.004
+      ]
+    },
+    "rocker_bow_m": 0.0,
+    "rocker_stern_m": 0.0,
+    "lcb_target_frac": 0.5,
+    "max_beam_position_frac": 0.5,
+    "cross_section_family": "round",
+    "deadrise_deg": 0.0,
+    "chine_radius_m": 0.02,
+    "bow_flare_deg": 8.0,
+    "multi_chine_count": 2,
+    "topsides": {
+      "sheer_beam_ratio": 1.0,
+      "sheer_height_frac": {
+        "schema_version": "1",
+        "kind": "ramp",
+        "forward": 0.6931711667796018,
+        "aft": 0.7851901245969801,
+        "forward_xi": -0.45,
+        "aft_xi": 0.35
+      },
+      "sheer_plan": {
+        "max_half_breadth_m": 0.27675064252314713,
+        "max_position_xi": 0.39631995663129627,
+        "forward_exponent": 1.4901655203838866,
+        "aft_exponent": 1.990139555287078
+      },
+      "deck_crown_exponent": {
+        "schema_version": "1",
+        "kind": "ramp",
+        "forward": 2.692816171190041,
+        "aft": 9.729547268321408,
+        "forward_xi": -0.35,
+        "aft_xi": 0.2
+      },
+      "shoulder_round_m": 0.06812556509299181
+    },
+    "section_side_exponent": {
+      "schema_version": "1",
+      "kind": "ramp",
+      "forward": 2.0,
+      "aft": 1.1958772290315158,
+      "forward_xi": -0.4589222038716594,
+      "aft_xi": 0.42936653865876717
+    }
+  },
+  "hull_class": "sea_kayak"
+}

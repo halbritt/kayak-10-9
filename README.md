@@ -22,24 +22,30 @@ Heavy 3D meshes, slicer plates, and full-scale CAD exports are published on **[G
 
 ## Repository Layout
 
-- [`hull/kayak-10-9.hull.json`](hull/kayak-10-9.hull.json) — Canonical `kayak-gen` `DistributionV2` parametric hull & deck definition.
-- [`cad/`](cad/) — Parametric Python generators (`deck_geometry.py`, `outfitting_geometry.py`, `build_stepped_cradle_strongback.py`, `build_hull_mold_strongback_assy.py`, `build_model_1to8_h2s.py`, and female mold station builders).
-- [`data/`](data/) — Hydrostatic, OpenFOAM-v2512 RANS (`raw_unvalidated`), Capytaine 3.0 3D BEM seakeeping, windage/stiffener JSON datasets, station `offsets.csv`, and profile SVGs.
+- [`hull/kayak-10-9.hull.json`](hull/kayak-10-9.hull.json) — Canonical `kayak-gen` `DistributionV2` parametric hull & deck definition (`surface_fairing` enabled).
+- [`cad/`](cad/) — Self-contained Python generators and physics runners (`deck_geometry.py`, `outfitting_geometry.py`, `hydro.py`, `build_finished.py`, `build_specs_and_ga.py`, `build_plates.py`, `render_studio.py`, `run_openfoam_cfd.py`, `run_capytaine_seakeeping.py`, `package_release.py`, strongback/mold builders, and `1:8` / `1:12` H2S print generators).
+- [`data/`](data/) — Hydrostatic, OpenFOAM-v2606 RANS (`raw_unvalidated`), Capytaine 3.0 3D BEM seakeeping, windage/stiffener JSON datasets, benchmark reference meshes (`data/benchmarks/`), station `offsets.csv`, and profile SVGs.
 - [`site/`](site/) — Static site builder (`build_site.py`, `styles.css`) deployed to [GitHub Pages](https://halbritt.github.io/kayak-10-9/) via [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
 
 ## Rebuilding Locally
 
-With a Python 3.12 environment containing [`kayak-gen`](https://github.com/halbritt/kayak-gen), `numpy`, `scipy`, `trimesh`, `vtk`, `pyvista`, `matplotlib`, `ezdxf`, `networkx`, and `shapely>=2.1`:
+With a Python 3.12 environment containing [`kayak-gen`](https://github.com/halbritt/kayak-gen), `numpy`, `scipy`, `trimesh`, `vtk`, `pyvista`, `matplotlib`, `ezdxf`, `networkx`, `shapely>=2.1`, `capytaine>=3.0`, and OpenFOAM-v2606:
 
 ```bash
 python3 cad/build_finished.py                    # -> build/finished/ (outer STL, both 8-part GLBs, finished stations DXF)
+python3 cad/build_specs_and_ga.py                # -> data/kayak-10-9-specs.json + Plates 2 & 7
+python3 cad/build_plates.py                      # -> Plates 1, 3, 4 & 8
+python3 cad/render_studio.py                     # -> 4K PBR studio renders
+python3 cad/run_openfoam_cfd.py                  # -> data/openfoam-cfd-metrics.json + Plate 5 (OpenFOAM-v2606)
+python3 cad/run_capytaine_seakeeping.py          # -> data/capytaine-seakeeping.json + data/windage-and-stiffener.json + Plate 6
 python3 cad/build_stepped_cradle_strongback.py   # -> build/mold_stepped_cradle_assy/
 python3 cad/build_model_1to8_h2s.py              # -> build/model_1to8_h2s/ (.3mf + .stl)
+python3 cad/build_hull_inspection_h2s.py         # -> build/hull_inspection_h2s/ (1:12 45-deg .3mf)
 python3 site/build_site.py --dist _site          # -> _site/index.html
 ```
 
-Current source builds and the `v0.2.2` release downloads use the [whole-hull spline fit and full-size comparison](docs/surface-fairing/README.md) (`kayak-gen` `b67aa6c`). Both `kayakgen build-export` station offsets/molds and the sculpted outer-shell exports sample the same whole-hull faired net; `finished-stations.dxf` and `kayak-10-9-outer-shell.stl` additionally include the 3D rounded bow and stern tips. The hydrostatic summary in each release uses its finished surface. OpenFOAM drag and Capytaine wave-response datasets are historical comparisons.
+Current source builds and the `v0.2.3` release downloads use the [whole-hull spline fit and full-size comparison](docs/surface-fairing/README.md) (`kayak-gen` `b67aa6c`), with all 8 plates, hydrostatic specs, OpenFOAM-v2606 RANS drag, and Capytaine 3.0 3D BEM seakeeping datasets computed directly on the finished surface (`fcbf0bdb...`).
 
 ## Epistemological Scope & Licenses
 
-Per `kayak-gen` release discipline, all analytical (`ITTC-57 + Michell`), OpenFOAM-v2512 `interFoam` RANS (`raw_unvalidated`), Capytaine 3.0 3D linear BEM seakeeping, hydrostatic `GZ`, and laminate deflection results are **calculated comparative predictions**, not tow-tank-calibrated guarantees. Code in `cad/` and `site/` is [MIT licensed](LICENSE); hull geometry, CAD/mold/print exports, and documentation are licensed under [CC BY 4.0](LICENSE-HARDWARE.md).
+Per `kayak-gen` release discipline, all analytical (`ITTC-57 + Michell`), OpenFOAM-v2606 `interFoam` RANS (`raw_unvalidated`), Capytaine 3.0 3D linear BEM seakeeping, hydrostatic `GZ`, and laminate deflection results are **calculated comparative predictions**, not tow-tank-calibrated guarantees. Code in `cad/` and `site/` is [MIT licensed](LICENSE); hull geometry, CAD/mold/print exports, and documentation are licensed under [CC BY 4.0](LICENSE-HARDWARE.md).

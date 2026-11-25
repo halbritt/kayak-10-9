@@ -1,4 +1,8 @@
 {
+  "metadata": {
+    "claim_state": "raw_unvalidated",
+    "kayak_10_9_outer_stl_sha256": "fcbf0bdbe06a7bff2d8d8e7d44469cbfac9311e74857d6f95099245e37366d2f"
+  },
   "windage_and_rudder": {
     "Epic 18X": {
       "lcg_m": 2.8933,
@@ -33,44 +37,44 @@
       "A_sub_hull_m2": 0.3836,
       "x_CLR_geom_cm": -0.12,
       "x_CE_total_cm": 14.64,
-      "x_CP_hydro_dyn_cm": 53.5,
-      "weathercock_lever_cm": 38.85,
+      "x_CP_hydro_dyn_cm": 54.08,
+      "weathercock_lever_cm": 39.44,
       "wind_cases": {
         "15kn_beam": {
           "side_force_N": 38.87,
-          "weathercock_Nm": 15.1,
-          "rudder_trim_deg": 3.19,
-          "rudder_power_W": 0.86
+          "weathercock_Nm": 15.33,
+          "rudder_trim_deg": 3.24,
+          "rudder_power_W": 0.87
         },
         "22kn_beam": {
           "side_force_N": 83.6,
-          "weathercock_Nm": 32.48,
-          "rudder_trim_deg": 6.87,
-          "rudder_power_W": 1.99
+          "weathercock_Nm": 32.97,
+          "rudder_trim_deg": 6.97,
+          "rudder_power_W": 2.04
         }
       }
     },
     "10.9 (14.8 cm low rear deck)": {
-      "lcg_m": 2.7097,
-      "draft_cm": 8.82,
-      "A_air_hull_m2": 1.0366,
-      "x_CE_hull_cm": 36.43,
-      "A_sub_hull_m2": 0.3799,
-      "x_CLR_geom_cm": 0.74,
-      "x_CE_total_cm": 26.64,
-      "x_CP_hydro_dyn_cm": 54.72,
-      "weathercock_lever_cm": 28.08,
+      "lcg_m": 2.6955,
+      "draft_cm": 8.86,
+      "A_air_hull_m2": 1.0352,
+      "x_CE_hull_cm": 38.06,
+      "A_sub_hull_m2": 0.3815,
+      "x_CLR_geom_cm": 1.6,
+      "x_CE_total_cm": 27.87,
+      "x_CP_hydro_dyn_cm": 55.88,
+      "weathercock_lever_cm": 28.01,
       "wind_cases": {
         "15kn_beam": {
-          "side_force_N": 35.65,
-          "weathercock_Nm": 10.01,
-          "rudder_trim_deg": 2.12,
+          "side_force_N": 35.61,
+          "weathercock_Nm": 9.97,
+          "rudder_trim_deg": 2.11,
           "rudder_power_W": 0.68
         },
         "22kn_beam": {
-          "side_force_N": 76.68,
-          "weathercock_Nm": 21.53,
-          "rudder_trim_deg": 4.55,
+          "side_force_N": 76.6,
+          "weathercock_Nm": 21.45,
+          "rudder_trim_deg": 4.54,
           "rudder_power_W": 1.18
         }
       }

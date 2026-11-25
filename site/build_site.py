@@ -67,7 +67,14 @@ def make_svg_trim(bow_l: float, pod_l: float, stern_l: float) -> str:
 """
 
 
-def make_master_table(specs: dict, sr_4in: float, b_oa: float, bow_l: float, pod_l: float, stern_l: float, tot_l: float) -> str:
+def _seak_row(rows: list[dict], spd: float, hdg: str, sea_prefix: str) -> dict:
+    for r in rows:
+        if abs(r["speed_kn"] - spd) < 0.05 and r["heading"] == hdg and r["sea"].startswith(sea_prefix):
+            return r
+    raise KeyError((spd, hdg, sea_prefix))
+
+
+def make_master_table(specs: dict, cfd: dict, seak: dict, stiff: dict, sr_4in: float, b_oa: float, bow_l: float, pod_l: float, stern_l: float, tot_l: float) -> str:
     h3 = specs["hydro_3load"]
     b4 = float(h3["b_4in_cm"])
     usca = float(specs["USCA_4in_pct"])
@@ -76,13 +83,39 @@ def make_master_table(specs: dict, sr_4in: float, b_oa: float, bow_l: float, pod
     l225, l265, l300 = h3["load_225"], h3["load_265"], h3["load_300"]
     g225 = " / ".join(f"{v:.1f}" for v in l225["gz_10_20_30_40_mm"][:3])
     g265 = " / ".join(f"{v:.1f}" for v in l265["gz_10_20_30_40_mm"][:3])
+
+    k55 = cfd.get("kayak_10_9_5.5kn") or cfd["fsk_k12_d6b5_5.5kn"]
+    e55 = cfd["epic_18x_5.5kn"]
+    k62 = cfd.get("kayak_10_9_6.2kn") or cfd["fsk_k12_d6b5_6.2kn"]
+    e62 = cfd["epic_18x_6.2kn"]
+    d_tot55 = 100.0 * (k55["drag_total_N"] - e55["drag_total_N"]) / e55["drag_total_N"]
+    d_p55 = 100.0 * (k55["drag_pressure_N"] - e55["drag_pressure_N"]) / e55["drag_pressure_N"]
+    d_tot62 = 100.0 * (k62["drag_total_N"] - e62["drag_total_N"]) / e62["drag_total_N"]
+    d_p62 = 100.0 * (k62["drag_pressure_N"] - e62["drag_pressure_N"]) / e62["drag_pressure_N"]
+
+    dips_213 = _seak_row(seak["k10_9_213_ultralight"]["rows"], 4.5, "head", "Bay chop")["bow_dips_per_min"]
+    dips_225 = _seak_row(seak["k10_9_225"]["rows"], 4.5, "head", "Bay chop")["bow_dips_per_min"]
+    dips_ep = _seak_row(seak["epic18x_225"]["rows"], 4.5, "head", "Bay chop")["bow_dips_per_min"]
+    acc_225 = _seak_row(seak["k10_9_225"]["rows"], 4.5, "head", "Bay chop")["seat_acc_rms_ms2"]
+    acc_ep225 = _seak_row(seak["epic18x_225"]["rows"], 4.5, "head", "Bay chop")["seat_acc_rms_ms2"]
+    acc_265 = _seak_row(seak["k10_9_265_baja"]["rows"], 4.5, "head", "Bay chop")["seat_acc_rms_ms2"]
+    acc_ep265 = _seak_row(seak["epic18x_265_baja"]["rows"], 4.5, "head", "Bay chop")["seat_acc_rms_ms2"]
+    d_acc225 = 100.0 * (acc_225 - acc_ep225) / acc_ep225
+    d_acc265 = 100.0 * (acc_265 - acc_ep265) / acc_ep265
+
+    w_map = stiff["windage_and_rudder"]
+    w10 = w_map["10.9 (14.8 cm low rear deck)"]["wind_cases"]
+    wep = w_map["Epic 18X"]["wind_cases"]
+    r15_10, r22_10 = w10["15kn_beam"]["rudder_trim_deg"], w10["22kn_beam"]["rudder_trim_deg"]
+    r15_ep, r22_ep = wep["15kn_beam"]["rudder_trim_deg"], wep["22kn_beam"]["rudder_trim_deg"]
+    d_rud = 100.0 * (r22_10 - r22_ep) / r22_ep
     return f"""
 <div class="table-wrap">
 <table>
   <thead>
     <tr>
       <th>Parameter / Metric</th>
-      <th>Kayak 10.9 (v0.2.2 Whole-Hull Faired)</th>
+      <th>Kayak 10.9 (v0.2.3 Whole-Hull Faired)</th>
       <th>Epic 18X / 18X Sport</th>
       <th>Stellar S18R G2</th>
       <th>Basis / Source</th>
@@ -103,36 +136,42 @@ def make_master_table(specs: dict, sr_4in: float, b_oa: float, bow_l: float, pod
     <tr><td>Catch Beam &ge; 10 cm Above WL (+0.8 / +1.0 / +1.2 m)</td><td class="hi">{cb["+0.8"]:.1f} / {cb["+1.0"]:.1f} / {cb["+1.2"]:.1f} cm</td><td>45.3 / 42.4 / 38.3 cm</td><td>Kayak Cut (~40–42 cm)</td><td><span class="badge b-mesh">3D Mesh Slice</span></td></tr>
     <tr><td>Wing-Knee Channel &amp; Thigh Control</td><td class="hi">31.2 cm open center + 4.1 cm side hooks</td><td>Standard touring rim + spine ridge</td><td>Open keyhole + cheek-hung seat</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
     <tr><td>Seat, Footbrace &amp; Keel Architecture</td><td class="hi">10 mm pan on twin &plusmn;12.5 cm carbon foil tracks + 12&deg; wing footboard (-0.82 m) + 60 mm flush UD keel strap</td><td>Center plastic notched rail + SmartTrack toe pegs</td><td>Cheek-bolted 3-pos seat + 3-cam QR full footplate</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
-    <tr class="group-hdr"><td colspan="5">3. Calm-Water Speed &amp; Prior-Design OpenFOAM-v2512 Free-Surface RANS CFD (225 lb Seawater, Unvalidated Comparative)</td></tr>
+    <tr class="group-hdr"><td colspan="5">3. Calm-Water Speed &amp; OpenFOAM-v2606 Free-Surface RANS CFD (225 lb Seawater, Unvalidated Comparative)</td></tr>
     <tr><td>Speed @ 40 / 60 / 90 / 120 W (ITTC-57 + Michell)</td><td class="hi">{kn["40"]:.2f} / {kn["60"]:.2f} / {kn["90"]:.2f} / {kn["120"]:.2f} kn</td><td>4.47 / 5.02 / 5.58 / 6.06 kn</td><td>&mdash; (no 3D scan)</td><td><span class="badge b-cfd">Analytical</span></td></tr>
-    <tr><td>OpenFOAM Total Drag @ 5.50 kn (Fn 0.386)</td><td class="hi">20.58 &plusmn; 0.24 N (-3.7%, 58.2 W)</td><td>21.38 &plusmn; 0.09 N (60.5 W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
-    <tr><td>OpenFOAM Pressure/Wave Drag @ 5.50 kn</td><td class="hi">3.82 N (-23.5% wave drag)</td><td>5.00 N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
-    <tr><td>OpenFOAM Total Drag @ 6.20 kn (Fn 0.435)</td><td class="hi">26.02 &plusmn; 0.22 N (-4.2%, 83.0 W)</td><td>27.17 &plusmn; 0.07 N (86.7 W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
-    <tr><td>OpenFOAM Pressure/Wave Drag @ 6.20 kn</td><td class="hi">5.30 N (-25.9% wave drag)</td><td>7.15 N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM RANS</span></td></tr>
-    <tr class="group-hdr"><td colspan="5">4. Multi-Load Stability &amp; Prior-Design Capytaine Wave Response</td></tr>
+    <tr><td>OpenFOAM-v2606 Total Drag @ 5.50 kn (Fn 0.386)</td><td class="hi">{k55["drag_total_N"]:.2f} &plusmn; {k55["drag_std_N"]:.2f} N ({d_tot55:+.1f}%, {k55["effective_power_W"]:.1f} W)</td><td>{e55["drag_total_N"]:.2f} &plusmn; {e55["drag_std_N"]:.2f} N ({e55["effective_power_W"]:.1f} W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM-2606</span></td></tr>
+    <tr><td>OpenFOAM-v2606 Pressure/Wave Drag @ 5.50 kn</td><td class="hi">{k55["drag_pressure_N"]:.2f} N ({d_p55:+.1f}% wave drag)</td><td>{e55["drag_pressure_N"]:.2f} N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM-2606</span></td></tr>
+    <tr><td>OpenFOAM-v2606 Total Drag @ 6.20 kn (Fn 0.435)</td><td class="hi">{k62["drag_total_N"]:.2f} &plusmn; {k62["drag_std_N"]:.2f} N ({d_tot62:+.1f}%, {k62["effective_power_W"]:.1f} W)</td><td>{e62["drag_total_N"]:.2f} &plusmn; {e62["drag_std_N"]:.2f} N ({e62["effective_power_W"]:.1f} W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM-2606</span></td></tr>
+    <tr><td>OpenFOAM-v2606 Pressure/Wave Drag @ 6.20 kn</td><td class="hi">{k62["drag_pressure_N"]:.2f} N ({d_p62:+.1f}% wave drag)</td><td>{e62["drag_pressure_N"]:.2f} N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM-2606</span></td></tr>
+    <tr class="group-hdr"><td colspan="5">4. Multi-Load Stability &amp; Capytaine 3.0 3D Linear BEM Wave Response</td></tr>
     <tr><td>Initial GM_T: 225 lb / 265 lb / 300 lb</td><td class="hi">{l225["GM_cm"]:.2f} / {l265["GM_cm"]:.2f} / {l300["GM_cm"]:.2f} cm</td><td>5.68 / 4.30 / 3.01 cm</td><td>~(S18S ski hull: lower flare)</td><td><span class="badge b-mesh">3D Float / BEM</span></td></tr>
     <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (225 lb, KG=0.25m)</td><td class="hi">{g225} mm</td><td>8.9 / 13.4 / 12.2 mm</td><td>&mdash;</td><td><span class="badge b-mesh">3D Float</span></td></tr>
     <tr><td>Righting Arm GZ @ 10&deg; / 20&deg; / 30&deg; (265 lb Baja)</td><td class="hi">{g265} mm</td><td>6.8 / 10.6 / 8.9 mm</td><td>&mdash; (330 lb max cap.)</td><td><span class="badge b-mesh">3D Float</span></td></tr>
-    <tr><td>Head-Chop Bow Dips/min (4.5 kn, Hs 0.35m Tp 2.5s)</td><td class="hi">11.2 /min (213 lb) | 11.8 /min (225 lb)</td><td>15.3 /min (225 lb)</td><td>&mdash;</td><td><span class="badge b-cfd">Capytaine BEM</span></td></tr>
-    <tr><td>Seat Vertical Slamming Accel RMS (4.5 kn Head Chop)</td><td class="hi">1.23 m/s&sup2; (-15% empty, -26% @ 265 lb)</td><td>1.44 m/s&sup2; (1.66 @ 265 lb)</td><td>&mdash;</td><td><span class="badge b-cfd">Capytaine BEM</span></td></tr>
-    <tr><td>Beam-Wind Rudder Trim @ 5.0 kn (15 kn / 22 kn Wind)</td><td class="hi">2.12&deg; / 4.55&deg; (-44% vs 18X)</td><td>3.77&deg; / 8.11&deg;</td><td>Over-stern / Under-stern opt.</td><td><span class="badge b-cfd">Munk + Aero</span></td></tr>
+    <tr><td>Head-Chop Bow Dips/min (4.5 kn, Hs 0.35m Tp 2.5s)</td><td class="hi">{dips_213:.1f} /min (213 lb) | {dips_225:.1f} /min (225 lb)</td><td>{dips_ep:.1f} /min (225 lb)</td><td>&mdash;</td><td><span class="badge b-cfd">Capytaine 3.0</span></td></tr>
+    <tr><td>Seat Vertical Slamming Accel RMS (4.5 kn Head Chop)</td><td class="hi">{acc_225:.2f} m/s&sup2; ({d_acc225:+.0f}% @ 225 lb, {d_acc265:+.0f}% @ 265 lb)</td><td>{acc_ep225:.2f} m/s&sup2; ({acc_ep265:.2f} @ 265 lb)</td><td>&mdash;</td><td><span class="badge b-cfd">Capytaine 3.0</span></td></tr>
+    <tr><td>Beam-Wind Rudder Trim @ 5.0 kn (15 kn / 22 kn Wind)</td><td class="hi">{r15_10:.2f}&deg; / {r22_10:.2f}&deg; ({d_rud:+.0f}% vs 18X)</td><td>{r15_ep:.2f}&deg; / {r22_ep:.2f}&deg;</td><td>Over-stern / Under-stern opt.</td><td><span class="badge b-cfd">Munk + Aero</span></td></tr>
   </tbody>
 </table>
 </div>
 """
 
 
-def build_html(specs: dict, stiff: dict) -> str:
+def build_html(specs: dict, cfd: dict, seak: dict, stiff: dict) -> str:
     sr_4in = float(specs["SR_4in"])
     b_oa = float(specs["B_oa_cm"])
     vols = specs["compartments_liters"]
     bow_l, cock_l, pod_l, stern_l = vols["bow_compartment_L"], vols["cockpit_foot_and_seat_well_L"], vols["day_pod_L"], vols["stern_compartment_L"]
     tot_l = float(specs["total_sealed_buoyancy_liters"])
     defl_mm = float(stiff["rear_deck_stiffener"]["cruciform_ud_rib_plus_arch_beam"]["deflection_mm"])
-    master_tbl = make_master_table(specs, sr_4in, b_oa, bow_l, pod_l, stern_l, tot_l)
+    master_tbl = make_master_table(specs, cfd, seak, stiff, sr_4in, b_oa, bow_l, pod_l, stern_l, tot_l)
     svg_trim = make_svg_trim(bow_l, pod_l, stern_l)
     usca_pct = float(specs["USCA_4in_pct"])
     catch_1m = float(specs["hydro_3load"]["catch_beams_225_cm"]["+1.0"])
+    k62 = cfd.get("kayak_10_9_6.2kn") or cfd["fsk_k12_d6b5_6.2kn"]
+    e62 = cfd["epic_18x_6.2kn"]
+    d_p62 = 100.0 * (k62["drag_pressure_N"] - e62["drag_pressure_N"]) / e62["drag_pressure_N"]
+    dips_225 = _seak_row(seak["k10_9_225"]["rows"], 4.5, "head", "Bay chop")["bow_dips_per_min"]
+    dips_ep = _seak_row(seak["epic18x_225"]["rows"], 4.5, "head", "Bay chop")["bow_dips_per_min"]
+    d_dips = 100.0 * (dips_225 - dips_ep) / dips_ep
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,8 +193,8 @@ def build_html(specs: dict, stiff: dict) -> str:
     <div class="kpi-grid">
       <div class="kpi"><div class="val">{sr_4in:.2f}</div><div class="lbl">Sound Rowers 4&quot; Ratio (&le; 10.99 FSK Cap)</div></div>
       <div class="kpi"><div class="val">27.0–29.4 lb</div><div class="lbl">TeXtreme + Rohacell Target Mass</div></div>
-      <div class="kpi"><div class="val">-25.9%</div><div class="lbl">Prior-design OpenFOAM Wave Drag vs. 18X @ 6.2 kn</div></div>
-      <div class="kpi"><div class="val">-23% to -26%</div><div class="lbl">Calc. Bow Plunges in Steep Chop (BEM)</div></div>
+      <div class="kpi"><div class="val">{d_p62:+.1f}%</div><div class="lbl">OpenFOAM-v2606 Wave Drag vs. 18X @ 6.2 kn</div></div>
+      <div class="kpi"><div class="val">{d_dips:+.0f}%</div><div class="lbl">Calc. Bow Plunges in Bay Chop (Capytaine 3.0)</div></div>
       <div class="kpi"><div class="val">{tot_l:.1f} L</div><div class="lbl">Sealed Dry Storage (2 BHs + 5.5 L Pod)</div></div>
       <div class="kpi"><div class="val">{defl_mm:.2f} mm</div><div class="lbl">Calc. Aft-Deck Flex @ 180 lbf (+64 g Grid)</div></div>
     </div>
@@ -269,15 +308,14 @@ def _body_sections_1(sr_4in: float, b_oa: float, catch_1m: float, bow_l: float, 
   </section>
 
   <section id="cfd" class="card">
-    <p>Plates 5 and 6 report earlier v0.1.0 simulations. The v0.2.2 whole-hull faired surface has fresh hydrostatic and analytical resistance calculations; its RANS drag and BEM wave response have yet to be re-simulated.</p>
-    <h2>Plates 5, 6 &amp; 7 — OpenFOAM RANS CFD, Capytaine 3D Seakeeping &amp; X-Ray Cutaways</h2>
+    <h2>Plates 5, 6 &amp; 7 — OpenFOAM-v2606 RANS CFD, Capytaine 3.0 Seakeeping &amp; X-Ray Cutaways</h2>
     <div class="plate-box">
-      <img src="plates/plate5_openfoam_cfd.png" alt="Plate 5 OpenFOAM RANS CFD"/>
-      <div class="caption"><strong>Plate 5 (Calculated / Unvalidated Comparative):</strong> Prior-design OpenFOAM-v2512 <code>snappyHexMesh</code> + <code>interFoam</code> VOF RANS at 225 lb seawater equilibrium (5.50 &amp; 6.20 kn).</div>
+      <img src="plates/plate5_openfoam_cfd.png" alt="Plate 5 OpenFOAM-v2606 RANS CFD"/>
+      <div class="caption"><strong>Plate 5 (Calculated / Unvalidated Comparative):</strong> Matched OpenFOAM-v2606 <code>snappyHexMesh</code> + <code>interFoam</code> (<code>kOmegaSST</code>) VOF RANS on the finished Kayak 10.9 whole-hull faired surface vs. Epic 18X scan at 225 lb seawater equilibrium (5.50 &amp; 6.20 kn).</div>
     </div>
     <div class="plate-box">
-      <img src="plates/plate6_seakeeping_and_windage.png" alt="Plate 6 Capytaine 3D Seakeeping"/>
-      <div class="caption"><strong>Plate 6 (Calculated / Unvalidated Comparative):</strong> Capytaine 3.0 1,408-panel 3D linear BEM JONSWAP wave response, crosswind weathercocking balance, and rear-deck cruciform stiffener flex ({defl_mm:.2f} mm @ 180 lbf).</div>
+      <img src="plates/plate6_seakeeping_and_windage.png" alt="Plate 6 Capytaine 3.0 3D Seakeeping"/>
+      <div class="caption"><strong>Plate 6 (Calculated / Unvalidated Comparative):</strong> Capytaine 3.0 1,408-panel 3D linear BEM JONSWAP wave response, Munk + aerodynamic crosswind weathercocking balance, and rear-deck cruciform stiffener flex ({defl_mm:.2f} mm @ 180 lbf).</div>
     </div>
     <div class="plate-box">
       <img src="plates/plate7_3d_views.png" alt="Plate 7 3D Cutaways"/>
@@ -346,12 +384,12 @@ def _body_sections_2() -> str:
       <a class="dl-item" href="{REL_BASE}/kayak-10-9-3d-assemblies.zip"><strong>kayak-10-9-3d-assemblies.zip</strong><span>All .glb 3D assemblies (boat, X-ray, strongback) + outer-shell.stl</span></a>
       <a class="dl-item" href="downloads/kayak-10-9.hull.json" download><strong>kayak-10-9.hull.json</strong><span>Canonical kayak-gen DistributionV2 parametric hull specification</span></a>
       <a class="dl-item" href="downloads/offsets.csv" download><strong>offsets.csv</strong><span>Whole-hull faired parametric offsets (use finished-stations.dxf in the builder archive for sculpted stem tips)</span></a>
-      <a class="dl-item" href="downloads/openfoam-cfd-metrics.json" download><strong>openfoam-cfd-metrics.json</strong><span>OpenFOAM-v2512 interFoam RANS comparative drag &amp; wave dataset</span></a>
+      <a class="dl-item" href="downloads/openfoam-cfd-metrics.json" download><strong>openfoam-cfd-metrics.json</strong><span>OpenFOAM-v2606 interFoam RANS comparative drag &amp; wave dataset</span></a>
       <a class="dl-item" href="downloads/capytaine-seakeeping.json" download><strong>capytaine-seakeeping.json</strong><span>Capytaine 3.0 3D BEM JONSWAP seakeeping dataset</span></a>
     </div>
     <div class="note-box">
       <strong>Methodological &amp; Epistemological Scope:</strong> Per <a href="{KAYAKGEN_URL}">kayak-gen</a> release discipline, analytical calm-water resistance (<code>ITTC-57 + Michell</code>),
-      OpenFOAM-v2512 free-surface RANS CFD (<code>raw_unvalidated</code>), Capytaine 3.0 3D linear BEM seakeeping, hydrostatic righting-arm curves (<code>GZ</code>), and laminate flex calculations
+      OpenFOAM-v2606 free-surface RANS CFD (<code>raw_unvalidated</code>), Capytaine 3.0 3D linear BEM seakeeping, hydrostatic righting-arm curves (<code>GZ</code>), and laminate flex calculations
       are matched comparative physics predictions rather than tow-tank-calibrated guarantees.
     </div>
   </section>
@@ -397,8 +435,10 @@ def main() -> None:
         if p.is_file():
             shutil.copy2(p, dist / "downloads" / p.name)
     specs = json.loads((DATA_DIR / "kayak-10-9-specs.json").read_text())
+    cfd = json.loads((DATA_DIR / "openfoam-cfd-metrics.json").read_text())
+    seak = json.loads((DATA_DIR / "capytaine-seakeeping.json").read_text())
     stiff = json.loads((DATA_DIR / "windage-and-stiffener.json").read_text())
-    (dist / "index.html").write_text(build_html(specs, stiff))
+    (dist / "index.html").write_text(build_html(specs, cfd, seak, stiff))
     (dist / ".nojekyll").write_text("")
     print("BUILT SITE:", dist / "index.html")
 

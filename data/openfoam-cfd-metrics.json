@@ -1,62 +1,141 @@
 {
+  "metadata": {
+    "claim_state": "raw_unvalidated",
+    "kayak_10_9_outer_stl_sha256": "fcbf0bdbe06a7bff2d8d8e7d44469cbfac9311e74857d6f95099245e37366d2f",
+    "poses": {
+      "kayak_10_9": {
+        "name": "kayak_10_9",
+        "stl_sha256": "24d545221152cae81e617109fb7d9fae579502f93fb6a8efd210259a9bd378e3",
+        "n_faces": 281600,
+        "x_range_m": [
+          -2.735,
+          2.735
+        ],
+        "y_range_m": [
+          -0.2813,
+          0.2813
+        ],
+        "z_range_m": [
+          -0.0886,
+          0.2479
+        ],
+        "draft_225_m": 0.08864,
+        "lcg_x_m": 0.03946,
+        "gm_l_m": 26.42,
+        "cg_cfd_m": [
+          0.03946,
+          0.0,
+          0.16136
+        ],
+        "wetted_area_m2": 2.0118,
+        "displaced_mass_kg": 102.0583
+      },
+      "epic_18x": {
+        "name": "epic_18x",
+        "stl_sha256": "df3893127700be9b788ff204586dd1da3ad3e8dc4097651debc4ad4822226157",
+        "n_faces": 105216,
+        "x_range_m": [
+          -2.74,
+          2.74
+        ],
+        "y_range_m": [
+          -0.2794,
+          0.2794
+        ],
+        "z_range_m": [
+          -0.0934,
+          0.2377
+        ],
+        "draft_225_m": 0.09336,
+        "lcg_x_m": -0.15332,
+        "gm_l_m": 24.074,
+        "cg_cfd_m": [
+          -0.15332,
+          0.0,
+          0.15664
+        ],
+        "wetted_area_m2": 2.0069,
+        "displaced_mass_kg": 102.0583
+      }
+    },
+    "meshes": {
+      "epic_18x": {
+        "hull": "epic_18x",
+        "ok": true,
+        "cells_line": "cells:            353817",
+        "nonortho": "Mesh non-orthogonality Max: 41.0946 average: 9.27338",
+        "seconds": 54.8
+      },
+      "kayak_10_9": {
+        "hull": "kayak_10_9",
+        "ok": true,
+        "cells_line": "cells:            354132",
+        "nonortho": "Mesh non-orthogonality Max: 39.4234 average: 9.28086",
+        "seconds": 55.0
+      }
+    },
+    "openfoam_version": "OpenFOAM-v2606",
+    "openfoam_using": "OpenFOAM-v2606",
+    "openfoam_build": "Build  : _481094f-20260618 OPENFOAM=2606 version=2606"
+  },
   "epic_18x_5.5kn": {
     "hull": "epic_18x",
     "speed_kn": 5.5,
     "u_mps": 2.8294,
-    "drag_total_N": 21.378,
-    "drag_std_N": 0.093,
-    "drag_pressure_N": 4.996,
-    "drag_viscous_N": 16.383,
-    "effective_power_W": 60.49,
-    "vertical_force_N": 867.77,
-    "pitch_moment_My_Nm": 63.576,
-    "bow_up_running_trim_deg": 0.15,
-    "bow_wave_crest_mm": 34.0,
-    "mid_wave_trough_mm": -18.5
+    "drag_total_N": 21.37,
+    "drag_std_N": 0.186,
+    "drag_pressure_N": 4.9,
+    "drag_viscous_N": 16.47,
+    "effective_power_W": 60.46,
+    "vertical_force_N": 874.33,
+    "pitch_moment_My_Nm": 65.204,
+    "bow_up_running_trim_deg": 0.155,
+    "bow_wave_crest_mm": 33.8,
+    "mid_wave_trough_mm": -16.7
   },
-  "fsk_k12_d6b5_5.5kn": {
-    "hull": "fsk_k12_d6b5",
+  "kayak_10_9_5.5kn": {
+    "hull": "kayak_10_9",
     "speed_kn": 5.5,
     "u_mps": 2.8294,
-    "drag_total_N": 20.584,
-    "drag_std_N": 0.238,
-    "drag_pressure_N": 3.822,
-    "drag_viscous_N": 16.762,
-    "effective_power_W": 58.24,
-    "vertical_force_N": 890.07,
-    "pitch_moment_My_Nm": 72.41,
-    "bow_up_running_trim_deg": 0.153,
-    "bow_wave_crest_mm": 36.8,
-    "mid_wave_trough_mm": -16.2
+    "drag_total_N": 20.503,
+    "drag_std_N": 0.097,
+    "drag_pressure_N": 4.062,
+    "drag_viscous_N": 16.441,
+    "effective_power_W": 58.01,
+    "vertical_force_N": 881.09,
+    "pitch_moment_My_Nm": 77.712,
+    "bow_up_running_trim_deg": 0.168,
+    "bow_wave_crest_mm": 35.9,
+    "mid_wave_trough_mm": -13.5
   },
   "epic_18x_6.2kn": {
     "hull": "epic_18x",
     "speed_kn": 6.2,
     "u_mps": 3.1896,
-    "drag_total_N": 27.166,
-    "drag_std_N": 0.073,
+    "drag_total_N": 27.158,
+    "drag_std_N": 0.092,
     "drag_pressure_N": 7.147,
-    "drag_viscous_N": 20.019,
-    "effective_power_W": 86.65,
-    "vertical_force_N": 848.89,
-    "pitch_moment_My_Nm": 96.201,
-    "bow_up_running_trim_deg": 0.227,
+    "drag_viscous_N": 20.01,
+    "effective_power_W": 86.62,
+    "vertical_force_N": 849.57,
+    "pitch_moment_My_Nm": 96.776,
+    "bow_up_running_trim_deg": 0.23,
     "bow_wave_crest_mm": 43.3,
-    "mid_wave_trough_mm": -20.9
+    "mid_wave_trough_mm": -21.0
   },
-  "fsk_k12_d6b5_6.2kn": {
-    "hull": "fsk_k12_d6b5",
+  "kayak_10_9_6.2kn": {
+    "hull": "kayak_10_9",
     "speed_kn": 6.2,
     "u_mps": 3.1896,
-    "drag_total_N": 26.019,
-    "drag_std_N": 0.218,
-    "drag_pressure_N": 5.298,
-    "drag_viscous_N": 20.722,
-    "effective_power_W": 82.99,
-    "vertical_force_N": 875.1,
-    "pitch_moment_My_Nm": 103.483,
-    "bow_up_running_trim_deg": 0.219,
-    "bow_wave_crest_mm": 43.2,
-    "mid_wave_trough_mm": -16.9
+    "drag_total_N": 25.859,
+    "drag_std_N": 0.042,
+    "drag_pressure_N": 5.562,
+    "drag_viscous_N": 20.298,
+    "effective_power_W": 82.48,
+    "vertical_force_N": 869.15,
+    "pitch_moment_My_Nm": 106.392,
+    "bow_up_running_trim_deg": 0.231,
+    "bow_wave_crest_mm": 43.7,
+    "mid_wave_trough_mm": -17.6
   }
 }
