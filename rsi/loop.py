@@ -1202,7 +1202,14 @@ def run_campaign(
     if config.tier2_top > 0:
         frontier_now = _update_pareto_frontier(ledger_entries)
         non_base_front = [e for e in frontier_now if e.get("design_hash") != baseline.design_hash]
-        candidates_to_verify = non_base_front if non_base_front else frontier_now
+        candidates_to_verify = list(non_base_front if non_base_front else frontier_now)
+        candidates_to_verify.sort(
+            key=lambda e: (
+                _composite_utility((e.get("gate_report") or {}).get("objectives") or {}),
+                str(e.get("candidate_id", "")),
+            ),
+            reverse=True,
+        )
         selected = candidates_to_verify[: config.tier2_top]
 
         for entry in selected:

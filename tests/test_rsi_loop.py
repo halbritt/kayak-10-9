@@ -402,6 +402,73 @@ def test_tier2_top_k_promotion_and_cached_reuse() -> None:
     assert st_t2["seed"] == 42
 
 
+def test_resume_tier2_top_verifies_new_higher_utility_candidates() -> None:
+    """Resumed --tier2-top must rank Pareto candidates by utility, not tier2_passed-first."""
+    work = _clean_dir(TEST_WORK_ROOT / "tier2_resume_rank")
+    seen_hashes: list[str] = []
+
+    def fake_seak(hull: Hull, out_dir: Path, ref) -> SeakeepingMetrics:
+        seen_hashes.append(hull.design_hash())
+        out_dir.mkdir(parents=True, exist_ok=True)
+        rows = tuple(
+            {
+                "speed_kn": r.speed_kn,
+                "heading": r.heading,
+                "sea": r.sea,
+                "bow_dips_per_min": r.bow_dips_per_min,
+                "seat_acc_rms_ms2": r.seat_acc_rms_ms2,
+            }
+            for r in ref.capytaine.rows_225
+        )
+        return SeakeepingMetrics(
+            valid=True,
+            error=None,
+            quick=False,
+            elapsed_s=0.1,
+            gm_t_cm=ref.capytaine.gm_t_cm,
+            roll_period_s=ref.capytaine.roll_period_s,
+            rows=rows,
+        )
+
+    def fake_cfd(hull: Hull, out_dir: Path, ref) -> CfdMetrics:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return CfdMetrics(
+            valid=True,
+            error=None,
+            dry_run=False,
+            elapsed_s=0.1,
+            bashrc=str(resolve_openfoam_bashrc()),
+            bashrc_exists=True,
+            staging_dir=str(out_dir),
+            speeds={
+                "5.5kn": ref.openfoam.speed_5_5kn.to_dict(),
+                "6.2kn": ref.openfoam.speed_6_2kn.to_dict(),
+            },
+        )
+
+    res1 = run_campaign(
+        CampaignConfig(iterations=1, population=4, seed=42, work_dir=work, tier2_top=1, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+        seakeeping_fn=fake_seak,
+        cfd_fn=fake_cfd,
+    )
+    assert len(res1.tier2_verified) == 1
+    first_hash = next(iter(res1.tier2_verified))
+
+    res2 = run_campaign(
+        CampaignConfig(
+            iterations=8, population=8, seed=42, work_dir=work, tier2_top=1, resume=True, pre_screen=False
+        ),
+        evaluator_fn=_surrogate_evaluator,
+        seakeeping_fn=fake_seak,
+        cfd_fn=fake_cfd,
+    )
+    assert len(res2.tier2_verified) == 2
+    assert len(seen_hashes) == 2
+    assert seen_hashes[0] == first_hash
+    assert seen_hashes[1] != first_hash
+
+
 def test_tier2_diagnostic_mode_preserves_pareto_candidates() -> None:
     base_work = _clean_dir(TEST_WORK_ROOT / "tier2_diag_base")
     dry_work = _clean_dir(TEST_WORK_ROOT / "tier2_diag_dry")
