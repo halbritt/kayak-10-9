@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kayak-10-9"
+version = "0.2.3"
+description = "Kayak 10.9 naval architecture, CAD/tooling, and recursive self-improvement environment"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "kayakgen>=0.1.0",
+    "numpy>=2.0,<2.8",
+    "scipy>=1.14",
+    "trimesh>=5.0",
+    "shapely>=2.1",
+    "capytaine>=3.0,<3.1",
+    "xarray>=2024.1",
+    "pandas>=1.3,<3.0",
+    "pyvista>=0.48",
+    "vtk>=9.3.1,<9.8.0,!=9.4.0,!=9.4.1",
+    "matplotlib>=3.8",
+    "ezdxf>=1.1",
+    "manifold3d>=3.0",
+    "pillow>=10.0",
+    "numpy-stl>=3.0",
+    "networkx>=3.0",
+    "pydantic>=2.5",
+    "typer>=0.12",
+    "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+kayak109-rsi = "rsi.cli:app"
+
+[tool.uv.sources]
+kayakgen = { path = "../kayak-gen", editable = true }
+
+[tool.setuptools.packages.find]
+include = ["rsi*"]
+exclude = ["tests*", "cad*", "data*", "docs*", "hull*", "site*", "build*", "scripts*", ".venv*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["cad", "build", "_site", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_forefoot.py" = ["E402"]
+"tests/test_surface_fairing.py" = ["E402"]

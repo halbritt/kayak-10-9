@@ -1,0 +1,80 @@
+# Unified Python 3.12 / SSD3 / OpenFOAM-v2606 task runner for kayak-10-9.
+
+[env]
+UV_CACHE_DIR = "{{env.HOME}}/.cache/uv"
+UV_LINK_MODE = "copy"
+PIP_CACHE_DIR = "{{env.HOME}}/.cache/pip"
+RUFF_CACHE_DIR = "{{env.HOME}}/.cache/kayak-10-9/ruff"
+MPLCONFIGDIR = "{{env.HOME}}/.cache/kayak-10-9/matplotlib"
+PYVISTA_USERDATA_PATH = "{{env.HOME}}/.cache/kayak-10-9/pyvista"
+KAYAK109_CACHE_DIR = "{{env.HOME}}/.cache/kayak-10-9"
+KAYAK109_WORK_DIR = "{{env.HOME}}/.cache/kayak-10-9/work"
+MPLBACKEND = "Agg"
+UV_PYTHON = "3.12"
+OPENFOAM_BASHRC = "/usr/lib/openfoam/openfoam2606/etc/bashrc"
+
+[tasks."env:setup"]
+description = "Bootstrap .venv (Python 3.12) with editable kayak-gen + kayak-10-9[dev] and SSD3 caches"
+run = "scripts/setup-env.sh"
+
+[tasks."env:check"]
+description = "Verify SSD3 cache mount, Python 3.12 unified imports, and OpenFOAM-v2606"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+findmnt -T "$HOME/.cache"
+cache_dev="$(findmnt -n -o SOURCE -T "$HOME/.cache" | sed 's/\\[.*\\]$//')"
+ssd3_dev="$(findmnt -n -o SOURCE -T /srv/ssd3 | sed 's/\\[.*\\]$//')"
+if [ -z "$cache_dev" ] || [ "$cache_dev" != "$ssd3_dev" ]; then
+  echo "cache $cache_dev does not match /srv/ssd3 ($ssd3_dev)" >&2
+  exit 1
+fi
+PY="$(scripts/test-python.sh)"
+"$PY" - <<'PYEOF'
+import importlib.metadata
+import sys
+
+assert sys.version_info[:2] == (3, 12), f"Expected Python 3.12, got {sys.version}"
+import kayakgen, numpy, scipy, trimesh, shapely, capytaine, xarray, vtk, pyvista, matplotlib, ezdxf, manifold3d, PIL, stl, networkx, pydantic, typer
+
+print("python:", sys.version.split()[0])
+print("kayakgen:", kayakgen.__file__)
+print(
+    "versions:",
+    f"numpy={numpy.__version__}",
+    f"scipy={scipy.__version__}",
+    f"capytaine={capytaine.__version__}",
+    f"shapely={shapely.__version__}",
+    f"trimesh={trimesh.__version__}",
+    f"vtk={vtk.__version__}",
+    f"pyvista={pyvista.__version__}",
+    f"manifold3d={importlib.metadata.version('manifold3d')}",
+)
+PYEOF
+test -r "$OPENFOAM_BASHRC"
+bash --noprofile --norc -c 'source "$1" "" >/dev/null 2>&1 && command -v interFoam snappyHexMesh blockMesh checkMesh mpirun' _ "$OPENFOAM_BASHRC"
+"""
+
+[tasks.test]
+description = "Run pytest via scripts/test-python.sh (passes extra args after --)"
+run = '''bash -euo pipefail -c '
+PY="$(scripts/test-python.sh)"
+exec mise run host:exec --timeout 15m -- "$PY" -m pytest "$@"
+' test'''
+
+[tasks."test:baseline"]
+description = "Run baseline forefoot, surface-fairing, and naval-arch pipeline tests under pytest and unittest"
+run = '''bash -euo pipefail -c '
+PY="$(scripts/test-python.sh)"
+mise run host:exec --timeout 10m -- "$PY" -m pytest -v tests/test_forefoot.py tests/test_surface_fairing.py tests/test_naval_arch_pipeline.py
+mise run host:exec --timeout 10m -- "$PY" -m unittest discover -s tests -v
+' '''
+
+[tasks.lint]
+description = "Run ruff check across repo (or specific paths after --)"
+run = '''bash -euo pipefail -c '
+PY="$(scripts/test-python.sh)"
+if [ "$#" -gt 0 ]; then
+  exec "$PY" -m ruff check "$@"
+fi
+exec "$PY" -m ruff check .
+' lint'''

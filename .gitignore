@@ -10,3 +10,7 @@ __pycache__/
 *.3mf
 *.tar.gz
 *.zip
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ruff_cache/
