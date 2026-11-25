@@ -190,17 +190,17 @@ def _update_pareto_frontier(entries: Sequence[dict[str, Any]]) -> list[dict[str,
     for entry in entries:
         if entry.get("status") != "evaluated":
             continue
-        gr = entry.get("gate_report") or {}
-        if not gr.get("passed"):
-            continue
         d_hash = str(entry.get("design_hash", ""))
         if not d_hash:
             continue
         prev = by_hash.get(d_hash)
-        if prev is None or (entry.get("tier2_seakeeping") is not None and prev.get("tier2_seakeeping") is None):
+        has_tier2 = entry.get("tier2_seakeeping") is not None or entry.get("tier2_cfd") is not None
+        if prev is None or has_tier2:
             by_hash[d_hash] = entry
 
-    unique = list(by_hash.values())
+    unique = [
+        e for e in by_hash.values() if bool((e.get("gate_report") or {}).get("passed"))
+    ]
     frontier: list[dict[str, Any]] = []
     for cand in unique:
         c_obj = cand["gate_report"]["objectives"]
