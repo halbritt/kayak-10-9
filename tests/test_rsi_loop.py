@@ -78,7 +78,7 @@ def _surrogate_evaluator(hull: Hull, cand_dir: Path, baseline) -> CandidateMetri
             wet_m2=base_ld.wet_m2,
             gm_cm=gm,
             gz_mm=(gz[0], gz[1], gz[2]),
-            lcg_m=0.0,
+            lcg_m=(base_ld.lcg_m or 0.0) + 0.02 * d_draft_a1,
         )
 
     kn_exact = {
@@ -86,6 +86,11 @@ def _surrogate_evaluator(hull: Hull, cand_dir: Path, baseline) -> CandidateMetri
         for w, v in (baseline.kn_225_exact or baseline.kn_225).items()
     }
     kn_round = {w: round(v, 2) for w, v in kn_exact.items()}
+    kn265_exact = {
+        w: v - 1.0 * d_beam - 1.2 * d_wl0 - 0.01 * d_sec_fwd
+        for w, v in (baseline.kn_265_exact or baseline.kn_265 or {}).items()
+    }
+    kn265_round = {w: round(v, 2) for w, v in kn265_exact.items()}
 
     return CandidateMetrics(
         valid=True,
@@ -117,9 +122,16 @@ def _surrogate_evaluator(hull: Hull, cand_dir: Path, baseline) -> CandidateMetri
         forebody_max_keel_groove_mm=0.0,
         forebody_min_k=0.5,
         forebody_max_abs_dk_ds=120.0,
+        foot_clear_height_m=0.2624,
+        foot_clear_width_m=0.2995,
         loads=loads,
         kn_225=kn_round,
         kn_225_exact=kn_exact,
+        kn_265=kn265_round or None,
+        kn_265_exact=kn265_exact or None,
+        shell_area_m2=baseline.shell_area_m2,
+        aft_coaming_above_225wl_cm=baseline.aft_coaming_above_225wl_cm,
+        rear_deck_above_225wl_cm=baseline.rear_deck_above_225wl_cm,
     )
 
 
@@ -790,3 +802,33 @@ def test_real_smoke_on_ssd3() -> None:
     m = evaluate_tier0_tier1(best_hull, work / "verify_best", ref, skip_resistance=True)
     assert m.valid is True
     assert replace(m).valid is True
+
+
+def test_surrogate_lp_proposes_feasible_positive_gain_step() -> None:
+    """When enough evaluated points exist, _propose_surrogate_lp_vectors yields feasible higher-speed steps."""
+    from rsi.gates import evaluate_gates
+    from rsi.loop import _propose_surrogate_lp_vectors
+
+    work = _clean_dir(TEST_WORK_ROOT / "surrogate_lp_step")
+    run_campaign(
+        CampaignConfig(iterations=4, population=11, seed=101, work_dir=work, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+    )
+    entries = [json.loads(ln) for ln in (work / "ledger.jsonl").read_text().splitlines()]
+    pareto = json.loads((work / "pareto.json").read_text())["frontier"]
+    assert pareto
+    anchor = pareto[0]["vector"]
+    ref = load_baseline_reference()
+    space = DesignSpace.default()
+
+    lp_props = _propose_surrogate_lp_vectors(space, ref, entries, anchor)
+    assert lp_props
+    assert all(tag == "surrogate_lp" for _, tag in lp_props)
+    best_speed_gains = []
+    for vec, _ in lp_props:
+        hull = vector_to_hull(vec, ref.hull, space, clamp=True)
+        m = _surrogate_evaluator(hull, work / "lp_eval", ref)
+        rep = evaluate_gates(m, ref)
+        assert rep.passed is True, rep.violations
+        best_speed_gains.append(rep.objectives["speed_gain_kn"])
+    assert max(best_speed_gains) > pareto[0]["gate_report"]["objectives"]["speed_gain_kn"] - 1e-6

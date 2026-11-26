@@ -77,6 +77,7 @@ def full_eval_3load(label: str, V: np.ndarray, F: np.ndarray, bowsign: int, hull
         "L_oa_m": round(loa, 3),
         "B_oa_cm": round(float(np.ptp(V[:, 1])) * 100, 1),
         "D_max_cm": round(float(np.ptp(V[:, 2])) * 100, 1),
+        "shell_area_m2": round(float(tm.area), 6),
         "fsk_4in_ratio": round(l4 / b4, 2),
         "b_4in_cm": round(b4 * 100, 2),
         "usca_4in_beam_pct": round(100.0 * b4 / loa, 2),
@@ -111,7 +112,12 @@ def full_eval_3load(label: str, V: np.ndarray, F: np.ndarray, bowsign: int, hull
             res["transition_beams_cm"] = grid_b
             res["transition_dB_per_20cm"] = [round(vals[i + 1] - vals[i], 1) for i in range(len(vals) - 1)]
             res["heel_bow_pitch_deg"] = {f"{a}deg": round(float(-bowsign * np.degrees(float_at(V, F, M, RHO_SEAWATER, np.array([lcg, 0.0, KG]), heel=np.radians(a), free_trim=True)["trim"])), 3) for a in (15, 25)}
-        res[f"load_{lb}"] = {"T_cm": round(T * 100, 2), "Bwl_cm": round(Bwl * 100, 2), "wet_m2": round(float(r["wet"]), 3), "GM_cm": round(GM * 100, 2), "GM_cm_exact": float(GM * 100), "gz_10_20_30_40_mm": gz}
+        elif lb == 265:
+            xs, zs, Y = half_breadth_grid(r["tris"], 401, 81)
+            R = np.array([ittc57(k * KN, Lwl, r["wet"], RHO_SEAWATER, NU_SEAWATER)[0] + michell(xs, zs, Y, k * KN, RHO_SEAWATER, 4000) for k in SP])
+            res["kn_265"] = {int(p): round(float(np.interp(p, R * SP * KN, SP)), 2) for p in PW}
+            res["kn_265_exact"] = {int(p): float(np.interp(p, R * SP * KN, SP)) for p in PW}
+        res[f"load_{lb}"] = {"T_cm": round(T * 100, 2), "Bwl_cm": round(Bwl * 100, 2), "wet_m2": round(float(r["wet"]), 3), "GM_cm": round(GM * 100, 2), "GM_cm_exact": float(GM * 100), "lcg_m": float(lcg), "gz_10_20_30_40_mm": gz}
     return res
 
 

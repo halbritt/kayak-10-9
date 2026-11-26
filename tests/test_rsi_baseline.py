@@ -30,6 +30,10 @@ def test_load_baseline_reference_exact_values() -> None:
 
     assert ref.kn_225 == {40: 4.47, 60: 5.08, 90: 5.67, 120: 6.17}
     assert all(isinstance(k, int) for k in ref.kn_225)
+    assert ref.kn_265 == {40: 4.32, 60: 4.97, 90: 5.53, 120: 5.98}
+    assert ref.kn_265_exact is not None
+    assert ref.loads[225].lcg_m is not None
+    assert abs(ref.shell_area_m2 - 5.80659) < 1e-5
 
     assert set(ref.loads.keys()) == {225, 265, 300}
     assert ref.loads[225].gm_cm == 4.11

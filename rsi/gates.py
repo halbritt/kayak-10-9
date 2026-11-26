@@ -19,12 +19,19 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #   1: original Tier 0/1/2 gates
 #   2: catch-width gate; speed and GM compared against the unrounded baseline
 #   3: CFD_DRAG_TOL_N = 0.25 N matching 500-step interFoam/snappyHexMesh noise floor
-GATES_VERSION = "3"
+#   4: race-pace 90/120W objective, SR [10.875, 10.99] band, 265 lb speed gate,
+#      28x25 cm foot box, +-10 mm 225 lb LCB cap, fixed-frame catch
+GATES_VERSION = "4"
 
+SR_4IN_MIN = 10.875
 SR_4IN_MAX = 10.99
 SR_4IN_TARGET = 10.90
 USCA_4IN_MIN_PCT = 8.50
 L4_MIN_M = 5.442
+FOOT_BOX_MIN_WIDTH_M = 0.28
+FOOT_BOX_MIN_HEIGHT_M = 0.25
+LCB_225_TOL_MM = 10.0
+RACE_PACE_POWERS_W = (90, 120)
 Z_MIN_ABS_TOL_M = 1e-5
 WATERLINE_HOLLOW_MAX_DEG = 0.02
 # Upper-hull width over the paddle stroke (at the LCG and 0.8-1.2 m forward, from 100 mm above the
@@ -203,6 +210,14 @@ def evaluate_gates(
             else "missing"
         )
         _require(
+            "sr_4in_min",
+            False,
+            -1.0,
+            f"Missing or non-finite SR_4in: {bad_desc}",
+            bad_desc,
+            SR_4IN_MIN,
+        )
+        _require(
             "sr_4in_max",
             False,
             -1.0,
@@ -212,9 +227,18 @@ def evaluate_gates(
         )
         sr_exact_obj: float | None = None
     else:
+        sr_min_check = min(sr_candidates)
         sr_check = max(sr_candidates)
         sr_exact_f = _finite_float(metrics.sr_4in_exact)
         sr_exact_obj = sr_exact_f if sr_exact_f is not None else sr_check
+        _require(
+            "sr_4in_min",
+            sr_min_check >= SR_4IN_MIN,
+            sr_min_check - SR_4IN_MIN,
+            f"SR_4in {sr_min_check:.4f} below minimum {SR_4IN_MIN:.3f}",
+            sr_min_check,
+            SR_4IN_MIN,
+        )
         _require(
             "sr_4in_max",
             sr_check <= SR_4IN_MAX,
@@ -278,6 +302,31 @@ def evaluate_gates(
             l4_val,
             L4_MIN_M,
         )
+
+    # 2b. Cockpit foot-box clearance (28 cm wide x 25 cm high)
+    for gate_name, raw_val, min_lim, desc in (
+        ("foot_clear_height_m", metrics.foot_clear_height_m, FOOT_BOX_MIN_HEIGHT_M, "Foot box clear height"),
+        ("foot_clear_width_m", metrics.foot_clear_width_m, FOOT_BOX_MIN_WIDTH_M, "Foot box clear width"),
+    ):
+        fv = _finite_float(raw_val)
+        if fv is None:
+            _require(
+                gate_name,
+                False,
+                -1.0,
+                f"Missing or non-finite {desc}: {raw_val}",
+                "missing" if raw_val is None else str(raw_val),
+                min_lim,
+            )
+        else:
+            _require(
+                gate_name,
+                fv >= min_lim,
+                fv - min_lim,
+                f"{desc} {fv:.4f} m below minimum {min_lim:.2f} m",
+                fv,
+                min_lim,
+            )
 
     # 3. Monotonic catch-to-cockpit flare transition
     trans_raw = metrics.transition_dB_per_20cm
@@ -555,70 +604,120 @@ def evaluate_gates(
     stability_min_raw = float(min(stability_margins_raw)) if stability_margins_raw else -1.0
     stability_min_margin = stability_min_raw if math.isfinite(stability_min_raw) else -1.0
 
-    # 6. Speed non-regression (when resistance evaluated)
-    speed_gains: list[float] = []
-    if not metrics.skip_resistance:
-        if metrics.kn_225 is None:
+    # 5b. 225 lb LCB shift cap (+-10 mm from baseline 225 lb LCG so trim/seat stays fixed)
+    if 225 in baseline.loads and baseline.loads[225].lcg_m is not None and 225 in loads:
+        base_lcg = float(baseline.loads[225].lcg_m)
+        cand_lcg = _finite_float(loads[225].lcg_m)
+        if cand_lcg is None:
             _require(
-                "kn_225_missing",
+                "lcb_225_mm",
                 False,
                 -1.0,
-                "Speed metrics kn_225 missing while skip_resistance=False",
-                "missing",
-                str(sorted(baseline.kn_225.keys())),
+                f"Missing or non-finite 225 lb LCB: {loads[225].lcg_m}",
+                "missing" if loads[225].lcg_m is None else str(loads[225].lcg_m),
+                LCB_225_TOL_MM,
             )
         else:
-            for p_w, base_kn in baseline.kn_225.items():
-                raw_kn = metrics.kn_225.get(p_w)
-                kn_val = _finite_float(raw_kn)
-                if kn_val is None:
+            shift_mm = abs(cand_lcg - base_lcg) * 1000.0
+            _require(
+                "lcb_225_mm",
+                shift_mm <= LCB_225_TOL_MM,
+                LCB_225_TOL_MM - shift_mm,
+                f"225 lb LCB shifted {shift_mm:.2f} mm (limit +-{LCB_225_TOL_MM:.1f} mm)",
+                shift_mm,
+                LCB_225_TOL_MM,
+            )
+
+    # 6. Speed non-regression across 225 lb and 265 lb; race-pace objective = mean(90W, 120W) at 225 lb
+    def _check_speed_load(
+        prefix: str,
+        cand_kn: dict[int, float] | None,
+        cand_kn_exact: dict[int, float] | None,
+        base_kn_tbl: dict[int, float],
+        base_kn_exact_tbl: dict[int, float] | None,
+        *,
+        record_powers: tuple[int, ...] = (),
+    ) -> list[float]:
+        gains: list[float] = []
+        if cand_kn is None:
+            _require(
+                f"{prefix}_missing",
+                False,
+                -1.0,
+                f"Speed metrics {prefix} missing while skip_resistance=False",
+                "missing",
+                str(sorted(base_kn_tbl.keys())),
+            )
+            return gains
+        for p_w, base_kn in base_kn_tbl.items():
+            raw_kn = cand_kn.get(p_w)
+            kn_val = _finite_float(raw_kn)
+            if kn_val is None:
+                _require(
+                    f"{prefix}_{p_w}w_missing",
+                    False,
+                    -1.0,
+                    f"Missing or non-finite {prefix} speed at {p_w} W",
+                    "missing" if raw_kn is None else str(raw_kn),
+                    base_kn,
+                )
+                continue
+            vals = [kn_val]
+            exact_val: float | None = None
+            if cand_kn_exact is not None and p_w in cand_kn_exact:
+                raw_exact = cand_kn_exact[p_w]
+                exact_val = _finite_float(raw_exact)
+                if exact_val is None:
                     _require(
-                        f"kn_225_{p_w}w_missing",
+                        f"{prefix}_{p_w}w_missing",
                         False,
                         -1.0,
-                        f"Missing or non-finite speed at {p_w} W",
-                        "missing" if raw_kn is None else str(raw_kn),
+                        f"Missing or non-finite exact {prefix} speed at {p_w} W",
+                        "missing" if raw_exact is None else str(raw_exact),
                         base_kn,
                     )
                     continue
-                vals = [kn_val]
-                exact_val: float | None = None
-                if metrics.kn_225_exact is not None and p_w in metrics.kn_225_exact:
-                    raw_exact = metrics.kn_225_exact[p_w]
-                    exact_val = _finite_float(raw_exact)
-                    if exact_val is None:
-                        _require(
-                            f"kn_225_{p_w}w_missing",
-                            False,
-                            -1.0,
-                            f"Missing or non-finite exact speed at {p_w} W",
-                            "missing" if raw_exact is None else str(raw_exact),
-                            base_kn,
-                        )
-                        continue
-                    vals.append(exact_val)
-                base_exact = _finite_float((baseline.kn_225_exact or {}).get(p_w))
-                if exact_val is not None and base_exact is not None:
-                    # Unrounded on both sides. Against the two-decimal baseline the effective
-                    # tolerance varies from 0.004 to 0.008 kn with where the baseline happens to
-                    # round, and the speed objective carries the same bias.
-                    cand_kn_min = exact_val
-                    base_ref = base_exact
-                    cand_kn_gain = exact_val - base_exact
-                else:
-                    cand_kn_min = min(vals)
-                    base_ref = float(base_kn)
-                    cand_kn_gain = (exact_val if exact_val is not None else kn_val) - base_kn
-                speed_gains.append(float(cand_kn_gain))
-                diff = cand_kn_min - base_ref
-                _require(
-                    f"kn_225_{p_w}w",
-                    diff >= -KN_TOL_KN,
-                    diff + KN_TOL_KN,
-                    f"Speed at {p_w} W regressed: {cand_kn_min:.4f} kn < {base_ref:.4f} - {KN_TOL_KN}",
-                    cand_kn_min,
-                    base_ref,
-                )
+                vals.append(exact_val)
+            base_exact = _finite_float((base_kn_exact_tbl or {}).get(p_w))
+            if exact_val is not None and base_exact is not None:
+                cand_kn_min = exact_val
+                base_ref = base_exact
+                cand_kn_gain = exact_val - base_exact
+            else:
+                cand_kn_min = min(vals)
+                base_ref = float(base_kn)
+                cand_kn_gain = (exact_val if exact_val is not None else kn_val) - base_kn
+            if int(p_w) in record_powers:
+                gains.append(float(cand_kn_gain))
+            diff = cand_kn_min - base_ref
+            _require(
+                f"{prefix}_{p_w}w",
+                diff >= -KN_TOL_KN,
+                diff + KN_TOL_KN,
+                f"{prefix} speed at {p_w} W regressed: {cand_kn_min:.4f} kn < {base_ref:.4f} - {KN_TOL_KN}",
+                cand_kn_min,
+                base_ref,
+            )
+        return gains
+
+    speed_gains: list[float] = []
+    if not metrics.skip_resistance:
+        speed_gains = _check_speed_load(
+            "kn_225",
+            metrics.kn_225,
+            metrics.kn_225_exact,
+            baseline.kn_225,
+            baseline.kn_225_exact,
+            record_powers=RACE_PACE_POWERS_W,
+        )
+        if baseline.kn_265:
+            _check_speed_load(
+                "kn_265",
+                metrics.kn_265,
+                metrics.kn_265_exact,
+                baseline.kn_265,
+                baseline.kn_265_exact,
+            )
     speed_gain_kn = float(sum(speed_gains) / len(speed_gains)) if speed_gains else 0.0
 
     # 7. Optional Tier 2 Capytaine seakeeping non-regression

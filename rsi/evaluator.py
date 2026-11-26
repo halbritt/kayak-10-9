@@ -113,6 +113,11 @@ class CandidateMetrics:
     loads: dict[int, LoadEvalMetrics] | None = None
     kn_225: dict[int, float] | None = None
     kn_225_exact: dict[int, float] | None = None
+    kn_265: dict[int, float] | None = None
+    kn_265_exact: dict[int, float] | None = None
+    shell_area_m2: float | None = None
+    aft_coaming_above_225wl_cm: float | None = None
+    rear_deck_above_225wl_cm: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -122,6 +127,10 @@ class CandidateMetrics:
             d["kn_225"] = {str(k): v for k, v in self.kn_225.items()}
         if self.kn_225_exact is not None:
             d["kn_225_exact"] = {str(k): v for k, v in self.kn_225_exact.items()}
+        if self.kn_265 is not None:
+            d["kn_265"] = {str(k): v for k, v in self.kn_265.items()}
+        if self.kn_265_exact is not None:
+            d["kn_265_exact"] = {str(k): v for k, v in self.kn_265_exact.items()}
         return d
 
 
@@ -286,7 +295,12 @@ def evaluate_tier0_tier1(
     fast_tier0: bool = False,
 ) -> CandidateMetrics:
     """Evaluate a candidate Hull using kayakgen (Tier 0) and SculptedKayakSurface (Tier 1)."""
-    del baseline  # kept in signature for contract uniformity & future baseline-relative checks
+    base_225 = baseline.loads.get(225) if baseline is not None else None
+    fixed_catch_lcg_m = (
+        float(base_225.lcg_m)
+        if base_225 is not None and base_225.lcg_m is not None
+        else None
+    )
     t0 = time.monotonic()
     work = Path(work_dir)
     work.mkdir(parents=True, exist_ok=True)
@@ -455,6 +469,7 @@ def evaluate_tier0_tier1(
     z_min_m = float(closed.bounds[0, 2])
     l_oa_m = float(np.ptp(V[:, 0]))
     b_oa_cm = float(np.ptp(V[:, 1]) * 100.0)
+    shell_area_m2 = round(float(closed.area), 6)
 
     r4 = trimesh.intersections.mesh_plane(
         closed, [0.0, 0.0, 1.0], [0.0, 0.0, z_min_m + 0.1016]
@@ -500,6 +515,26 @@ def evaluate_tier0_tier1(
     transition_dB: tuple[float, ...] | None = None
     kn_225: dict[int, float] | None = None
     kn_225_exact: dict[int, float] | None = None
+    kn_265: dict[int, float] | None = None
+    kn_265_exact: dict[int, float] | None = None
+    aft_coaming_above_225wl_cm: float | None = None
+    rear_deck_above_225wl_cm: float | None = None
+
+    def _speed_tables(r_up: dict[str, Any]) -> tuple[dict[int, float], dict[int, float]]:
+        lwl_m = float(np.ptp(r_up["wl_x"]))
+        xs, zs, Y = half_breadth_grid(r_up["tris"], 401, 81)
+        u_arr = RESISTANCE_SPEEDS_KN * KN
+        rf_arr = np.array(
+            [ittc57(float(u), lwl_m, r_up["wet"], RHO_SEAWATER, NU_SEAWATER)[0] for u in u_arr],
+            dtype=float,
+        )
+        rw_arr = _michell_fast_curve(xs, zs, Y, u_arr, RHO_SEAWATER, g=G, ntheta=4000)
+        pwr_w = (rf_arr + rw_arr) * u_arr
+        exact_tbl = {
+            int(p): float(np.interp(p, pwr_w, RESISTANCE_SPEEDS_KN))
+            for p in POWER_LEVELS_W
+        }
+        return {int(p): round(val, 2) for p, val in exact_tbl.items()}, exact_tbl
 
     try:
         for lb in LOADS_LB:
@@ -528,34 +563,31 @@ def evaluate_tier0_tier1(
             )
 
             if lb == 225:
+                # Fixed cockpit frame relative to baseline 225 lb LCG, sliced 100 mm above this hull's 225 lb WL.
+                catch_ref_x = fixed_catch_lcg_m if fixed_catch_lcg_m is not None else lcg
                 catch_widths_mm = tuple(
-                    float(x) for x in controls_catch_widths(closed, lcg, upright_height)
+                    float(x) for x in controls_catch_widths(closed, catch_ref_x, upright_height)
                 )
                 catch_beams_225_cm = _station_beams_ge_10cm(
-                    V, F, lcg, upright_height, -1, CATCH_OFFSETS_M
+                    V, F, catch_ref_x, upright_height, -1, CATCH_OFFSETS_M
                 )
                 grid_b = _station_beams_ge_10cm(
-                    V, F, lcg, upright_height, -1, TRANSITION_OFFSETS_M
+                    V, F, catch_ref_x, upright_height, -1, TRANSITION_OFFSETS_M
                 )
                 vals = [grid_b[f"{o:+.1f}"] for o in TRANSITION_OFFSETS_M]
                 transition_dB = tuple(round(vals[i + 1] - vals[i], 1) for i in range(len(vals) - 1))
-
+                aft_coaming_above_225wl_cm = round(
+                    (float(surf.sculpted_deck_z(np.array([0.38]), np.array([0.0]))[0]) + 0.0185 - upright_height) * 100.0,
+                    3,
+                )
+                rear_deck_above_225wl_cm = round(
+                    (float(surf.base_deck_z(np.array([0.68]), np.array([0.0]))[0]) - upright_height) * 100.0,
+                    3,
+                )
                 if not skip_resistance:
-                    lwl_m = float(np.ptp(r_up["wl_x"]))
-                    xs, zs, Y = half_breadth_grid(r_up["tris"], 401, 81)
-                    u_arr = RESISTANCE_SPEEDS_KN * KN
-                    rf_arr = np.array(
-                        [ittc57(float(u), lwl_m, r_up["wet"], RHO_SEAWATER, NU_SEAWATER)[0] for u in u_arr],
-                        dtype=float,
-                    )
-                    rw_arr = _michell_fast_curve(xs, zs, Y, u_arr, RHO_SEAWATER, g=G, ntheta=4000)
-                    res_n = rf_arr + rw_arr
-                    pwr_w = res_n * u_arr
-                    kn_225_exact = {
-                        int(p): float(np.interp(p, pwr_w, RESISTANCE_SPEEDS_KN))
-                        for p in POWER_LEVELS_W
-                    }
-                    kn_225 = {int(p): round(val, 2) for p, val in kn_225_exact.items()}
+                    kn_225, kn_225_exact = _speed_tables(r_up)
+            elif lb == 265 and not skip_resistance:
+                kn_265, kn_265_exact = _speed_tables(r_up)
     except Exception as exc:  # noqa: BLE001
         return _fail(f"Hydrostatics / stability / resistance failed: {exc}", **tier0_fields)
 
@@ -593,5 +625,10 @@ def evaluate_tier0_tier1(
         loads=loads_eval,
         kn_225=kn_225,
         kn_225_exact=kn_225_exact,
+        kn_265=kn_265,
+        kn_265_exact=kn_265_exact,
+        shell_area_m2=shell_area_m2,
+        aft_coaming_above_225wl_cm=aft_coaming_above_225wl_cm,
+        rear_deck_above_225wl_cm=rear_deck_above_225wl_cm,
         **tier0_fields,
     )

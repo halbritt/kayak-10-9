@@ -72,6 +72,12 @@ def build_hydro_3load_payload(metrics: CandidateMetrics) -> dict[str, Any]:
         if metrics.kn_225 is not None
         else None
     )
+    out["kn_265"] = (
+        {str(k): _finite_or_none(v) for k, v in metrics.kn_265.items()}
+        if metrics.kn_265 is not None
+        else None
+    )
+    out["shell_area_m2"] = _finite_or_none(metrics.shell_area_m2)
     return out
 
 
@@ -134,6 +140,32 @@ def _compute_deltas(
             if d_exact is not None:
                 gains.append(d_exact)
     kn_deltas["mean_speed_gain_kn"] = round(sum(gains) / len(gains), 6) if gains else None
+    race_gains = [kn_deltas[k] for k in ("90", "120") if kn_deltas.get(k) is not None]
+    kn_deltas["race_pace_90_120_gain_kn"] = (
+        round(sum(race_gains) / len(race_gains), 6) if race_gains else None
+    )
+
+    kn_265_deltas: dict[str, Any] | None = None
+    if metrics.kn_265 is not None and baseline.kn_265 is not None:
+        kn_265_deltas = {}
+        gains_265: list[float] = []
+        base_265_exact = baseline.kn_265_exact or {}
+        for p_w, base_kn in baseline.kn_265.items():
+            cand_exact = (
+                metrics.kn_265_exact.get(p_w)
+                if metrics.kn_265_exact is not None
+                else metrics.kn_265.get(p_w)
+            )
+            base_ref = (
+                base_265_exact.get(p_w, base_kn) if metrics.kn_265_exact is not None else base_kn
+            )
+            d_exact = _delta(cand_exact, base_ref, 6)
+            kn_265_deltas[str(p_w)] = d_exact
+            if d_exact is not None:
+                gains_265.append(d_exact)
+        kn_265_deltas["mean_speed_gain_kn"] = (
+            round(sum(gains_265) / len(gains_265), 6) if gains_265 else None
+        )
 
     loads_delta: dict[str, Any] = {}
     cand_loads = metrics.loads or {}
@@ -149,6 +181,11 @@ def _compute_deltas(
             "draft_mm": _delta(c_ld.draft_mm, base_ld.draft_mm, 3),
             "bwl_cm": _delta(c_ld.bwl_cm, base_ld.bwl_cm, 3),
             "wet_m2": _delta(c_ld.wet_m2, base_ld.wet_m2, 4),
+            "lcg_mm": (
+                round((c_ld.lcg_m - base_ld.lcg_m) * 1000.0, 3)
+                if base_ld.lcg_m is not None and _finite_or_none(c_ld.lcg_m) is not None
+                else None
+            ),
         }
 
     wl_cut_keys = (
@@ -275,14 +312,40 @@ def _compute_deltas(
             _delta(c, b, 3) for c, b in zip(metrics.catch_widths_mm, baseline.catch_widths_mm)
         ]
 
+    ld_225_c = cand_loads.get(225)
+    ld_225_b = baseline.loads.get(225)
+    report_only = {
+        "draft_225_mm": _finite_or_none(ld_225_c.draft_mm) if ld_225_c is not None else None,
+        "draft_225_mm_delta": (
+            _delta(ld_225_c.draft_mm, ld_225_b.draft_mm, 3)
+            if ld_225_c is not None and ld_225_b is not None
+            else None
+        ),
+        "b_oa_cm": _finite_or_none(metrics.b_oa_cm),
+        "b_oa_cm_delta": _delta(metrics.b_oa_cm, baseline.b_oa_cm, 4),
+        "shell_area_m2": _finite_or_none(metrics.shell_area_m2),
+        "shell_area_m2_delta": _delta(metrics.shell_area_m2, baseline.shell_area_m2, 6),
+        "aft_coaming_above_225wl_cm": _finite_or_none(metrics.aft_coaming_above_225wl_cm),
+        "aft_coaming_above_225wl_cm_delta": _delta(
+            metrics.aft_coaming_above_225wl_cm, baseline.aft_coaming_above_225wl_cm, 3
+        ),
+        "rear_deck_above_225wl_cm": _finite_or_none(metrics.rear_deck_above_225wl_cm),
+        "rear_deck_above_225wl_cm_delta": _delta(
+            metrics.rear_deck_above_225wl_cm, baseline.rear_deck_above_225wl_cm, 3
+        ),
+        "upper_hollow_max_deg": _finite_or_none(metrics.upper_hollow_max_deg),
+    }
+
     return {
         "class_form": class_form,
         "catch_widths_mm": catch_delta,
         "kn_225": kn_deltas,
+        "kn_265": kn_265_deltas,
         "loads": loads_delta,
         "fairness": fairness_delta,
         "seakeeping": seak_delta,
         "cfd": cfd_delta,
+        "report_only": report_only,
     }
 
 

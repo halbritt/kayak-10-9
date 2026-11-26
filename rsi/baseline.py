@@ -38,6 +38,7 @@ class LoadBaseline:
     gz_rounded_10_20_30_40_mm: tuple[float, float, float, float]
     # Unrounded GM from the same mesh hydrostatics the evaluator uses (None for older spec files).
     gm_cm_exact: float | None = None
+    lcg_m: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -211,6 +212,11 @@ class BaselineReference:
     # two-decimal table; comparing an exact candidate against it biases every gate and objective
     # by up to 0.005 kn, which is the whole speed tolerance.
     kn_225_exact: dict[int, float] | None = None
+    kn_265: dict[int, float] | None = None
+    kn_265_exact: dict[int, float] | None = None
+    shell_area_m2: float = 5.80659
+    aft_coaming_above_225wl_cm: float = 15.541
+    rear_deck_above_225wl_cm: float = 14.783
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -233,6 +239,19 @@ class BaselineReference:
                 if self.kn_225_exact is None
                 else {int(k): v for k, v in self.kn_225_exact.items()}
             ),
+            "kn_265": (
+                None
+                if self.kn_265 is None
+                else {int(k): v for k, v in self.kn_265.items()}
+            ),
+            "kn_265_exact": (
+                None
+                if self.kn_265_exact is None
+                else {int(k): v for k, v in self.kn_265_exact.items()}
+            ),
+            "shell_area_m2": self.shell_area_m2,
+            "aft_coaming_above_225wl_cm": self.aft_coaming_above_225wl_cm,
+            "rear_deck_above_225wl_cm": self.rear_deck_above_225wl_cm,
             "loads": {str(k): v.to_dict() for k, v in self.loads.items()},
             "catch_widths_mm": list(self.catch_widths_mm),
             "catch_beams_225_cm": dict(self.catch_beams_225_cm),
@@ -310,6 +329,20 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
         if isinstance(kn_exact_raw, dict) and set(kn_exact_raw) == set(hydro_3["kn_225"])
         else None
     )
+    kn_265_raw = hydro_3.get("kn_265")
+    kn_265 = (
+        {int(k): float(v) for k, v in kn_265_raw.items()}
+        if isinstance(kn_265_raw, dict) and kn_265_raw
+        else None
+    )
+    kn_265_exact_raw = hydro_3.get("kn_265_exact")
+    kn_265_exact = (
+        {int(k): float(v) for k, v in kn_265_exact_raw.items()}
+        if isinstance(kn_265_exact_raw, dict)
+        and kn_265_raw is not None
+        and set(kn_265_exact_raw) == set(kn_265_raw)
+        else None
+    )
 
     loads: dict[int, LoadBaseline] = {}
     for lb in (225, 265, 300):
@@ -328,6 +361,9 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
             gz_rounded_10_20_30_40_mm=(gz_rnd[0], gz_rnd[1], gz_rnd[2], gz_rnd[3]),
             gm_cm_exact=(
                 float(spec_load["GM_cm_exact"]) if spec_load.get("GM_cm_exact") is not None else None
+            ),
+            lcg_m=(
+                float(spec_load["lcg_m"]) if spec_load.get("lcg_m") is not None else None
             ),
         )
 
@@ -422,4 +458,7 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
         capytaine=capytaine,
         openfoam=openfoam,
         kn_225_exact=kn_225_exact,
+        kn_265=kn_265,
+        kn_265_exact=kn_265_exact,
+        shell_area_m2=float(hydro_3.get("shell_area_m2", 5.80659)),
     )

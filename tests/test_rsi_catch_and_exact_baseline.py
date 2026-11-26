@@ -29,7 +29,7 @@ def _baseline_like(ref: BaselineReference, **overrides: object) -> CandidateMetr
             wet_m2=b.wet_m2,
             gm_cm=b.gm_cm_exact if b.gm_cm_exact is not None else b.gm_cm,
             gz_mm=b.gz_mm,
-            lcg_m=0.0,
+            lcg_m=b.lcg_m if b.lcg_m is not None else 0.0,
         )
         for lb, b in ref.loads.items()
     }
@@ -63,9 +63,16 @@ def _baseline_like(ref: BaselineReference, **overrides: object) -> CandidateMetr
         forebody_max_keel_groove_mm=0.0,
         forebody_min_k=2.0,
         forebody_max_abs_dk_ds=190.0,
+        foot_clear_height_m=0.2624,
+        foot_clear_width_m=0.2995,
         loads=loads,
         kn_225=dict(ref.kn_225),
         kn_225_exact=dict(ref.kn_225_exact or ref.kn_225),
+        kn_265=dict(ref.kn_265 or {}),
+        kn_265_exact=dict(ref.kn_265_exact or ref.kn_265 or {}),
+        shell_area_m2=ref.shell_area_m2,
+        aft_coaming_above_225wl_cm=ref.aft_coaming_above_225wl_cm,
+        rear_deck_above_225wl_cm=ref.rear_deck_above_225wl_cm,
     )
     fields.update(overrides)
     return CandidateMetrics(**fields)  # type: ignore[arg-type]
@@ -164,7 +171,10 @@ def test_speed_gate_compares_unrounded_against_unrounded() -> None:
     report = evaluate_gates(slow_40, ref)
     assert _violated(report, "kn_225_40w")
     assert math.isclose(report.margins["kn_225_40w"], KN_TOL_KN - 0.0056, abs_tol=1e-12)
-    assert math.isclose(report.objectives["speed_gain_kn"], -0.0056 / 4.0, abs_tol=1e-12)
+    # 40 W is gated against regression but carries zero weight in the 90/120 W race-pace objective.
+    assert abs(report.objectives["speed_gain_kn"]) < 1e-12
+    assert math.isclose(evaluate_gates(with_speed(90, 0.010), ref).objectives["speed_gain_kn"], 0.005, abs_tol=1e-12)
+    assert math.isclose(evaluate_gates(with_speed(120, 0.006), ref).objectives["speed_gain_kn"], 0.003, abs_tol=1e-12)
 
     assert evaluate_gates(with_speed(40, -(KN_TOL_KN - 1e-4)), ref).passed is True
 
@@ -290,6 +300,7 @@ def test_comparison_report_shows_catch_and_unrounded_speed_deltas() -> None:
         "90": 0.01,
         "120": 0.01,
         "mean_speed_gain_kn": 0.01,
+        "race_pace_90_120_gain_kn": 0.01,
     }
 
 
@@ -314,3 +325,84 @@ def test_forward_flare_trips_the_catch_gate_on_real_geometry() -> None:
     report = evaluate_gates(metrics, ref)
     assert report.passed is False
     assert _violated(report, "catch_width_mm")
+
+
+def test_v4_gates_sr_band_265_speed_foot_box_lcb_and_pure_speed_utility() -> None:
+    from rsi.gates import FOOT_BOX_MIN_HEIGHT_M, FOOT_BOX_MIN_WIDTH_M, LCB_225_TOL_MM, SR_4IN_MIN
+    from rsi.loop import PARETO_OBJECTIVES, _composite_utility
+
+    ref = load_baseline_reference()
+    assert ref.kn_265_exact is not None and ref.loads[225].lcg_m is not None
+
+    # 2b / 2d: stability and SR closeness are floors only, carrying zero weight in composite utility
+    assert PARETO_OBJECTIVES == ("speed_gain_kn", "fairness_margin", "seakeeping_gain")
+    u_base = _composite_utility(
+        {"sr_closeness_to_10_9": -0.05, "speed_gain_kn": 0.01, "stability_min_margin": 0.0, "fairness_margin": 0.10, "seakeeping_gain": 0.0}
+    )
+    u_more_stab_and_sr = _composite_utility(
+        {"sr_closeness_to_10_9": 0.0, "speed_gain_kn": 0.01, "stability_min_margin": 0.50, "fairness_margin": 0.10, "seakeeping_gain": 0.0}
+    )
+    assert u_base == u_more_stab_and_sr
+
+    # 2d: SR_4in >= 10.875 band
+    assert _violated(evaluate_gates(_baseline_like(ref, sr_4in_exact=SR_4IN_MIN - 0.001, sr_4in=10.87), ref), "sr_4in_min")
+    assert evaluate_gates(_baseline_like(ref, sr_4in_exact=SR_4IN_MIN + 0.0005, sr_4in=10.88), ref).passed is True
+
+    # 2e: 265 lb speed non-regression
+    bad_265 = {**ref.kn_265_exact, 120: ref.kn_265_exact[120] - (KN_TOL_KN + 0.001)}
+    r265 = evaluate_gates(_baseline_like(ref, kn_265_exact=bad_265, kn_265={k: round(v, 2) for k, v in bad_265.items()}), ref)
+    assert _violated(r265, "kn_265_120w")
+    assert _violated(evaluate_gates(_baseline_like(ref, kn_265=None, kn_265_exact=None), ref), "kn_265_missing")
+
+    # 2f: Foot box clearances >= 28 x 25 cm (fail closed on small/None/NaN)
+    assert _violated(evaluate_gates(_baseline_like(ref, foot_clear_height_m=FOOT_BOX_MIN_HEIGHT_M - 0.001), ref), "foot_clear_height_m")
+    assert _violated(evaluate_gates(_baseline_like(ref, foot_clear_width_m=FOOT_BOX_MIN_WIDTH_M - 0.001), ref), "foot_clear_width_m")
+    assert _violated(evaluate_gates(_baseline_like(ref, foot_clear_height_m=None), ref), "foot_clear_height_m")
+
+    # 2g: 225 lb LCB shift <= +-10 mm
+    base_loads = _baseline_like(ref).loads
+    assert base_loads is not None
+    ok_lcb = {**base_loads, 225: replace(base_loads[225], lcg_m=ref.loads[225].lcg_m + (LCB_225_TOL_MM - 0.2) / 1000.0)}
+    assert evaluate_gates(_baseline_like(ref, loads=ok_lcb), ref).passed is True
+    bad_lcb = {**base_loads, 225: replace(base_loads[225], lcg_m=ref.loads[225].lcg_m + (LCB_225_TOL_MM + 0.2) / 1000.0)}
+    assert _violated(evaluate_gates(_baseline_like(ref, loads=bad_lcb), ref), "lcb_225_mm")
+
+
+def test_fixed_frame_catch_and_report_only_fields_on_real_geometry() -> None:
+    """2c/2e/2i: catch uses fixed baseline 225 lb LCG stations; 265 lb speed & report-only metrics populate."""
+    import trimesh
+    from rsi.evaluator import _ensure_cad_on_path
+
+    _ensure_cad_on_path()
+    from check_fairing_controls import catch_widths as controls_catch_widths
+    from deck_geometry import SculptedKayakSurface
+    from hydro import RHO_SEAWATER, float_at
+    import numpy as np
+
+    ref = load_baseline_reference()
+    assert ref.loads[225].lcg_m is not None
+    space = DesignSpace.default()
+    vec = space.baseline_vector()
+    vec[space.index_by_name()["wl_a1"]] += 0.012
+    shifted_hull = vector_to_hull(vec, ref.hull, space)
+
+    work = Path.home() / ".cache" / "kayak-10-9" / "test-work" / "v4_fixed_catch"
+    m = evaluate_tier0_tier1(shifted_hull, work, ref, skip_resistance=False)
+    assert m.valid is True, m.error
+    assert m.loads is not None and abs(m.loads[225].lcg_m - ref.loads[225].lcg_m) > 0.002
+    assert m.kn_265 is not None and m.kn_265_exact is not None
+    assert m.shell_area_m2 is not None and m.aft_coaming_above_225wl_cm is not None and m.rear_deck_above_225wl_cm is not None
+
+    surf = SculptedKayakSurface(Path(m.hull_json_path))
+    closed = trimesh.util.concatenate((surf.build_hull_shell(), surf.build_deck_shell(cut_openings=False)))
+    closed.merge_vertices(merge_tex=True, merge_norm=True)
+    V, F = np.asarray(closed.vertices, dtype=float), np.asarray(closed.faces, dtype=int)
+    r_up = float_at(V, F, 225.0 * 0.45359237, RHO_SEAWATER, np.array([0.0, 0.0, float(closed.bounds[0, 2]) + 0.25]), free_trim=False)
+    expected_fixed = tuple(float(x) for x in controls_catch_widths(closed, float(ref.loads[225].lcg_m), float(r_up["h"])))
+    assert m.catch_widths_mm is not None
+    for a, b in zip(m.catch_widths_mm, expected_fixed):
+        assert math.isclose(a, b, abs_tol=1e-6)
+
+    comp = compare_candidate(shifted_hull, ref, work, metrics=m)
+    assert "report_only" in comp.deltas and comp.deltas["kn_265"] is not None
+    assert "race_pace_90_120_gain_kn" in comp.deltas["kn_225"]

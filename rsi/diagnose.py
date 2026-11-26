@@ -14,7 +14,7 @@ from rsi.evaluator import CandidateMetrics
 from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 from rsi.gates import (
     CATCH_WIDTH_TOL_MM,
-    SR_4IN_TARGET,
+    LCB_225_TOL_MM,
     WATERLINE_HOLLOW_MAX_DEG,
     Z_MIN_ABS_TOL_M,
     GateReport,
@@ -710,6 +710,89 @@ def diagnose_candidate(
             acc.add_direction("rocker_bow_end_m", +0.4, weight=0.6)
             acc.add_direction("rocker_stern_end_m", +0.4, weight=0.6)
 
+        elif g_id == "sr_4in_min":
+            groups = ("fairing", "waterline", "section")
+            params = ("target_beam_m", "wl_a0", "wl_a1", "wl_a2", "sec_side_fwd", "sec_side_aft")
+            items.append(
+                DiagnosticItem(
+                    code="sr_4in_below_min",
+                    source="gate",
+                    gate=g_id,
+                    severity="error",
+                    groups=groups,
+                    parameters=params,
+                    message=v.message,
+                    margin=margin,
+                )
+            )
+            acc.add_group_blame(groups, 2.0)
+            acc.shrink_group("fairing", 0.70)
+            acc.add_direction("target_beam_m", -1.0, weight=2.0)
+            acc.add_direction("wl_a0", -0.8, weight=1.2)
+            tb_val = acc.val("target_beam_m")
+            if tb_val is not None:
+                acc.set_avoid(
+                    "target_beam_m",
+                    "upper",
+                    tb_val - 0.0005,
+                    f"sr_4in_min violated at target_beam_m={tb_val:.5f}",
+                )
+
+        elif g_id in ("foot_clear_height_m", "foot_clear_width_m"):
+            groups = ("topsides", "waterline", "section")
+            params = (
+                "deck_fb_fwd_scale",
+                "crown_fwd",
+                "sheer_h_fwd_frac",
+                "wl_a0",
+                "wl_a1",
+                "bilge_fwd_m",
+            )
+            items.append(
+                DiagnosticItem(
+                    code="foot_box_clearance",
+                    source="gate",
+                    gate=g_id,
+                    severity="error",
+                    groups=groups,
+                    parameters=params,
+                    message=v.message,
+                    margin=margin,
+                )
+            )
+            acc.add_group_blame(groups, 2.0)
+            if g_id == "foot_clear_height_m":
+                acc.shrink_group("topsides", 0.65)
+                acc.add_direction("deck_fb_fwd_scale", +0.8, weight=1.5)
+                acc.add_direction("crown_fwd", -0.6, weight=1.2)
+                acc.add_direction("sheer_h_fwd_frac", +0.6, weight=1.0)
+            else:
+                acc.shrink_group("waterline", 0.65)
+                acc.add_direction("wl_a0", +0.7, weight=1.2)
+                acc.add_direction("wl_a1", +0.7, weight=1.2)
+                acc.add_direction("bilge_fwd_m", -0.5, weight=1.0)
+
+        elif g_id == "lcb_225_mm":
+            groups = ("waterline", "rocker", "draft")
+            params = ("wl_a1", "rocker_bow_end_m", "rocker_stern_end_m", "draft_a1", "draft_a2")
+            items.append(
+                DiagnosticItem(
+                    code="lcb_shift_exceeded",
+                    source="gate",
+                    gate=g_id,
+                    severity="error",
+                    groups=groups,
+                    parameters=params,
+                    message=v.message,
+                    margin=margin,
+                )
+            )
+            acc.add_group_blame(groups, 2.0)
+            acc.shrink_group("waterline", 0.70)
+            acc.shrink_group("rocker", 0.70)
+            for p in params:
+                acc.bias_toward_baseline(p, strength=0.8, weight=1.2)
+
         elif g_id in ("sr_4in_max", "usca_4in_pct_min"):
             code = "sr_4in_exceeded" if g_id == "sr_4in_max" else "usca_beam_below_min"
             groups = ("fairing", "waterline", "section")
@@ -970,7 +1053,7 @@ def diagnose_candidate(
             if fwd_flare_room:
                 acc.add_direction("sec_side_fwd", -0.5, weight=0.8)
 
-        elif g_id.startswith("kn_225_") or g_id.startswith("cfd_"):
+        elif g_id.startswith("kn_225_") or g_id.startswith("kn_265_") or g_id.startswith("cfd_"):
             is_cfd = g_id.startswith("cfd_")
             groups = ("waterline", "fairing", "draft", "rocker", "section")
             params = (
@@ -1053,9 +1136,13 @@ def diagnose_candidate(
     if gate_report is not None and gate_report.passed and metrics.valid:
         margin_scales: list[tuple[str, float, tuple[str, ...], tuple[str, ...]]] = [
             ("z_min_m", Z_MIN_ABS_TOL_M, ("draft", "rocker"), ("draft_a1", "draft_a2")),
+            ("sr_4in_min", 0.05, ("fairing", "waterline"), ("target_beam_m", "wl_a0")),
             ("sr_4in_max", 0.10, ("fairing", "waterline"), ("target_beam_m", "wl_a0")),
             ("usca_4in_pct_min", 0.50, ("fairing", "waterline"), ("target_beam_m", "wl_a0")),
             ("l4_m_min", 0.01, ("rocker", "draft"), ("rocker_bow_end_m", "draft_a2")),
+            ("foot_clear_height_m", 0.02, ("topsides",), ("deck_fb_fwd_scale", "crown_fwd")),
+            ("foot_clear_width_m", 0.02, ("waterline", "section"), ("wl_a0", "wl_a1", "bilge_fwd_m")),
+            ("lcb_225_mm", LCB_225_TOL_MM, ("waterline", "rocker"), ("wl_a1", "rocker_bow_end_m", "rocker_stern_end_m")),
             ("catch_width_mm", CATCH_WIDTH_TOL_MM, ("section",), ("sec_side_fwd", "sec_side_fwd_xi")),
             ("kayakgen_waterline_hollow", WATERLINE_HOLLOW_MAX_DEG, ("waterline",), ("wl_a1", "wl_a2")),
             ("fwd_wl_turn_deg", 0.05, ("waterline",), ("wl_a1", "wl_a2")),
@@ -1072,10 +1159,11 @@ def diagnose_candidate(
                 margin_scales.append(
                     (f"gz_{lb}_{deg}_mm", 0.50, ("waterline", "section", "topsides"), ("wl_a0", "target_beam_m", "sheer_max_hb_m"))
                 )
-        for w in (40, 60, 90, 120):
-            margin_scales.append(
-                (f"kn_225_{w}w", 0.05, ("waterline", "fairing", "section"), ("target_beam_m", "sec_side_fwd", "wl_a2"))
-            )
+        for prefix in ("kn_225", "kn_265"):
+            for w in (40, 60, 90, 120):
+                margin_scales.append(
+                    (f"{prefix}_{w}w", 0.05, ("waterline", "fairing", "section"), ("target_beam_m", "sec_side_fwd", "wl_a2"))
+                )
 
         for gate_name, scale, groups, params in margin_scales:
             raw_m = gate_report.margins.get(gate_name)
@@ -1095,20 +1183,15 @@ def diagnose_candidate(
                     )
                 )
 
-        # Gentle goal-directed nudges when passing
+        # Gentle race-pace / fairness nudges when passing (SR band & stability are floors, not targets)
         stab_min = _finite_float_or_none(gate_report.objectives.get("stability_min_margin"))
-        sr_exact = _finite_float_or_none(metrics.sr_4in_exact)
-        if sr_exact is not None and sr_exact < SR_4IN_TARGET - 0.003:
-            if stab_min is not None and stab_min > 0.005:
-                acc.add_direction("target_beam_m", -0.35, weight=0.8)
-            else:
-                # Build stability buffer while improving fairness & speed
-                acc.add_direction("rocker_stern_end_m", +0.5, weight=0.6)
-                if fwd_flare_room:
-                    acc.add_direction("sec_side_fwd", -0.4, weight=0.6)
-                acc.add_direction("sec_side_aft", -0.4, weight=0.5)
-                acc.add_direction("wl_a1", -0.4, weight=0.5)
-                acc.add_direction("sheer_aft_exp", +0.4, weight=0.5)
+        if stab_min is not None and stab_min <= 0.005:
+            acc.add_direction("rocker_stern_end_m", +0.5, weight=0.6)
+            if fwd_flare_room:
+                acc.add_direction("sec_side_fwd", -0.4, weight=0.6)
+            acc.add_direction("sec_side_aft", -0.4, weight=0.5)
+            acc.add_direction("wl_a1", -0.4, weight=0.5)
+            acc.add_direction("sheer_aft_exp", +0.4, weight=0.5)
 
     # Extra info if unused seakeeping/cfd passed without gate_report
     if gate_report is None:
