@@ -23,7 +23,9 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #      28x25 cm foot box, +-10 mm 225 lb LCB cap, fixed-frame catch
 #   5: seakeeping floor is the Epic 18X (owner, 2026-11-26), not v0.2.3 + 1.5 %; seakeeping rows
 #      come from a body with irregular-frequency removal
-GATES_VERSION = "5"
+#   6: Buttocks 0.075 turn change read over v0.2.3's stretch of hull, not from each hull's own cut
+#      ends (the reading jumped 0.06 deg when the cut grew one 2 mm sample; the margin is 0.04 deg)
+GATES_VERSION = "6"
 
 SR_4IN_MIN = 10.875
 SR_4IN_MAX = 10.99

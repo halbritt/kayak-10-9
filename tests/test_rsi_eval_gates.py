@@ -767,3 +767,49 @@ def test_bem_body_has_a_lid_and_no_irregular_frequency_spike_at_bow_quarter() ->
     # Smooth physics: the force keeps falling toward the shortest wave. With no lid the 1.05 s
     # point sat on an irregular frequency and read 10740 N/m against 1481 N/m at 1.20 s.
     assert heave[1.05] < heave[1.20], heave
+
+
+def _buttock_angles(n_finite: int, first: int = 270, total: int = 2740) -> tuple[np.ndarray, np.ndarray]:
+    """A buttock whose turning angle is flat, then climbs toward the aft end of its finite part."""
+    from rsi.evaluator import BUTTOCK_0075_STEP_M
+
+    aft = 0.001 + BUTTOCK_0075_STEP_M * np.arange(total)
+    ang = np.full(total, np.nan)
+    idx = np.arange(first, first + n_finite)
+    # Steeper the nearer the end of the cut, as on the real hull's run up to the stern.
+    ang[idx] = 0.02 * np.exp((idx - (first + n_finite)) / 40.0) * 400.0
+    return ang, aft
+
+
+def test_buttock_reading_does_not_jump_when_the_cut_grows_by_one_sample(baseline_eval: tuple) -> None:
+    """The gate reads a fixed stretch of hull, so a stern 2 mm longer at this buttock moves it a little."""
+    from rsi.evaluator import BUTTOCK_0075_WINDOW_AFT_M, _buttock_peak_turn_change
+
+    _, metrics = baseline_eval
+    # v0.2.3 reads exactly what docs/surface-fairing recorded for it over its own interior.
+    assert abs(metrics.buttock_0075_peak_deg - 3.459988276413033) < 1e-9
+
+    def own_ends(ang: np.ndarray) -> float:
+        it = np.flatnonzero(np.isfinite(ang))
+        ins = it[(it >= it[0] + 50) & (it <= it[-1] - 50)]
+        return float(np.nanmax(np.abs(ang[ins + 25] - ang[ins])))
+
+    short, aft = _buttock_angles(2316)
+    longer, _ = _buttock_angles(2317)
+    # Measured from each cut's own ends, one more sample at the stern changes nothing here (the
+    # profile moves with the end), while on a real hull it added 0.06 deg; over a fixed stretch the
+    # longer cut is read further from its end and must not read higher.
+    fixed_short = _buttock_peak_turn_change(short, aft)
+    fixed_longer = _buttock_peak_turn_change(longer, aft)
+    assert fixed_longer <= fixed_short
+    assert fixed_short - fixed_longer < 0.03 * fixed_short
+    assert own_ends(short) == pytest.approx(own_ends(longer))
+
+    # A cut that stops short of the stretch is unmeasurable, not judged on what is left of it.
+    lo, hi = BUTTOCK_0075_WINDOW_AFT_M
+    stops_short, _ = _buttock_angles(2316 - 40)
+    with pytest.raises(ValueError, match="does not cover"):
+        _buttock_peak_turn_change(stops_short, aft)
+    with pytest.raises(ValueError, match="does not reach"):
+        _buttock_peak_turn_change(short[:2000], aft[:2000])
+    assert aft[270] < lo < hi < aft[270 + 2316 - 1]

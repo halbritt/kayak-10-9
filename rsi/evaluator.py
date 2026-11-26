@@ -37,6 +37,12 @@ KAYAKGEN_RES_SPEEDS_KN = np.array([4.5, 5.0, 5.5, 6.0, 6.2], dtype=float)
 TRANSITION_OFFSETS_M = [1.2, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0, -0.2, -0.4]
 CATCH_OFFSETS_M = [0.0, 0.8, 0.9, 1.0, 1.1, 1.2]
 FOREBODY_STATIONS_M = (-2.10, -1.65, -1.35, -0.95)
+# Stretch of the 0.075 m buttock over which its turn change is judged, in metres aft of the bow. It is
+# v0.2.3's own interior: that hull's cut is finite from 0.539 to 5.169 m and cad/inspect_fairness.py
+# allows 100 mm at each end. Every candidate is read over this same stretch.
+BUTTOCK_0075_WINDOW_AFT_M = (0.639, 5.069)
+BUTTOCK_0075_STEP_M = 0.002
+BUTTOCK_0075_SPAN_SAMPLES = 25  # turn change over 50 mm
 
 
 def _ensure_cad_on_path() -> None:
@@ -221,6 +227,28 @@ def _solve_free_trim_gz_mm(
     return (gz_list[0], gz_list[1], gz_list[2])
 
 
+def _buttock_peak_turn_change(ang: np.ndarray, aft_of_bow_m: np.ndarray) -> float:
+    """Largest change of turning angle over 50 mm on the 0.075 m buttock, within a fixed stretch of hull.
+
+    The reading used to run over each hull's own cut less 100 mm at either end. Its peak is at the
+    aft edge of that allowance, where the buttock climbs to the stern and the turn change rises
+    0.03 to 0.07 deg per 2 mm sample. A stern 2 mm longer at this buttock therefore added one sample
+    and about 0.06 deg, against a margin of 0.04 deg to the limit, at any size of design step. Over
+    a fixed stretch the reading follows the hull shape continuously, and v0.2.3 reads as before.
+    """
+    lo, hi = BUTTOCK_0075_WINDOW_AFT_M
+    tol = 1e-9
+    ins = np.flatnonzero((aft_of_bow_m >= lo - tol) & (aft_of_bow_m <= hi + tol))
+    if len(ins) == 0 or ins[-1] + BUTTOCK_0075_SPAN_SAMPLES >= len(ang):
+        raise ValueError("Buttocks 0.075 cut does not reach the stretch it is judged on")
+    change = np.abs(ang[ins + BUTTOCK_0075_SPAN_SAMPLES] - ang[ins])
+    if not np.isfinite(change).all():
+        # The hull is narrower than 75 mm somewhere v0.2.3 is not. Treat it as unmeasurable rather
+        # than judge it on a shorter stretch.
+        raise ValueError("Buttocks 0.075 cut does not cover the stretch it is judged on")
+    return float(change.max())
+
+
 def _evaluate_mesh_fairness(
     closed: trimesh.Trimesh,
     hull_length_m: float,
@@ -253,14 +281,8 @@ def _evaluate_mesh_fairness(
         entry_turns.append(float(np.nanmax(ang[entry_zone])))
     entry_zone_max_turn_deg = max(entry_turns)
 
-    ang_b75 = turns_fn(cut_line_fn(closed, x_full, [1, 0], 0.075), 0.002)
-    it = np.flatnonzero(np.isfinite(ang_b75))
-    if len(it) <= 100:
-        raise ValueError("Insufficient finite points on Buttocks 0.075 cut")
-    ins = it[(it >= it[0] + 50) & (it <= it[-1] - 50)]
-    if len(ins) == 0:
-        raise ValueError("Empty interior on Buttocks 0.075 cut")
-    buttock_0075_peak_deg = float(np.nanmax(np.abs(ang_b75[ins + 25] - ang_b75[ins])))
+    ang_b75 = turns_fn(cut_line_fn(closed, x_full, [1, 0], 0.075), BUTTOCK_0075_STEP_M)
+    buttock_0075_peak_deg = _buttock_peak_turn_change(ang_b75, x_full - bow_x)
 
     grooves: list[float] = []
     k_mins: list[float] = []
