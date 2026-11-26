@@ -10,6 +10,7 @@ import shutil
 import tempfile
 
 from kayakgen.model.hull import Hull
+import numpy as np
 import pytest
 
 from rsi.baseline import load_baseline_reference
@@ -17,10 +18,14 @@ from rsi.evaluator import CandidateMetrics, LoadEvalMetrics, evaluate_tier0_tier
 from rsi.fidelity import CfdMetrics, SeakeepingMetrics, resolve_openfoam_bashrc
 from rsi.gates import GATES_VERSION
 from rsi.genome import DesignSpace, hull_to_vector, vector_to_hull
+from rsi.diagnose import AdaptationHints
 from rsi.loop import (
+    LP_STEP_FRACTIONS,
     CampaignConfig,
     LedgerEntry,
     ResumeStateError,
+    _propose_candidate_vectors,
+    _propose_surrogate_lp_vectors,
     append_jsonl_atomic,
     load_campaign_status,
     run_campaign,
@@ -868,3 +873,63 @@ def test_ledger_entry_has_the_same_shape_in_memory_as_after_a_reload() -> None:
     ).to_dict()
     assert entry == json.loads(json.dumps(entry))
     assert isinstance(entry["metrics"]["catch_widths_mm"], list)
+
+
+def _beam_proposals(limit_offset_m: float) -> tuple[list[float], float, float]:
+    """Propose around one feasible hull while an avoid bound sits limit_offset_m from its beam."""
+    space = DesignSpace.default()
+    incumbent = space.baseline_vector()
+    idx = space.index_by_name()["target_beam_m"]
+    limit = incumbent[idx] + limit_offset_m
+    hints = AdaptationHints(
+        avoid_bounds={"target_beam_m": {"side": "upper", "limit": limit, "reason": "test"}}
+    )
+    proposals = _propose_candidate_vectors(
+        np.random.default_rng(5),
+        12,
+        space,
+        list(incumbent),
+        [0.2 * p.scale for p in space.params],
+        hints,
+        [list(incumbent)],
+        None,
+    )
+    return [vec[idx] for vec, _ in proposals], incumbent[idx], limit
+
+
+def test_avoid_bound_that_excludes_a_feasible_hull_does_not_move_the_population() -> None:
+    """One infeasible hull's beam must not push every proposal below a hull known to be feasible."""
+    beams, incumbent_beam, limit = _beam_proposals(-0.0004)
+    assert limit < incumbent_beam
+    # Proposals may stay where the feasible hull is, and none goes beyond it.
+    assert sum(b >= limit for b in beams) >= len(beams) // 2, sorted(beams)
+    assert max(beams) <= incumbent_beam + 1e-12
+    assert len({round(b, 9) for b in beams}) > 1
+
+
+def test_avoid_bound_with_no_feasible_hull_beyond_it_still_applies() -> None:
+    beams, incumbent_beam, limit = _beam_proposals(+0.0004)
+    assert limit > incumbent_beam
+    assert max(beams) <= limit
+
+
+def test_surrogate_lp_also_offers_parts_of_its_first_step() -> None:
+    """Gates the linear model misses can fail the full step; parts of it are offered beside it."""
+    work = _clean_dir(TEST_WORK_ROOT / "surrogate_lp_fractions")
+    run_campaign(
+        CampaignConfig(iterations=4, population=11, seed=101, work_dir=work, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+    )
+    entries = [json.loads(ln) for ln in (work / "ledger.jsonl").read_text().splitlines()]
+    anchor = np.array(json.loads((work / "pareto.json").read_text())["frontier"][0]["vector"])
+    props = [
+        np.array(vec)
+        for vec, _ in _propose_surrogate_lp_vectors(
+            DesignSpace.default(), load_baseline_reference(), entries, anchor.tolist()
+        )
+    ]
+    assert len(props) >= 1 + len(LP_STEP_FRACTIONS)
+    full_step = props[0] - anchor
+    assert float(np.linalg.norm(full_step)) > 0.0
+    for frac in LP_STEP_FRACTIONS:
+        assert any(np.allclose(p - anchor, frac * full_step, rtol=0.0, atol=1e-12) for p in props[1:]), frac

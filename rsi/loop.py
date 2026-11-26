@@ -62,6 +62,8 @@ from rsi.gates import (
 from rsi.genome import DesignSpace, hull_to_vector, vector_to_hull
 
 SCHEMA_VERSION = "1"
+# Parts of the first surrogate-LP step that are proposed next to the full step.
+LP_STEP_FRACTIONS: tuple[float, ...] = (0.75, 0.5, 0.25)
 PARETO_OBJECTIVES: tuple[str, ...] = (
     "speed_gain_kn",
     "fairness_margin",
@@ -536,6 +538,16 @@ def _propose_candidate_vectors(
     proposals: list[tuple[list[float], str]] = []
     max_attempts = max(population * 3, population + 4)
 
+    # An avoid bound is one infeasible hull's value of a single parameter, applied below as a limit
+    # on that parameter for every proposal. The gate that hull failed depends on other parameters
+    # too, so a feasible hull can lie on the "avoided" side. When one does, the bound is not a real
+    # limit, and a proposal is held to the feasible hull's value instead. Without this, a bound
+    # that excludes the incumbent moves the whole population off it: in k109_rsi_v3 all 12 hulls
+    # of every second iteration got one beam, 0.6 mm under the incumbent's, and failed stability.
+    feas_lo = [min(v[i] for v in pareto_vectors) for i in range(d_dim)] if pareto_vectors else None
+    feas_hi = [max(v[i] for v in pareto_vectors) for i in range(d_dim)] if pareto_vectors else None
+    feas_abs = [max(abs(v[i]) for v in pareto_vectors) for i in range(d_dim)] if pareto_vectors else None
+
     for attempt in range(max_attempts):
         if len(proposals) >= max_attempts:
             break
@@ -621,11 +633,21 @@ def _propose_candidate_vectors(
             lim = rule.get("limit")
             if side == "away_from_nonzero" and isinstance(lim, (int, float)):
                 if abs(cand[idx]) > float(lim):
-                    cand[idx] = math.copysign(float(lim) * 0.25, cand[idx])
+                    if feas_abs is not None and feas_abs[idx] >= float(lim):
+                        if abs(cand[idx]) > feas_abs[idx]:
+                            cand[idx] = math.copysign(feas_abs[idx], cand[idx])
+                    else:
+                        cand[idx] = math.copysign(float(lim) * 0.25, cand[idx])
             elif side == "lower" and isinstance(lim, (int, float)) and cand[idx] < float(lim):
-                cand[idx] = float(lim) + 0.1 * spec.scale
+                if feas_lo is not None and feas_lo[idx] <= float(lim):
+                    cand[idx] = max(cand[idx], feas_lo[idx])
+                else:
+                    cand[idx] = float(lim) + 0.1 * spec.scale
             elif side == "upper" and isinstance(lim, (int, float)) and cand[idx] > float(lim):
-                cand[idx] = float(lim) - 0.1 * spec.scale
+                if feas_hi is not None and feas_hi[idx] >= float(lim):
+                    cand[idx] = min(cand[idx], feas_hi[idx])
+                else:
+                    cand[idx] = float(lim) - 0.1 * spec.scale
 
         clamped = space.clamp(cand)
         # Ensure we didn't produce an exact zero-step copy of parent on attempt
@@ -780,7 +802,16 @@ def _propose_surrogate_lp_vectors(
     )
 
     out: list[tuple[list[float], str]] = []
-    for radius, gm225_lo in ((0.20, gm225_base), (0.35, gm225_base - 0.008)):
+
+    def _offer(step: np.ndarray) -> None:
+        cand = space.clamp((x0 + step * scales).tolist())
+        if all(abs(a - b) <= 1e-12 for a, b in zip(cand, anchor_vec)):
+            return
+        if any(all(abs(a - b) <= 1e-9 for a, b in zip(cand, prev)) for prev, _ in out):
+            return
+        out.append((cand, "surrogate_lp"))
+
+    for lp_index, (radius, gm225_lo) in enumerate(((0.20, gm225_base), (0.35, gm225_base - 0.008))):
         A_ub: list[np.ndarray] = []
         b_ub: list[float] = []
         for idx, (name, lo_b, hi_b, _) in enumerate(specs):
@@ -800,12 +831,14 @@ def _propose_surrogate_lp_vectors(
         res = linprog(c_obj, A_ub=np.array(A_ub), b_ub=np.array(b_ub), bounds=bounds, method="highs")
         if not res.success or float(np.linalg.norm(res.x)) < 1e-4:
             continue
-        cand = space.clamp((x0 + res.x * scales).tolist())
-        if all(abs(a - b) <= 1e-12 for a, b in zip(cand, anchor_vec)):
-            continue
-        if any(all(abs(a - b) <= 1e-9 for a, b in zip(cand, prev)) for prev, _ in out):
-            continue
-        out.append((cand, "surrogate_lp"))
+        _offer(res.x)
+        if lp_index == 0:
+            # The model is linear and some gates are not (waterline hollow, entry-zone turn). On the
+            # k109_rsi_v3 ledger the full step gained 0.0026 kn over its anchor and failed both;
+            # half of it passed every gate with a 0.0013 kn gain. Offering parts of the step lets
+            # one iteration's population do the line search.
+            for frac in LP_STEP_FRACTIONS:
+                _offer(frac * res.x)
     return out
 
 
