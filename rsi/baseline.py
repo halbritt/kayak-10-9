@@ -36,6 +36,8 @@ class LoadBaseline:
     gm_cm: float
     gz_mm: tuple[float, float, float]
     gz_rounded_10_20_30_40_mm: tuple[float, float, float, float]
+    # Unrounded GM from the same mesh hydrostatics the evaluator uses (None for older spec files).
+    gm_cm_exact: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -205,6 +207,10 @@ class BaselineReference:
     fairness: FairnessBaseline
     capytaine: CapytaineBaseline
     openfoam: OpenFoamBaseline
+    # Unrounded speeds at each power level (None for older spec files). `kn_225` is the published
+    # two-decimal table; comparing an exact candidate against it biases every gate and objective
+    # by up to 0.005 kn, which is the whole speed tolerance.
+    kn_225_exact: dict[int, float] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -222,6 +228,11 @@ class BaselineReference:
             "usca_4in_pct": self.usca_4in_pct,
             "mass_at_4in_kg": self.mass_at_4in_kg,
             "kn_225": {int(k): v for k, v in self.kn_225.items()},
+            "kn_225_exact": (
+                None
+                if self.kn_225_exact is None
+                else {int(k): v for k, v in self.kn_225_exact.items()}
+            ),
             "loads": {str(k): v.to_dict() for k, v in self.loads.items()},
             "catch_widths_mm": list(self.catch_widths_mm),
             "catch_beams_225_cm": dict(self.catch_beams_225_cm),
@@ -293,6 +304,12 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
     usca_4in_pct = float(specs["USCA_4in_pct"])
 
     kn_225 = {int(k): float(v) for k, v in hydro_3["kn_225"].items()}
+    kn_exact_raw = hydro_3.get("kn_225_exact")
+    kn_225_exact = (
+        {int(k): float(v) for k, v in kn_exact_raw.items()}
+        if isinstance(kn_exact_raw, dict) and set(kn_exact_raw) == set(hydro_3["kn_225"])
+        else None
+    )
 
     loads: dict[int, LoadBaseline] = {}
     for lb in (225, 265, 300):
@@ -309,6 +326,9 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
             gm_cm=float(spec_load["GM_cm"]),
             gz_mm=(gz_raw[0], gz_raw[1], gz_raw[2]),
             gz_rounded_10_20_30_40_mm=(gz_rnd[0], gz_rnd[1], gz_rnd[2], gz_rnd[3]),
+            gm_cm_exact=(
+                float(spec_load["GM_cm_exact"]) if spec_load.get("GM_cm_exact") is not None else None
+            ),
         )
 
     cuts = {
@@ -401,4 +421,5 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
         fairness=fairness,
         capytaine=capytaine,
         openfoam=openfoam,
+        kn_225_exact=kn_225_exact,
     )

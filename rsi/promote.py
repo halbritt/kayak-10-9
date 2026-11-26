@@ -118,13 +118,18 @@ def _compute_deltas(
     kn_deltas: dict[str, Any] = {}
     gains: list[float] = []
     if metrics.kn_225 is not None:
+        base_kn_exact = baseline.kn_225_exact or {}
         for p_w, base_kn in baseline.kn_225.items():
             cand_exact = (
                 metrics.kn_225_exact.get(p_w)
                 if metrics.kn_225_exact is not None
                 else metrics.kn_225.get(p_w)
             )
-            d_exact = _delta(cand_exact, base_kn, 6)
+            # Exact against exact where the spec file carries unrounded speeds (see rsi.gates).
+            base_ref = (
+                base_kn_exact.get(p_w, base_kn) if metrics.kn_225_exact is not None else base_kn
+            )
+            d_exact = _delta(cand_exact, base_ref, 6)
             kn_deltas[str(p_w)] = d_exact
             if d_exact is not None:
                 gains.append(d_exact)
@@ -224,6 +229,13 @@ def _compute_deltas(
                     "pitch_sig_deg_delta": _delta(
                         cand_r.get("pitch_sig_deg"), base_r.pitch_sig_deg, 4
                     ),
+                    # Not gated. Reported because added form stability shows up here first.
+                    "roll_sig_deg_delta": _delta(
+                        cand_r.get("roll_sig_deg"), base_r.roll_sig_deg, 4
+                    ),
+                    "yaw_mom_rms_Nm_delta": _delta(
+                        cand_r.get("yaw_mom_rms_Nm"), base_r.yaw_mom_rms_Nm, 4
+                    ),
                 }
             )
         seak_delta = {
@@ -255,8 +267,17 @@ def _compute_deltas(
                     ),
                 }
 
+    catch_delta: list[float | None] | None = None
+    if metrics.catch_widths_mm is not None and len(metrics.catch_widths_mm) == len(
+        baseline.catch_widths_mm
+    ):
+        catch_delta = [
+            _delta(c, b, 3) for c, b in zip(metrics.catch_widths_mm, baseline.catch_widths_mm)
+        ]
+
     return {
         "class_form": class_form,
+        "catch_widths_mm": catch_delta,
         "kn_225": kn_deltas,
         "loads": loads_delta,
         "fairness": fairness_delta,

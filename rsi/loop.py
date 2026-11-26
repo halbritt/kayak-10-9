@@ -46,7 +46,7 @@ from rsi.fidelity import (
     evaluate_tier2_cfd,
     evaluate_tier2_seakeeping,
 )
-from rsi.gates import GateReport, GateViolation, evaluate_gates
+from rsi.gates import GATES_VERSION, GateReport, GateViolation, evaluate_gates
 from rsi.genome import DesignSpace, hull_to_vector, vector_to_hull
 
 SCHEMA_VERSION = "1"
@@ -126,6 +126,23 @@ def _git_head_sha(repo_dir: Path) -> str:
     return "unknown"
 
 
+def _git_is_dirty(repo_dir: Path) -> bool | None:
+    """True when tracked files differ from HEAD, so a recorded SHA does not describe the code that ran."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo_dir), "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if proc.returncode == 0:
+            return bool(proc.stdout.strip())
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def _collect_provenance(repo_root: Path, space: DesignSpace, baseline: BaselineReference, seed: int) -> dict[str, Any]:
     import kayakgen
 
@@ -135,7 +152,10 @@ def _collect_provenance(repo_root: Path, space: DesignSpace, baseline: BaselineR
     return {
         "seed": int(seed),
         "kayak_10_9_sha": _git_head_sha(repo_root),
+        "kayak_10_9_dirty": _git_is_dirty(repo_root),
         "kayak_gen_sha": _git_head_sha(kayak_gen_root),
+        "kayak_gen_dirty": _git_is_dirty(kayak_gen_root),
+        "gates_version": GATES_VERSION,
         "design_space_hash": space_hash,
         "baseline_design_hash": baseline.design_hash,
     }
@@ -841,6 +861,14 @@ def run_campaign(
 
     if config.resume:
         state, ledger_entries, pareto_raw = _validate_and_load_resume_state(work, space, baseline)
+        stored_gates = str(state.provenance.get("gates_version", "1"))
+        if stored_gates != GATES_VERSION:
+            raise ResumeStateError(
+                f"Checkpoint verdicts were produced under gates version {stored_gates}; this harness "
+                f"is at gates version {GATES_VERSION}. The stored pass/fail flags are stale and would "
+                "seed the search with hulls the current gates reject. Start a new campaign in a "
+                "fresh work directory."
+            )
         effective_seed = state.seed
         bit_gen.state = state.rng_state
         rng = np.random.Generator(bit_gen)

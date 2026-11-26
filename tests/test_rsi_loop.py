@@ -15,6 +15,7 @@ import pytest
 from rsi.baseline import load_baseline_reference
 from rsi.evaluator import CandidateMetrics, LoadEvalMetrics, evaluate_tier0_tier1
 from rsi.fidelity import CfdMetrics, SeakeepingMetrics, resolve_openfoam_bashrc
+from rsi.gates import GATES_VERSION
 from rsi.genome import DesignSpace, hull_to_vector, vector_to_hull
 from rsi.loop import (
     CampaignConfig,
@@ -63,7 +64,8 @@ def _surrogate_evaluator(hull: Hull, cand_dir: Path, baseline) -> CandidateMetri
 
     loads = {}
     for lb, base_ld in baseline.loads.items():
-        gm = base_ld.gm_cm + 30.0 * d_beam + 40.0 * d_wl0 + 5.0 * d_rock_stern - 0.5 * d_sec_fwd
+        base_gm = base_ld.gm_cm_exact if base_ld.gm_cm_exact is not None else base_ld.gm_cm
+        gm = base_gm + 30.0 * d_beam + 40.0 * d_wl0 + 5.0 * d_rock_stern - 0.5 * d_sec_fwd
         gz = tuple(
             base_ld.gz_mm[i] + 150.0 * d_beam + 180.0 * d_wl0 + 20.0 * d_rock_stern - 1.5 * d_sec_fwd
             for i in range(3)
@@ -81,7 +83,7 @@ def _surrogate_evaluator(hull: Hull, cand_dir: Path, baseline) -> CandidateMetri
 
     kn_exact = {
         w: v - 1.2 * d_beam - 1.5 * d_wl0 - 0.02 * d_sec_fwd
-        for w, v in baseline.kn_225.items()
+        for w, v in (baseline.kn_225_exact or baseline.kn_225).items()
     }
     kn_round = {w: round(v, 2) for w, v in kn_exact.items()}
 
@@ -106,6 +108,7 @@ def _surrogate_evaluator(hull: Hull, cand_dir: Path, baseline) -> CandidateMetri
         usca_4in_pct_exact=usca_exact,
         usca_4in_pct=round(usca_exact, 2),
         transition_dB_per_20cm=baseline.transition_dB_per_20cm,
+        catch_widths_mm=baseline.catch_widths_mm,
         has_surface_fairing=True,
         waterline_hollow_max_deg=0.005,
         fwd_wl_max_turn_deg=-0.01,
@@ -286,6 +289,40 @@ def test_checkpoint_resume_continuity_and_corrupt_resume_rejection() -> None:
             CampaignConfig(iterations=5, population=3, seed=13, work_dir=w_mismatch, resume=True),
             evaluator_fn=_surrogate_evaluator,
         )
+
+
+def test_resume_refuses_a_checkpoint_judged_under_other_gates() -> None:
+    work = _clean_dir(TEST_WORK_ROOT / "stale_gates_base")
+    run_campaign(
+        CampaignConfig(iterations=1, population=3, seed=13, work_dir=work, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+    )
+    provenance = json.loads((work / "state.json").read_text())["provenance"]
+    assert provenance["gates_version"] == GATES_VERSION
+    assert "kayak_10_9_dirty" in provenance and "kayak_gen_dirty" in provenance
+
+    # A checkpoint from before gates were versioned, or from another version, holds verdicts the
+    # current gates may reverse. It stays readable; the search does not continue from it.
+    for label, stale in (("unversioned", None), ("older", "1")):
+        w_stale = _clean_dir(TEST_WORK_ROOT / f"stale_gates_{label}")
+        shutil.copytree(work, w_stale, dirs_exist_ok=True)
+        st_data = json.loads((w_stale / "state.json").read_text())
+        if stale is None:
+            st_data["provenance"].pop("gates_version")
+        else:
+            st_data["provenance"]["gates_version"] = stale
+        write_json_atomic(w_stale / "state.json", st_data)
+
+        assert load_campaign_status(w_stale)["completed_iterations"] == 1
+        ledger_before = (w_stale / "ledger.jsonl").read_text()
+        with pytest.raises(ResumeStateError, match="gates version"):
+            run_campaign(
+                CampaignConfig(
+                    iterations=2, population=3, seed=13, work_dir=w_stale, resume=True, pre_screen=False
+                ),
+                evaluator_fn=_surrogate_evaluator,
+            )
+        assert (w_stale / "ledger.jsonl").read_text() == ledger_before
 
 
 def test_adaptation_and_diagnostic_steering_on_infeasible_seed() -> None:

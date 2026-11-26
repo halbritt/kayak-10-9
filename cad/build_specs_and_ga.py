@@ -101,6 +101,9 @@ def full_eval_3load(label: str, V: np.ndarray, F: np.ndarray, bowsign: int, hull
             xs, zs, Y = half_breadth_grid(r["tris"], 401, 81)
             R = np.array([ittc57(k * KN, Lwl, r["wet"], RHO_SEAWATER, NU_SEAWATER)[0] + michell(xs, zs, Y, k * KN, RHO_SEAWATER, 4000) for k in SP])
             res["kn_225"] = {int(p): round(float(np.interp(p, R * SP * KN, SP)), 2) for p in PW}
+            # Unrounded values: the reference for exact speed comparisons (the 2-decimal table alone
+            # hides up to 0.005 kn per power level).
+            res["kn_225_exact"] = {int(p): float(np.interp(p, R * SP * KN, SP)) for p in PW}
             res["catch_beams_225_cm"] = _station_beams_ge_10cm(V, F, lcg, T, bowsign, [0.0, 0.8, 0.9, 1.0, 1.1, 1.2])
             grid_offs = [1.2, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0, -0.2, -0.4]
             grid_b = _station_beams_ge_10cm(V, F, lcg, T, bowsign, grid_offs)
@@ -108,7 +111,7 @@ def full_eval_3load(label: str, V: np.ndarray, F: np.ndarray, bowsign: int, hull
             res["transition_beams_cm"] = grid_b
             res["transition_dB_per_20cm"] = [round(vals[i + 1] - vals[i], 1) for i in range(len(vals) - 1)]
             res["heel_bow_pitch_deg"] = {f"{a}deg": round(float(-bowsign * np.degrees(float_at(V, F, M, RHO_SEAWATER, np.array([lcg, 0.0, KG]), heel=np.radians(a), free_trim=True)["trim"])), 3) for a in (15, 25)}
-        res[f"load_{lb}"] = {"T_cm": round(T * 100, 2), "Bwl_cm": round(Bwl * 100, 2), "wet_m2": round(float(r["wet"]), 3), "GM_cm": round(GM * 100, 2), "gz_10_20_30_40_mm": gz}
+        res[f"load_{lb}"] = {"T_cm": round(T * 100, 2), "Bwl_cm": round(Bwl * 100, 2), "wet_m2": round(float(r["wet"]), 3), "GM_cm": round(GM * 100, 2), "GM_cm_exact": float(GM * 100), "gz_10_20_30_40_mm": gz}
     return res
 
 

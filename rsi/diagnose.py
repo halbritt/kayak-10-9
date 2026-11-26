@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from rsi.evaluator import CandidateMetrics
 from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 from rsi.gates import (
+    CATCH_WIDTH_TOL_MM,
     SR_4IN_TARGET,
     WATERLINE_HOLLOW_MAX_DEG,
     Z_MIN_ABS_TOL_M,
@@ -626,6 +627,13 @@ def diagnose_candidate(
         for g in violation_gates
     )
     has_usca_or_sr_failure = ("sr_4in_max" in violation_gates or "usca_4in_pct_min" in violation_gates)
+    # Slacker forward sections (lower sec_side_fwd) buy heeled stability with flare, and that flare
+    # is the dominant lever on catch width. Stop steering toward it once less than half the catch
+    # tolerance is left; otherwise every stability or speed hint walks the search into the catch gate.
+    catch_margin = _finite_float_or_none(
+        (gate_report.margins if gate_report is not None else {}).get("catch_width_mm")
+    )
+    fwd_flare_room = catch_margin is None or catch_margin >= 0.5 * CATCH_WIDTH_TOL_MM
 
     for v in violations:
         g_id = v.gate
@@ -828,6 +836,44 @@ def diagnose_candidate(
                 acc.add_direction("bilge_fwd_m", +0.7, weight=1.2)
             acc.bias_toward_baseline("sec_side_fwd", strength=0.6, weight=0.8)
 
+        elif g_id == "catch_width_mm":
+            groups = ("section", "topsides")
+            params = (
+                "sec_side_fwd",
+                "sec_side_fwd_xi",
+                "sheer_max_xi",
+                "deck_fb_fwd_scale",
+                "draft_a1",
+            )
+            items.append(
+                DiagnosticItem(
+                    code="catch_width_widened",
+                    source="gate",
+                    gate=g_id,
+                    severity="error",
+                    groups=groups,
+                    parameters=params,
+                    message=v.message,
+                    margin=margin,
+                )
+            )
+            acc.add_group_blame(groups, 2.0)
+            acc.shrink_group("section", 0.60)
+            sf_val = acc.val("sec_side_fwd")
+            sf_spec = acc.spec_by_name["sec_side_fwd"]
+            if sf_val is not None and sf_val < sf_spec.baseline:
+                # This much forward flare is known to exceed the catch limit; keep proposals above it.
+                acc.add_direction("sec_side_fwd", +1.0, weight=2.5)
+                acc.set_avoid(
+                    "sec_side_fwd",
+                    "lower",
+                    sf_val,
+                    f"catch width exceeded at sec_side_fwd={sf_val:.4f}",
+                )
+            else:
+                acc.add_direction("sec_side_fwd", +0.5, weight=1.5)
+            acc.add_direction("sec_side_fwd_xi", +0.4, weight=0.8)
+
         elif g_id == "transition_monotonic":
             groups = ("topsides", "waterline")
             params = ("sheer_max_hb_m", "sheer_max_xi", "sheer_fwd_exp", "shoulder_round_m", "wl_a0", "wl_a1")
@@ -921,7 +967,8 @@ def diagnose_candidate(
             acc.add_direction("target_beam_m", +0.9, weight=1.5)
             acc.add_direction("rocker_stern_end_m", +0.6, weight=0.9)
             acc.add_direction("wl_a2", +0.5, weight=0.8)
-            acc.add_direction("sec_side_fwd", -0.5, weight=0.8)
+            if fwd_flare_room:
+                acc.add_direction("sec_side_fwd", -0.5, weight=0.8)
 
         elif g_id.startswith("kn_225_") or g_id.startswith("cfd_"):
             is_cfd = g_id.startswith("cfd_")
@@ -955,7 +1002,8 @@ def diagnose_candidate(
             if not has_stability_failure and not has_usca_or_sr_failure:
                 acc.add_direction("target_beam_m", -0.5, weight=1.0)
                 acc.add_direction("wl_a0", -0.4, weight=0.8)
-            acc.add_direction("sec_side_fwd", -0.6, weight=1.0)
+            if fwd_flare_room:
+                acc.add_direction("sec_side_fwd", -0.6, weight=1.0)
             acc.add_direction("wl_a2", -0.4, weight=0.7)
 
         elif g_id.startswith("seak_") or g_id == "seakeeping_valid":
@@ -1008,6 +1056,7 @@ def diagnose_candidate(
             ("sr_4in_max", 0.10, ("fairing", "waterline"), ("target_beam_m", "wl_a0")),
             ("usca_4in_pct_min", 0.50, ("fairing", "waterline"), ("target_beam_m", "wl_a0")),
             ("l4_m_min", 0.01, ("rocker", "draft"), ("rocker_bow_end_m", "draft_a2")),
+            ("catch_width_mm", CATCH_WIDTH_TOL_MM, ("section",), ("sec_side_fwd", "sec_side_fwd_xi")),
             ("kayakgen_waterline_hollow", WATERLINE_HOLLOW_MAX_DEG, ("waterline",), ("wl_a1", "wl_a2")),
             ("fwd_wl_turn_deg", 0.05, ("waterline",), ("wl_a1", "wl_a2")),
             ("entry_zone_turn_deg", 0.01, ("waterline", "section"), ("wl_a1", "bilge_fwd_m")),
@@ -1055,7 +1104,8 @@ def diagnose_candidate(
             else:
                 # Build stability buffer while improving fairness & speed
                 acc.add_direction("rocker_stern_end_m", +0.5, weight=0.6)
-                acc.add_direction("sec_side_fwd", -0.4, weight=0.6)
+                if fwd_flare_room:
+                    acc.add_direction("sec_side_fwd", -0.4, weight=0.6)
                 acc.add_direction("sec_side_aft", -0.4, weight=0.5)
                 acc.add_direction("wl_a1", -0.4, weight=0.5)
                 acc.add_direction("sheer_aft_exp", +0.4, weight=0.5)
@@ -1142,7 +1192,18 @@ def aggregate_diagnostics(
                 dir_sum[param] = dir_sum.get(param, 0.0) + fd * weight
                 dir_cnt[param] = dir_cnt.get(param, 0) + 1
         for param, rule in h.avoid_bounds.items():
-            if param not in avoid_merged:
+            prev = avoid_merged.get(param)
+            if prev is None:
+                avoid_merged[param] = dict(rule)
+                continue
+            # Same-side numeric limits: keep the most conservative one, so the merged hint does
+            # not depend on the order candidates were evaluated in.
+            side = rule.get("side")
+            new_lim = _finite_float_or_none(rule.get("limit"))
+            old_lim = _finite_float_or_none(prev.get("limit"))
+            if side != prev.get("side") or new_lim is None or old_lim is None:
+                continue
+            if (side == "lower" and new_lim > old_lim) or (side == "upper" and new_lim < old_lim):
                 avoid_merged[param] = dict(rule)
         for tm in h.tight_margins:
             if tm not in tight_all:

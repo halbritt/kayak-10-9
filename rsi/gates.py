@@ -10,8 +10,15 @@ from typing import Any
 import numpy as np
 
 from rsi.baseline import BaselineReference
-from rsi.evaluator import CandidateMetrics
+from rsi.evaluator import CATCH_OFFSETS_M, CandidateMetrics
 from rsi.fidelity import CfdMetrics, SeakeepingMetrics
+
+# Bump whenever a gate is added or removed, or a tolerance or comparison baseline changes. A campaign
+# checkpoint stores pass/fail verdicts next to the measurements; verdicts from another version are
+# stale, so a resumed search would breed from hulls the current gates reject.
+#   1: original Tier 0/1/2 gates
+#   2: catch-width gate; speed and GM compared against the unrounded baseline
+GATES_VERSION = "2"
 
 SR_4IN_MAX = 10.99
 SR_4IN_TARGET = 10.90
@@ -19,6 +26,10 @@ USCA_4IN_MIN_PCT = 8.50
 L4_MIN_M = 5.442
 Z_MIN_ABS_TOL_M = 1e-5
 WATERLINE_HOLLOW_MAX_DEG = 0.02
+# Upper-hull width over the paddle stroke (at the LCG and 0.8-1.2 m forward, from 100 mm above the
+# 225 lb waterline) may not grow by more than the project's catch-width comparison limit
+# (docs/surface-fairing/README.md, cad/check_fairing_controls.py). One-sided: narrower is allowed.
+CATCH_WIDTH_TOL_MM = 2.0
 GM_TOL_CM = 0.01
 GZ_TOL_MM = 1e-3
 KN_TOL_KN = 0.005
@@ -301,6 +312,59 @@ def evaluate_gates(
                 0.0,
             )
 
+    # 3b. Wing-paddle catch width non-regression
+    base_catch = tuple(baseline.catch_widths_mm or ())
+    raw_catch = metrics.catch_widths_mm
+    catch_limit_desc = f"baseline + {CATCH_WIDTH_TOL_MM} mm"
+    if not base_catch:
+        _require(
+            "catch_width_mm",
+            False,
+            -1.0,
+            "Baseline catch widths missing; cannot check catch-width non-regression",
+            "missing",
+            catch_limit_desc,
+        )
+    elif raw_catch is None or len(raw_catch) != len(base_catch):
+        _require(
+            "catch_width_mm",
+            False,
+            -1.0,
+            f"Missing or incomplete catch widths: {raw_catch}",
+            "missing" if raw_catch is None else str(tuple(raw_catch)),
+            catch_limit_desc,
+        )
+    else:
+        cand_catch = [_finite_float(v) for v in raw_catch]
+        if any(v is None for v in cand_catch):
+            _require(
+                "catch_width_mm",
+                False,
+                -1.0,
+                f"Non-finite catch widths: {tuple(raw_catch)}",
+                str(tuple(raw_catch)),
+                catch_limit_desc,
+            )
+        else:
+            widening = [c - float(b) for c, b in zip(cand_catch, base_catch) if c is not None]
+            worst = max(range(len(widening)), key=widening.__getitem__)
+            station = (
+                f"+{CATCH_OFFSETS_M[worst]:.1f} m"
+                if len(base_catch) == len(CATCH_OFFSETS_M)
+                else f"station {worst}"
+            )
+            _require(
+                "catch_width_mm",
+                widening[worst] <= CATCH_WIDTH_TOL_MM,
+                CATCH_WIDTH_TOL_MM - widening[worst],
+                (
+                    f"Catch width at {station} widened by {widening[worst]:.2f} mm "
+                    f"(limit {CATCH_WIDTH_TOL_MM} mm over baseline {float(base_catch[worst]):.1f} mm)"
+                ),
+                cand_catch[worst],
+                float(base_catch[worst]) + CATCH_WIDTH_TOL_MM,
+            )
+
     # 4. Kayakgen waterline hollow & surface fairing invariants
     def _check_finite_lt(
         gate: str,
@@ -445,14 +509,16 @@ def evaluate_gates(
             )
             stability_margins_raw.append(-1.0)
         else:
-            gm_diff = gm_val - float(base_load.gm_cm)
+            base_gm_exact = _finite_float(base_load.gm_cm_exact)
+            base_gm = base_gm_exact if base_gm_exact is not None else float(base_load.gm_cm)
+            gm_diff = gm_val - base_gm
             _require(
                 f"gm_{lb}_cm",
                 gm_diff >= -GM_TOL_CM,
                 gm_diff + GM_TOL_CM,
-                f"GM at {lb} lb regressed: {gm_val:.3f} cm < {base_load.gm_cm:.3f} - {GM_TOL_CM}",
+                f"GM at {lb} lb regressed: {gm_val:.3f} cm < {base_gm:.3f} - {GM_TOL_CM}",
                 gm_val,
-                base_load.gm_cm,
+                base_gm,
             )
             stability_margins_raw.append(gm_diff)
 
@@ -530,17 +596,27 @@ def evaluate_gates(
                         )
                         continue
                     vals.append(exact_val)
-                cand_kn_min = min(vals)
-                cand_kn_gain = (exact_val if exact_val is not None else kn_val) - base_kn
+                base_exact = _finite_float((baseline.kn_225_exact or {}).get(p_w))
+                if exact_val is not None and base_exact is not None:
+                    # Unrounded on both sides. Against the two-decimal baseline the effective
+                    # tolerance varies from 0.004 to 0.008 kn with where the baseline happens to
+                    # round, and the speed objective carries the same bias.
+                    cand_kn_min = exact_val
+                    base_ref = base_exact
+                    cand_kn_gain = exact_val - base_exact
+                else:
+                    cand_kn_min = min(vals)
+                    base_ref = float(base_kn)
+                    cand_kn_gain = (exact_val if exact_val is not None else kn_val) - base_kn
                 speed_gains.append(float(cand_kn_gain))
-                diff = cand_kn_min - base_kn
+                diff = cand_kn_min - base_ref
                 _require(
                     f"kn_225_{p_w}w",
                     diff >= -KN_TOL_KN,
                     diff + KN_TOL_KN,
-                    f"Speed at {p_w} W regressed: {cand_kn_min:.4f} kn < {base_kn:.2f} - {KN_TOL_KN}",
+                    f"Speed at {p_w} W regressed: {cand_kn_min:.4f} kn < {base_ref:.4f} - {KN_TOL_KN}",
                     cand_kn_min,
-                    base_kn,
+                    base_ref,
                 )
     speed_gain_kn = float(sum(speed_gains) / len(speed_gains)) if speed_gains else 0.0
 
