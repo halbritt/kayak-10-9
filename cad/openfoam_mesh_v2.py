@@ -89,31 +89,31 @@ minVol 1e-13; minTetQuality 1e-30; minArea -1; minTwist 0.02; minDeterminant 0.0
 minFaceWeight 0.05; minVolRatio 0.01; minTriangleTwist -1; nSmoothScale 4; errorReduction 0.75;
 """
 
-TOPO_SET_DICT_DAMPING = """FoamFile { version 2.0; format ascii; class dictionary; object topoSetDict; }
-actions
-(
-    { name dampInletSet;  type cellSet; action new; source boxToCell; box (-8.1 -1 -3) (-5.8 5 2); }
-    { name dampInlet;     type cellZoneSet; action new; source setToCellZone; set dampInletSet; }
-    { name dampOutletSet; type cellSet; action new; source boxToCell; box (10.0 -1 -3) (13.2 5 2); }
-    { name dampOutlet;    type cellZoneSet; action new; source setToCellZone; set dampOutletSet; }
-    { name dampSideSet;   type cellSet; action new; source boxToCell; box (-5.8 2.9 -3) (10.0 5 2); }
-    { name dampSide;      type cellZoneSet; action new; source setToCellZone; set dampSideSet; }
-);
-"""
+TOPO_SET_DICT_DAMPING = ""  # End sponge uses selectionMode all (no topoSet zones needed).
 
 
-def fv_options_damping(damping_coeff: float = 2.5e6) -> str:
-    """Vertical-velocity DarcyForchheimer damping zones (in water: damping rate = nu * d)."""
-    hdr = "FoamFile { version 2.0; format ascii; class dictionary; object fvOptions; }\n"
-    blocks = []
-    for zone in ("dampInlet", "dampOutlet", "dampSide"):
-        blocks.append(
-            f"{zone}\n{{\n    type explicitPorositySource;\n    explicitPorositySourceCoeffs\n    {{\n"
-            f"        selectionMode cellZone; cellZone {zone}; type DarcyForchheimer;\n"
-            f"        d (0 0 {damping_coeff:.6g}); f (0 0 0);\n"
-            f"        coordinateSystem {{ origin (0 0 0); e1 (1 0 0); e2 (0 1 0); }}\n    }}\n}}\n"
-        )
-    return hdr + "".join(blocks)
+def fv_options_end_sponge(
+    *,
+    frequency: float = 0.15,
+    w: float = 20.0,
+    origin_x: float = 2.56,
+    radius1: float = 7.6,
+    radius2: float = 10.56,
+) -> str:
+    """Horizontal/all-component end sponge (acousticDampingSource) pulling U toward URef."""
+    return (
+        "FoamFile { version 2.0; format ascii; class dictionary; object fvOptions; }\n"
+        "spongeEnds\n{\n"
+        "    type            acousticDampingSource;\n"
+        "    selectionMode   all;\n"
+        f"    frequency       {frequency:g};\n"
+        f"    w               {w:g};\n"
+        "    URef            URef;\n"
+        f"    origin          ({origin_x:g} 0 0);\n"
+        f"    radius1         {radius1:g};\n"
+        f"    radius2         {radius2:g};\n"
+        "    U               U;\n}\n"
+    )
 
 
 def fv_schemes_v2(include_potential_foam: bool = True) -> str:
@@ -175,7 +175,8 @@ def write_interfoam_case_files_v2(
     max_alpha_co: float = 5.0,
     r_delta_t_smoothing: float = 0.05,
     damping_zones: bool = False,
-    damping_coeff: float = 2.5e6,
+    sponge_frequency: float = 0.15,
+    sponge_w: float = 20.0,
     calm_start: str = "potential",
     ramp_steps: int = 300,
 ) -> list[str]:
@@ -193,8 +194,15 @@ def write_interfoam_case_files_v2(
         fv_solution_v2(max_co, max_alpha_co, r_delta_t_smoothing, use_pot), encoding="utf-8"
     )
     if damping_zones:
-        (cdir / "system/topoSetDict").write_text(TOPO_SET_DICT_DAMPING, encoding="utf-8")
-        (cdir / "constant/fvOptions").write_text(fv_options_damping(damping_coeff), encoding="utf-8")
+        (cdir / "constant/fvOptions").write_text(
+            fv_options_end_sponge(frequency=sponge_frequency, w=sponge_w), encoding="utf-8"
+        )
+        ctrl = (cdir / "system/controlDict").read_text(encoding="utf-8")
+        ctrl = ctrl.replace(
+            "functions\n{\n    forces",
+            "functions\n{\n    readURef { type readFields; libs (fieldFunctionObjects); fields (URef); readOnStart true; writeControl none; }\n    forces",
+        )
+        (cdir / "system/controlDict").write_text(ctrl, encoding="utf-8")
     if use_pot:
         (cdir / "0.orig/p").write_text(
             'FoamFile { version 2.0; format ascii; class volScalarField; object p; }\ndimensions [0 2 -2 0 0 0 0];\ninternalField uniform 0;\nboundaryField\n{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      { type zeroGradient; }\n    outlet     { type fixedValue; value uniform 0; }\n    atmosphere { type fixedValue; value uniform 0; }\n    hull       { type zeroGradient; }\n}\n',
@@ -211,7 +219,9 @@ def write_interfoam_case_files_v2(
         f"mpirun -np {np_ranks} renumberMesh -parallel -overwrite > logs/renumber.log 2>&1",
     ]
     if damping_zones:
-        cmds.append(f"mpirun -np {np_ranks} topoSet -parallel > logs/topoSet.log 2>&1")
+        cmds.append(
+            f'mpirun -np {np_ranks} setExprFields -parallel -time 0 -field URef -create -expression "vector({u_mps:.6f}, 0, 0)" -dimensions "[0 1 -1 0 0 0 0]" > logs/setExpr.log 2>&1'
+        )
     if use_pot:
         cmds.append(f"mpirun -np {np_ranks} potentialFoam -initialiseUBCs -parallel -noFunctionObjects > logs/potentialFoam.log 2>&1")
     cmds.append(f"mpirun -np {np_ranks} interFoam -parallel > logs/interFoam.log 2>&1")

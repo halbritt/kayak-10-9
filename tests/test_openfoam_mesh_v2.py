@@ -34,19 +34,20 @@ def test_write_interfoam_case_files_v2_maxco_damping_and_potential(tmp_path: Pat
         max_co=50.0,
         max_alpha_co=5.0,
         damping_zones=True,
-        damping_coeff=2.5e6,
         calm_start="potential",
     )
     fv_sol = (tmp_path / "system/fvSolution").read_text(encoding="utf-8")
+    ctrl = (tmp_path / "system/controlDict").read_text(encoding="utf-8")
     assert "maxCo 50;" in fv_sol
     assert "maxAlphaCo 5;" in fv_sol
     assert "potentialFlow" in fv_sol
     assert (tmp_path / "0.orig/p").is_file()
-    assert (tmp_path / "system/topoSetDict").is_file()
+    assert "readFields" in ctrl and "fields (URef)" in ctrl
     fv_opt = (tmp_path / "constant/fvOptions").read_text(encoding="utf-8")
-    assert "2.5e+06" in fv_opt or "2500000" in fv_opt
+    assert "acousticDampingSource" in fv_opt
+    assert "radius1         7.6;" in fv_opt and "radius2         10.56;" in fv_opt
     joined = " && ".join(cmds)
-    assert "topoSet -parallel" in joined
+    assert "setExprFields -parallel -time 0 -field URef" in joined
     assert "potentialFoam -initialiseUBCs -parallel" in joined
 
 
@@ -63,11 +64,10 @@ def test_write_interfoam_case_files_v2_ramp_and_no_damping(tmp_path: Path) -> No
         ramp_steps=300,
     )
     assert not (tmp_path / "constant/fvOptions").exists()
-    assert not (tmp_path / "system/topoSetDict").exists()
     assert not (tmp_path / "0.orig/p").exists()
     u_txt = (tmp_path / "0.orig/U").read_text(encoding="utf-8")
     assert "uniformFixedValue" in u_txt
     assert "300 (3.189600 0 0)" in u_txt
     assert "maxCo 25;" in (tmp_path / "system/fvSolution").read_text(encoding="utf-8")
     assert all("potentialFoam" not in c for c in cmds)
-    assert all("topoSet" not in c for c in cmds)
+    assert all("setExprFields" not in c for c in cmds)
