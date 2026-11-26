@@ -933,3 +933,44 @@ def test_surrogate_lp_also_offers_parts_of_its_first_step() -> None:
     assert float(np.linalg.norm(full_step)) > 0.0
     for frac in LP_STEP_FRACTIONS:
         assert any(np.allclose(p - anchor, frac * full_step, rtol=0.0, atol=1e-12) for p in props[1:]), frac
+
+
+def test_surrogate_lp_keeps_zero_sensitivity_topsides_untouched() -> None:
+    """L1 step regularization keeps zero-sensitivity parameters at their anchor value."""
+    work = _clean_dir(TEST_WORK_ROOT / "surrogate_lp_l1")
+    run_campaign(
+        CampaignConfig(iterations=4, population=11, seed=101, work_dir=work, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+    )
+    entries = [json.loads(ln) for ln in (work / "ledger.jsonl").read_text().splitlines()]
+    anchor = json.loads((work / "pareto.json").read_text())["frontier"][0]["vector"]
+    space = DesignSpace.default()
+    idx = space.index_by_name()
+    lp_props = _propose_surrogate_lp_vectors(space, load_baseline_reference(), entries, anchor)
+    assert lp_props
+    for vec, _ in lp_props:
+        for name in ("crown_fwd", "deck_fb_fwd_scale", "sheer_h_fwd_frac", "shoulder_round_m"):
+            assert abs(vec[idx[name]] - anchor[idx[name]]) < 1e-9, name
+
+
+def test_select_diverse_tier2_candidates_avoids_near_duplicate_clones() -> None:
+    """Tier-2 shortlist spreads selections across distinct designs instead of testing clones."""
+    from rsi.loop import _select_diverse_tier2_candidates
+
+    space = DesignSpace.default()
+    base = space.baseline_vector()
+    idx = space.index_by_name()
+    tb_scale = next(p.scale for p in space.params if p.name == "target_beam_m")
+
+    def _cand(cid: str, delta_scales: float) -> dict[str, object]:
+        v = list(base)
+        v[idx["target_beam_m"]] += delta_scales * tb_scale
+        return {"candidate_id": cid, "vector": v}
+
+    c_top = _cand("top", 0.0)
+    c_clone = _cand("clone", 0.05)
+    c_distinct = _cand("distinct", 0.40)
+    picked = _select_diverse_tier2_candidates([c_top, c_clone, c_distinct], 2, space, min_norm_dist=0.25)
+    assert [c["candidate_id"] for c in picked] == ["top", "distinct"]
+    # k=1 still returns only the top utility candidate
+    assert [c["candidate_id"] for c in _select_diverse_tier2_candidates([c_top, c_clone, c_distinct], 1, space)] == ["top"]

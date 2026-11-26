@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 import contextlib
+import ctypes
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import hashlib
@@ -357,8 +358,7 @@ def _gate_report_from_dict(raw: dict[str, Any]) -> GateReport:
 _WORKER_BASELINES: dict[str, BaselineReference] = {}
 
 
-def _init_eval_worker() -> None:
-    """Pin BLAS/OpenMP threads to 1 per worker process to prevent oversubscription."""
+def _set_blas_env_single_thread() -> None:
     for var in (
         "OMP_NUM_THREADS",
         "OPENBLAS_NUM_THREADS",
@@ -367,6 +367,25 @@ def _init_eval_worker() -> None:
         "NUMEXPR_NUM_THREADS",
     ):
         os.environ[var] = "1"
+
+
+def _init_eval_worker() -> None:
+    """Pin BLAS/OpenMP threads to 1 per worker process to prevent oversubscription."""
+    _set_blas_env_single_thread()
+    with contextlib.suppress(Exception):
+        maps_text = Path("/proc/self/maps").read_text(encoding="utf-8")
+        libs = sorted({ln.split()[-1] for ln in maps_text.splitlines() if "openblas" in ln.lower()})
+        for lib_path in libs:
+            lib = ctypes.CDLL(lib_path)
+            for sym in (
+                "scipy_openblas_set_num_threads64_",
+                "scipy_openblas_set_num_threads",
+                "openblas_set_num_threads",
+            ):
+                fn = getattr(lib, sym, None)
+                if fn is not None:
+                    fn.argtypes = [ctypes.c_int]
+                    fn(1)
 
 
 def _prescreen_and_evaluate(
@@ -802,6 +821,8 @@ def _propose_surrogate_lp_vectors(
     )
 
     out: list[tuple[list[float], str]] = []
+    l1_penalty = 5e-5
+    d_dim = len(space.params)
 
     def _offer(step: np.ndarray) -> None:
         cand = space.clamp((x0 + step * scales).tolist())
@@ -822,24 +843,81 @@ def _propose_surrogate_lp_vectors(
             if eff_lo is not None:
                 A_ub.append(-grads[idx])
                 b_ub.append(float(b0[idx] - eff_lo))
-        bounds = []
-        for i in range(len(space.params)):
+        bounds_pos: list[tuple[float, float]] = []
+        bounds_neg: list[tuple[float, float]] = []
+        for i in range(d_dim):
             if i == draft_a1_idx and abs(x0[i]) < 1e-6:
-                bounds.append((0.0, 0.0))
+                lo_i, hi_i = 0.0, 0.0
             else:
-                bounds.append((max(float(lo_full[i]), -radius), min(float(hi_full[i]), radius)))
-        res = linprog(c_obj, A_ub=np.array(A_ub), b_ub=np.array(b_ub), bounds=bounds, method="highs")
-        if not res.success or float(np.linalg.norm(res.x)) < 1e-4:
+                lo_i = max(float(lo_full[i]), -radius)
+                hi_i = min(float(hi_full[i]), radius)
+            bounds_pos.append((0.0, max(0.0, hi_i)))
+            bounds_neg.append((0.0, max(0.0, -lo_i)))
+        A_mat = np.array(A_ub, dtype=float)
+        A_aug = np.hstack([A_mat, -A_mat])
+        c_aug = np.concatenate([c_obj + l1_penalty, -c_obj + l1_penalty])
+        res = linprog(
+            c_aug,
+            A_ub=A_aug,
+            b_ub=np.array(b_ub, dtype=float),
+            bounds=bounds_pos + bounds_neg,
+            method="highs",
+        )
+        if not res.success:
             continue
-        _offer(res.x)
+        dx = res.x[:d_dim] - res.x[d_dim:]
+        if float(np.linalg.norm(dx)) < 1e-4:
+            continue
+        _offer(dx)
         if lp_index == 0:
             # The model is linear and some gates are not (waterline hollow, entry-zone turn). On the
             # k109_rsi_v3 ledger the full step gained 0.0026 kn over its anchor and failed both;
             # half of it passed every gate with a 0.0013 kn gain. Offering parts of the step lets
             # one iteration's population do the line search.
             for frac in LP_STEP_FRACTIONS:
-                _offer(frac * res.x)
+                _offer(frac * dx)
     return out
+
+
+def _select_diverse_tier2_candidates(
+    candidates: Sequence[dict[str, Any]],
+    k: int,
+    space: DesignSpace,
+    min_norm_dist: float = 0.25,
+) -> list[dict[str, Any]]:
+    """Select up to k high-utility candidates separated by normalized parameter distance."""
+    if k <= 0 or not candidates:
+        return []
+    scales = np.array([p.scale for p in space.params], dtype=float)
+    chosen: list[dict[str, Any]] = []
+    chosen_vecs: list[np.ndarray] = []
+    remaining: list[tuple[dict[str, Any], np.ndarray | None]] = []
+
+    def _norm_vec(entry: dict[str, Any]) -> np.ndarray | None:
+        v = entry.get("vector")
+        if isinstance(v, list) and len(v) == len(scales):
+            return np.array(v, dtype=float) / scales
+        return None
+
+    for cand in candidates:
+        nv = _norm_vec(cand)
+        if len(chosen) == 0 or nv is None or not chosen_vecs:
+            chosen.append(cand)
+            if nv is not None:
+                chosen_vecs.append(nv)
+        elif min(float(np.linalg.norm(nv - prev)) for prev in chosen_vecs) >= min_norm_dist:
+            chosen.append(cand)
+            chosen_vecs.append(nv)
+        else:
+            remaining.append((cand, nv))
+        if len(chosen) >= k:
+            return chosen
+
+    for cand, _ in remaining:
+        if len(chosen) >= k:
+            break
+        chosen.append(cand)
+    return chosen
 
 
 def _validate_and_load_resume_state(
@@ -1193,6 +1271,7 @@ def run_campaign(
     with contextlib.ExitStack() as pool_stack:
         eval_pool: ProcessPoolExecutor | None = None
         if config.workers > 1 and evaluator_fn is None and start_iter <= config.iterations:
+            _set_blas_env_single_thread()
             eval_pool = pool_stack.enter_context(
                 ProcessPoolExecutor(
                     max_workers=min(config.workers, config.population),
@@ -1429,7 +1508,7 @@ def run_campaign(
             ),
             reverse=True,
         )
-        selected = candidates_to_verify[: config.tier2_top]
+        selected = _select_diverse_tier2_candidates(candidates_to_verify, config.tier2_top, space)
 
         for entry in selected:
             d_hash = str(entry["design_hash"])
