@@ -457,7 +457,10 @@ class LedgerEntry:
     schema_version: str = SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        # An entry is read back from JSON on resume, where every tuple has become a list. Hold that
+        # same shape in the running process, so code that reads entries (the surrogate LP checks
+        # for lists) cannot work after a reload and silently do nothing in a live run.
+        return json.loads(json.dumps(asdict(self)))
 
 
 @dataclass(frozen=True)

@@ -19,6 +19,7 @@ from rsi.gates import GATES_VERSION
 from rsi.genome import DesignSpace, hull_to_vector, vector_to_hull
 from rsi.loop import (
     CampaignConfig,
+    LedgerEntry,
     ResumeStateError,
     append_jsonl_atomic,
     load_campaign_status,
@@ -832,3 +833,38 @@ def test_surrogate_lp_proposes_feasible_positive_gain_step() -> None:
         assert rep.passed is True, rep.violations
         best_speed_gains.append(rep.objectives["speed_gain_kn"])
     assert max(best_speed_gains) > pareto[0]["gate_report"]["objectives"]["speed_gain_kn"] - 1e-6
+
+
+def test_surrogate_lp_fires_inside_a_campaign_that_never_reloaded_its_ledger() -> None:
+    """The LP step reads entries the running process holds, not only entries read back from disk."""
+    work = _clean_dir(TEST_WORK_ROOT / "surrogate_lp_live")
+    run_campaign(
+        CampaignConfig(iterations=6, population=11, seed=101, work_dir=work, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+    )
+    entries = [json.loads(ln) for ln in (work / "ledger.jsonl").read_text().splitlines()]
+    strategies = {(e.get("provenance") or {}).get("strategy") for e in entries}
+    assert "surrogate_lp" in strategies, sorted(str(s) for s in strategies)
+
+
+def test_ledger_entry_has_the_same_shape_in_memory_as_after_a_reload() -> None:
+    """A tuple in memory is a list after a resume; code that reads entries must see one shape."""
+    ref = load_baseline_reference()
+    metrics = _surrogate_evaluator(ref.hull, TEST_WORK_ROOT / "entry_shape", ref)
+    assert isinstance(metrics.catch_widths_mm, tuple)
+    entry = LedgerEntry(
+        candidate_id="shape",
+        iteration=0,
+        index=0,
+        timestamp_utc="2026-01-01T00:00:00Z",
+        status="evaluated",
+        design_hash=ref.design_hash,
+        hull_path=None,
+        vector=DesignSpace.default().baseline_vector(),
+        metrics=metrics.to_dict(),
+        gate_report=None,
+        diagnosis={},
+        provenance={},
+    ).to_dict()
+    assert entry == json.loads(json.dumps(entry))
+    assert isinstance(entry["metrics"]["catch_widths_mm"], list)
