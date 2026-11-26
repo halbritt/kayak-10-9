@@ -56,6 +56,12 @@ def test_load_baseline_reference_exact_values() -> None:
     assert ref.capytaine.gm_t_cm == 4.09
     assert ref.capytaine.gm_t_cm_265_baja == 3.12
     assert len(ref.capytaine.target_conditions_225) == 8
+    # The seakeeping floor is the Epic 18X in the same conditions, and both sets of rows must come
+    # from a body with irregular-frequency removal (the released dataset has none).
+    assert [(r.speed_kn, r.heading, r.sea) for r in ref.capytaine.epic18x_conditions_225] == [
+        (r.speed_kn, r.heading, r.sea) for r in ref.capytaine.target_conditions_225
+    ]
+    assert ref.capytaine.info_225["lid_panels"] > 0
 
     assert ref.openfoam.outer_stl_sha256 == ref.outer_stl_sha256
     assert ref.openfoam.speed_5_5kn.drag_total_N == 20.503

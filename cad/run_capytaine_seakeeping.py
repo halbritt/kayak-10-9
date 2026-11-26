@@ -29,6 +29,10 @@ cpt.set_logging("ERROR")
 RHO_AIR = 1.225
 HEADINGS = {"head": 180.0, "bow_quarter": 135.0, "beam": 90.0, "stern_quarter": 45.0, "following": 0.0}
 PERIODS = np.concatenate([np.arange(1.05, 3.0, 0.15), np.arange(3.0, 5.0, 0.25), np.arange(5.0, 9.01, 0.5)])
+# Highest forward speed any case here is solved at. With PERIODS it fixes the highest encounter
+# frequency the BEM sees (head seas, shortest period), which is what the lid has to cover.
+LID_SPEED_KN = 5.7
+LID_OMEGA_MARGIN = 1.25
 SEAS = {
     "Bay chop (Hs 0.35m, Tp 2.5s)": (0.35, 2.5),
     "Steep whitecaps (Hs 0.65m, Tp 3.8s)": (0.65, 3.8),
@@ -61,6 +65,12 @@ def _deck_freeboard_at(V: np.ndarray, F: np.ndarray, xv: float, draft: float) ->
 def _keel_depth_at(V: np.ndarray, F: np.ndarray, xv: float, draft: float) -> float:
     sl = trimesh.intersections.mesh_plane(trimesh.Trimesh(V, F, process=False), [1.0, 0.0, 0.0], [float(xv), 0.0, 0.0]).reshape(-1, 3)
     return max(float(draft - sl[:, 2].min()), 0.002)
+
+
+def lid_omega_max() -> float:
+    """Encounter frequency the irregular-frequency lid must clear, with margin [rad/s]."""
+    om = 2.0 * np.pi / float(PERIODS.min())
+    return LID_OMEGA_MARGIN * (om + om**2 / G * LID_SPEED_KN * KN)
 
 
 def build_bem_body(name: str, V: np.ndarray, F: np.ndarray, mass_kg: float, kg_m: float = 0.25, nx: int = 64, ng: int = 10) -> tuple[cpt.FloatingBody, np.ndarray, dict]:
@@ -103,13 +113,21 @@ def build_bem_body(name: str, V: np.ndarray, F: np.ndarray, mass_kg: float, kg_m
     mesh = cpt.Mesh(Vp, np.array(Fp), name=f"{name}_mesh")
     draft = float(-r["zmin"])
     cg = np.array([0.0, 0.0, kg_m - draft])
-    body = cpt.FloatingBody(mesh=mesh, center_of_mass=cg, mass=mass_kg, name=name)
+    # Irregular-frequency removal. A panel solution of a surface-piercing hull is wrong near the
+    # sloshing frequencies of the water that would fill its inside. For this hull (0.48 m beam,
+    # 0.09 m draft) the first is near 11 to 12 rad/s, inside the encounter-frequency range of every
+    # forward-speed case. Without the lid, v0.2.3 at 4.5 kn bow-quarter read a heave excitation of
+    # 10740 N/m at T = 1.05 s (90 N/m with it), and that one point was 28 % of the seat-acceleration
+    # integral. Below 5.5 rad/s encounter the lid changes A33, B33 and F3 by under 0.5 %.
+    lid_mesh = mesh.generate_lid(z=mesh.lowest_lid_position(omega_max=lid_omega_max()))
+    body = cpt.FloatingBody(mesh=mesh, lid_mesh=lid_mesh, center_of_mass=cg, mass=mass_kg, name=name)
     body.add_all_rigid_body_dofs(rotation_center=cg)
     assert body.volume > 0, f"Expected outward BEM normals on {name}"
 
     x_bow_abs, x_stern_abs = float(V[:, 0].max()), float(V[:, 0].min())
     info = {
         "panels": int(mesh.nb_faces),
+        "lid_panels": int(lid_mesh.nb_faces),
         "mass_kg": round(mass_kg, 3),
         "kg_m": round(kg_m, 4),
         "vol_mesh_L": round(float(body.volume) * 1000.0, 2),

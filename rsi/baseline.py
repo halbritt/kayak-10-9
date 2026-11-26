@@ -18,6 +18,12 @@ FAIRNESS_FOREBODY_KEEL_GROOVE_MAX_MM = 1e-4  # 1e-7 m
 FAIRNESS_FOREBODY_K_MIN_PER_M = 0.0
 FAIRNESS_FOREBODY_DK_DS_MAX_PER_M2 = 210.0
 
+# Seakeeping rows the Tier 2 gates compare against, for v0.2.3 and for the Epic 18X: the output of
+# cad/run_capytaine_seakeeping.py with irregular-frequency removal. data/capytaine-seakeeping.json
+# is the dataset released with v0.2.3. It was computed without that removal (its 4.5 kn bow-quarter
+# seat accelerations are 8 to 17 % too high) and stays as released until the owner replaces it.
+SEAKEEPING_REFERENCE_FILE = "rsi-seakeeping-reference.json"
+
 TARGET_CAPYTAINE_SPEEDS_KN = (4.5, 5.7)
 TARGET_CAPYTAINE_HEADINGS = ("head", "bow_quarter")
 TARGET_CAPYTAINE_SEAS = (
@@ -128,6 +134,9 @@ class CapytaineBaseline:
     gm_t_cm_265_baja: float
     roll_period_s_265_baja: float
     rows_265_baja: tuple[SeakeepingConditionBaseline, ...]
+    # The Epic 18X in the same model, load and conditions. It is the seakeeping floor (owner,
+    # 2026-11-26): a candidate may not be worse than it.
+    epic18x_conditions_225: tuple[SeakeepingConditionBaseline, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -144,6 +153,7 @@ class CapytaineBaseline:
             "gm_t_cm_265_baja": self.gm_t_cm_265_baja,
             "roll_period_s_265_baja": self.roll_period_s_265_baja,
             "rows_265_baja": [r.to_dict() for r in self.rows_265_baja],
+            "epic18x_conditions_225": [r.to_dict() for r in self.epic18x_conditions_225],
         }
 
 
@@ -309,7 +319,7 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
     specs = json.loads((root / "data" / "kayak-10-9-specs.json").read_text())
     controls = json.loads((root / "docs" / "surface-fairing" / "controls.json").read_text())["candidate"]
     fairness_raw = json.loads((root / "docs" / "surface-fairing" / "fairness.json").read_text())["v0.2.2"]
-    capytaine_raw = json.loads((root / "data" / "capytaine-seakeeping.json").read_text())
+    capytaine_raw = json.loads((root / "data" / SEAKEEPING_REFERENCE_FILE).read_text())
     openfoam_raw = json.loads((root / "data" / "openfoam-cfd-metrics.json").read_text())
 
     hydro_3 = specs["hydro_3load"]
@@ -409,6 +419,13 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
         and r.sea in TARGET_CAPYTAINE_SEAS
     )
     rows_265 = _parse_seakeeping_rows(k265["rows"])
+    epic_225 = tuple(
+        r
+        for r in _parse_seakeeping_rows(capytaine_raw["epic18x_225"]["rows"])
+        if r.speed_kn in TARGET_CAPYTAINE_SPEEDS_KN
+        and r.heading in TARGET_CAPYTAINE_HEADINGS
+        and r.sea in TARGET_CAPYTAINE_SEAS
+    )
     capytaine = CapytaineBaseline(
         outer_stl_sha256=str(capytaine_raw["metadata"]["kayak_10_9_outer_stl_sha256"]),
         capytaine_version=str(capytaine_raw["metadata"]["capytaine_version"]),
@@ -423,6 +440,7 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
         gm_t_cm_265_baja=float(k265["gm_t_cm"]),
         roll_period_s_265_baja=float(k265["roll_period_s"]),
         rows_265_baja=rows_265,
+        epic18x_conditions_225=epic_225,
     )
 
     of_meta = openfoam_raw["metadata"]

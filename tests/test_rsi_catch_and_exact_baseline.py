@@ -9,6 +9,7 @@ from pathlib import Path
 from rsi.baseline import BaselineReference, load_baseline_reference
 from rsi.diagnose import AdaptationHints, DiagnosticReport, aggregate_diagnostics, diagnose_candidate
 from rsi.evaluator import CATCH_OFFSETS_M, CandidateMetrics, LoadEvalMetrics, evaluate_tier0_tier1
+from rsi.fidelity import SeakeepingMetrics
 from rsi.gates import CATCH_WIDTH_TOL_MM, GM_TOL_CM, KN_TOL_KN, evaluate_gates
 from rsi.genome import DesignSpace, vector_to_hull
 from rsi.promote import compare_candidate
@@ -406,3 +407,94 @@ def test_fixed_frame_catch_and_report_only_fields_on_real_geometry() -> None:
     comp = compare_candidate(shifted_hull, ref, work, metrics=m)
     assert "report_only" in comp.deltas and comp.deltas["kn_265"] is not None
     assert "race_pace_90_120_gain_kn" in comp.deltas["kn_225"]
+
+
+def _seak_keyed(rows: tuple) -> dict:
+    return {(r.speed_kn, r.heading, r.sea): r for r in rows}
+
+
+def _seak_metrics(rows: list[dict], *, quick: bool = False, gm_t_cm: float = 0.0) -> SeakeepingMetrics:
+    return SeakeepingMetrics(
+        valid=True, error=None, quick=quick, elapsed_s=1.0, gm_t_cm=gm_t_cm, rows=tuple(rows)
+    )
+
+
+def _seak_rows_toward_floor(ref: BaselineReference, frac: float, **scale: float) -> list[dict]:
+    """Rows frac of the way from v0.2.3 (0) to the seakeeping limit (1), optionally scaled per field."""
+    floor = _seak_keyed(ref.capytaine.epic18x_conditions_225)
+    rows = []
+    for key, base in _seak_keyed(ref.capytaine.target_conditions_225).items():
+        row: dict = {"speed_kn": key[0], "heading": key[1], "sea": key[2]}
+        for fld in ("bow_dips_per_min", "seat_acc_rms_ms2"):
+            b = getattr(base, fld)
+            lim = max(getattr(floor[key], fld), b)
+            at = lim if frac >= 1.0 else b + frac * (lim - b)
+            row[fld] = at * scale.get(fld, 1.0)
+        rows.append(row)
+    return rows
+
+
+def test_seakeeping_floor_is_the_epic_18x_not_the_baseline() -> None:
+    """Owner, 2026-11-26: seakeeping may not regress to be worse than the Epic 18X."""
+    ref = load_baseline_reference()
+    base = _seak_keyed(ref.capytaine.target_conditions_225)
+    floor = _seak_keyed(ref.capytaine.epic18x_conditions_225)
+    assert set(floor) == set(base) and len(base) == 8
+    metrics = _baseline_like(ref)
+    gm = ref.capytaine.gm_t_cm
+
+    # v0.2.3, a hull half-way to the floor and a hull exactly at the floor all pass.
+    for frac in (0.0, 0.5, 1.0):
+        rep = evaluate_gates(metrics, ref, seakeeping=_seak_metrics(_seak_rows_toward_floor(ref, frac), gm_t_cm=gm))
+        assert rep.passed is True, (frac, rep.violations)
+    # The half-way hull is well outside the earlier limit of v0.2.3 + 1.5 % in some condition.
+    half = _seak_rows_toward_floor(ref, 0.5)
+    assert any(r["bow_dips_per_min"] > 1.05 * base[(r["speed_kn"], r["heading"], r["sea"])].bow_dips_per_min for r in half)
+
+    # One per cent beyond the floor fails, on the measure that crossed it and no other.
+    for fld, gate_prefix in (("seat_acc_rms_ms2", "seak_seat_acc_"), ("bow_dips_per_min", "seak_bow_dips_")):
+        rep = evaluate_gates(
+            metrics, ref, seakeeping=_seak_metrics(_seak_rows_toward_floor(ref, 1.0, **{fld: 1.01}), gm_t_cm=gm)
+        )
+        assert rep.passed is False
+        assert {v.gate[: len(gate_prefix)] for v in rep.violations} == {gate_prefix}
+        assert len(rep.violations) == 8
+
+
+def test_seakeeping_limit_is_the_baseline_where_the_baseline_is_behind_the_18x() -> None:
+    """The baseline must pass its own gate, and nothing may fall below both boats."""
+    ref = load_baseline_reference()
+    better_18x = tuple(
+        replace(r, seat_acc_rms_ms2=0.5 * r.seat_acc_rms_ms2, bow_dips_per_min=0.5 * r.bow_dips_per_min)
+        for r in ref.capytaine.epic18x_conditions_225
+    )
+    ref2 = replace(ref, capytaine=replace(ref.capytaine, epic18x_conditions_225=better_18x))
+    metrics = _baseline_like(ref2)
+    gm = ref2.capytaine.gm_t_cm
+    at_baseline = _seak_rows_toward_floor(ref2, 0.0)
+    assert evaluate_gates(metrics, ref2, seakeeping=_seak_metrics(at_baseline, gm_t_cm=gm)).passed is True
+    worse = _seak_rows_toward_floor(ref2, 0.0, seat_acc_rms_ms2=1.01)
+    rep = evaluate_gates(metrics, ref2, seakeeping=_seak_metrics(worse, gm_t_cm=gm))
+    assert rep.passed is False and all(v.gate.startswith("seak_seat_acc_") for v in rep.violations)
+
+
+def test_seakeeping_gate_fails_closed_without_18x_rows_and_allows_for_the_quick_grid() -> None:
+    ref = load_baseline_reference()
+    metrics = _baseline_like(ref)
+    gm = ref.capytaine.gm_t_cm
+
+    no_floor = replace(ref, capytaine=replace(ref.capytaine, epic18x_conditions_225=()))
+    rep = evaluate_gates(metrics, no_floor, seakeeping=_seak_metrics(_seak_rows_toward_floor(ref, 0.0), gm_t_cm=gm))
+    assert rep.passed is False
+    assert {v.gate[:19] for v in rep.violations} == {"seak_floor_missing_"}
+
+    def quick_rows(scale: float) -> list[dict]:
+        return [
+            r
+            for r in _seak_rows_toward_floor(ref, 1.0, seat_acc_rms_ms2=scale, bow_dips_per_min=scale)
+            if r["speed_kn"] == 4.5 and r["heading"] == "head"
+        ]
+
+    # Quick mode solves every second period, so it gets 5 % against rows from the full grid.
+    assert evaluate_gates(metrics, ref, seakeeping=_seak_metrics(quick_rows(1.04), quick=True, gm_t_cm=gm)).passed is True
+    assert evaluate_gates(metrics, ref, seakeeping=_seak_metrics(quick_rows(1.06), quick=True, gm_t_cm=gm)).passed is False

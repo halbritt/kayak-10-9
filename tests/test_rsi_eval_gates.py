@@ -707,3 +707,63 @@ def test_solve_bem_full_fast_matches_solve_bem_case_across_headings(
 
 def fast_row_val(row: dict[str, object], key: str) -> object:
     return row[key]
+
+
+def test_bem_body_has_a_lid_and_no_irregular_frequency_spike_at_bow_quarter() -> None:
+    """Without a lid the shortest period at 4.5 kn bow-quarter read a heave force 100 times too large."""
+    import contextlib
+    import sys
+
+    import capytaine as cpt
+    import trimesh
+
+    from rsi.evaluator import _ensure_cad_on_path
+    from rsi.fidelity import _single_thread_blas_env
+
+    _ensure_cad_on_path()
+    import run_capytaine_seakeeping as cap_mod
+    from deck_geometry import SculptedKayakSurface
+    from hydro import G, KN, LB, RHO_SEAWATER
+
+    ref = load_baseline_reference()
+    tmp_hull = Path.home() / ".cache" / "kayak-10-9" / "test-work" / "bem_lid.hull.json"
+    tmp_hull.parent.mkdir(parents=True, exist_ok=True)
+    tmp_hull.write_text(ref.hull.model_dump_json(indent=2) + "\n")
+    surf = SculptedKayakSurface(tmp_hull)
+    closed = trimesh.util.concatenate((surf.build_hull_shell(), surf.build_deck_shell(cut_openings=False)))
+    closed.merge_vertices(merge_tex=True, merge_norm=True)
+    V = np.asarray(closed.vertices, dtype=float).copy()
+    F = np.asarray(closed.faces, dtype=int).copy()
+    V[:, 0] = -V[:, 0]
+    F = F[:, ::-1]
+    if trimesh.Trimesh(V, F, process=False).volume < 0:
+        F = F[:, ::-1]
+    V[:, 0] -= V[:, 0].min()
+    V[:, 1] -= np.median(V[:, 1])
+    V[:, 2] -= V[:, 2].min()
+
+    with contextlib.redirect_stdout(sys.stderr), _single_thread_blas_env(True):
+        body, _, info = cap_mod.build_bem_body("lid_225", V, F, mass_kg=225.0 * LB, kg_m=0.25)
+        assert body.lid_mesh is not None
+        assert info["lid_panels"] == body.lid_mesh.nb_faces > 0
+        # The lid has to clear the highest encounter frequency any case is solved at.
+        top = 2.0 * np.pi / float(cap_mod.PERIODS.min())
+        assert cap_mod.lid_omega_max() > top + top**2 / G * 5.7 * KN
+
+        heave = {}
+        for period in (1.05, 1.20):
+            problem = cpt.DiffractionProblem(
+                body=body,
+                omega=2.0 * np.pi / period,
+                wave_direction=np.radians(cap_mod.HEADINGS["bow_quarter"]),
+                forward_speed=4.5 * KN,
+                rho=RHO_SEAWATER,
+                g=G,
+                water_depth=np.inf,
+            )
+            ds = cpt.assemble_dataset([cpt.BEMSolver().solve(problem)], hydrostatics=False)
+            heave[period] = float(abs(np.squeeze(ds.excitation_force.sel(influenced_dof="Heave").values)))
+
+    # Smooth physics: the force keeps falling toward the shortest wave. With no lid the 1.05 s
+    # point sat on an irregular frequency and read 10740 N/m against 1481 N/m at 1.20 s.
+    assert heave[1.05] < heave[1.20], heave

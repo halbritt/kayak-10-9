@@ -127,7 +127,9 @@ def _clean_spectra_rows(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _seakeeping_cache_key(hull: Hull, *, quick: bool) -> tuple[str, dict[str, Any]]:
     key_obj = {
         "solver": "capytaine_seakeeping",
-        "schema_version": 1,
+        # 3: build_bem_body adds a lid mesh (irregular-frequency removal). Rows cached under 1 and 2
+        # came from a body without one and are wrong at 4.5 kn bow-quarter.
+        "schema_version": 3,
         "design_hash": hull.design_hash(),
         "quick": bool(quick),
         "loads": ["225"] if quick else ["225", "265_baja"],

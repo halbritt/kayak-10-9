@@ -21,7 +21,9 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #   3: CFD_DRAG_TOL_N = 0.25 N matching 500-step interFoam/snappyHexMesh noise floor
 #   4: race-pace 90/120W objective, SR [10.875, 10.99] band, 265 lb speed gate,
 #      28x25 cm foot box, +-10 mm 225 lb LCB cap, fixed-frame catch
-GATES_VERSION = "4"
+#   5: seakeeping floor is the Epic 18X (owner, 2026-11-26), not v0.2.3 + 1.5 %; seakeeping rows
+#      come from a body with irregular-frequency removal
+GATES_VERSION = "5"
 
 SR_4IN_MIN = 10.875
 SR_4IN_MAX = 10.99
@@ -41,8 +43,12 @@ CATCH_WIDTH_TOL_MM = 2.0
 GM_TOL_CM = 0.01
 GZ_TOL_MM = 1e-3
 KN_TOL_KN = 0.005
+# Seakeeping floor (owner, 2026-11-26): "I don't want it to regress to be worse than the Epic 18x".
+# In each gated condition seat acceleration and bow dips may not exceed the Epic 18X's value from
+# the same model. Where v0.2.3 is itself worse than the 18X the limit is v0.2.3's value, so the
+# baseline always passes and nothing may fall below both boats. Quick mode solves every second
+# period, so it gets an allowance against rows computed on the full grid.
 CAPYTAINE_QUICK_REL_TOL = 0.05
-CAPYTAINE_FULL_REL_TOL = 0.015
 CAPYTAINE_GM_T_TOL_CM = 0.05
 CFD_DRAG_TOL_N = 0.25
 
@@ -754,7 +760,10 @@ def evaluate_gates(
                     baseline.capytaine.gm_t_cm,
                 )
 
-            rel_tol = CAPYTAINE_QUICK_REL_TOL if seakeeping.quick else CAPYTAINE_FULL_REL_TOL
+            rel_tol = CAPYTAINE_QUICK_REL_TOL if seakeeping.quick else 0.0
+            floor_map = {
+                (r.speed_kn, r.heading, r.sea): r for r in baseline.capytaine.epic18x_conditions_225
+            }
             row_map: dict[tuple[float, str, str], Mapping[str, Any]] = {}
             for idx, r in enumerate(seakeeping.rows or ()):
                 if not isinstance(r, Mapping):
@@ -810,7 +819,18 @@ def evaluate_gates(
                         str(key),
                     )
                     continue
-                dips_lim = base_row.bow_dips_per_min * (1.0 + rel_tol) + 0.1
+                floor_row = floor_map.get(key)
+                if floor_row is None:
+                    _require(
+                        f"seak_floor_missing_{tag}",
+                        False,
+                        -1.0,
+                        f"No Epic 18X reference row for condition {key}",
+                        "missing",
+                        str(key),
+                    )
+                    continue
+                dips_lim = max(floor_row.bow_dips_per_min, base_row.bow_dips_per_min) * (1.0 + rel_tol)
                 raw_dips = cand_row.get("bow_dips_per_min")
                 dips_val = _finite_float(raw_dips)
                 _require(
@@ -818,14 +838,14 @@ def evaluate_gates(
                     dips_val is not None and dips_val <= dips_lim,
                     (dips_lim - dips_val) if dips_val is not None else -1.0,
                     (
-                        f"Bow dips regressed at {key}: {dips_val:.2f} > {dips_lim:.2f}"
+                        f"Bow dips at {key} worse than the Epic 18X floor: {dips_val:.2f} > {dips_lim:.2f}"
                         if dips_val is not None
                         else f"Missing or non-finite bow dips at {key}: {raw_dips}"
                     ),
                     dips_val if dips_val is not None else ("missing" if raw_dips is None else str(raw_dips)),
                     dips_lim,
                 )
-                acc_lim = base_row.seat_acc_rms_ms2 * (1.0 + rel_tol) + 0.01
+                acc_lim = max(floor_row.seat_acc_rms_ms2, base_row.seat_acc_rms_ms2) * (1.0 + rel_tol)
                 raw_acc = cand_row.get("seat_acc_rms_ms2")
                 acc_val = _finite_float(raw_acc)
                 _require(
@@ -833,7 +853,7 @@ def evaluate_gates(
                     acc_val is not None and acc_val <= acc_lim,
                     (acc_lim - acc_val) if acc_val is not None else -1.0,
                     (
-                        f"Seat accel regressed at {key}: {acc_val:.3f} > {acc_lim:.3f}"
+                        f"Seat accel at {key} worse than the Epic 18X floor: {acc_val:.3f} > {acc_lim:.3f}"
                         if acc_val is not None
                         else f"Missing or non-finite seat accel at {key}: {raw_acc}"
                     ),

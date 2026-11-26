@@ -2,6 +2,11 @@
 
 All notable changes to **Kayak 10.9** are documented in this file.
 
+## Unreleased
+
+- **Seakeeping correction.** `cad/run_capytaine_seakeeping.py::build_bem_body` now builds the Capytaine body with a lid mesh (irregular-frequency removal). Without it the interior free surface of the hull resonates from about 11 rad/s, inside the encounter-frequency range of every forward-speed case. At 4.5 kn bow-quarter the shortest period of the grid (1.05 s) sat on such a frequency and read a heave excitation of 10,740 N/m where the corrected body gives 90 N/m. `data/capytaine-seakeeping.json`, Plate 6 and the site figures were released with `v0.2.3` before this fix and are unchanged here. Against the corrected rows they overstate Kayak 10.9's seat acceleration at 4.5 kn bow-quarter by 10 to 15 % (bay chop `1.476` against `1.260 m/s²`) and its bow dips there by 12 %, and they overstate the Epic 18X's seat acceleration at 265 lb in 4.5 kn head seas by up to 16 % (bay chop `1.662` against `1.391 m/s²`), which halves the published seat-acceleration advantage at that load (26 % becomes 12 %). Other gated figures move by under 3 %.
+- **RSI harness, gates version 5.** The Tier 2 seakeeping gates now use the Epic 18X as the floor: in each gated condition a candidate's seat acceleration and bow dips may not exceed the Epic 18X's in the same model (or v0.2.3's, where v0.2.3 is itself behind the 18X). They replace the limit of v0.2.3 plus 1.5 %. The corrected rows for both boats are in `data/rsi-seakeeping-reference.json`, which only the harness reads.
+
 ## [v0.2.3] - 2026-11-24
 
 - Re-ran matched **OpenFOAM-v2606** (`_481094f-20260618`, `snappyHexMesh` `354,132` cells + 6-rank `interFoam` `kOmegaSST`) and **Capytaine 3.0.0** (`1,408`-panel 3D linear BEM JONSWAP seakeeping + Munk/aerodynamic crosswind rudder trim) on the `v0.2.2` whole-hull faired surface (`fcbf0bdb...`) vs. the Epic 18X scan, updating `data/openfoam-cfd-metrics.json`, `data/capytaine-seakeeping.json`, `data/windage-and-stiffener.json`, and Plates 1–8 (`20.50 ± 0.10 N @ 5.50 kn`, `-4.1%` vs. 18X; `25.86 ± 0.04 N @ 6.20 kn`, `-4.8%` total / `-22.2%` wave drag vs. 18X; `-22%` to `-26%` fewer head-chop bow dips; `2.11° / 4.54°` rudder trim at `15 / 22 kn` beam wind). Hull and CAD geometry are unchanged from `v0.2.2`.
