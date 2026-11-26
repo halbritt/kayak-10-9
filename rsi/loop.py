@@ -851,12 +851,23 @@ def _propose_surrogate_lp_vectors(
     # Hold topsides parameters (plus any campaign-frozen group) at anchor so the LP cannot
     # trade away bow freeboard or foot-box clearance for catch-width slack.
     lp_frozen = set(frozen_groups) | {"topsides"}
+    prev_lp_norms = [
+        np.array(e["vector"], dtype=float) / scales
+        for e in ledger_entries
+        if e.get("status") == "evaluated"
+        and (e.get("provenance") or {}).get("strategy") == "surrogate_lp"
+        and isinstance(e.get("vector"), list)
+        and len(e["vector"]) == d_dim
+    ]
 
     def _offer(step: np.ndarray) -> None:
         cand = space.clamp((x0 + step * scales).tolist())
         if all(abs(a - b) <= 1e-12 for a, b in zip(cand, anchor_vec)):
             return
         if any(all(abs(a - b) <= 1e-9 for a, b in zip(cand, prev)) for prev, _ in out):
+            return
+        cand_norm = np.array(cand, dtype=float) / scales
+        if any(float(np.linalg.norm(cand_norm - p_norm)) < 0.025 for p_norm in prev_lp_norms):
             return
         out.append((cand, "surrogate_lp"))
 

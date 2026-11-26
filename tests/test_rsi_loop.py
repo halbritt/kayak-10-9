@@ -1010,3 +1010,35 @@ def test_select_diverse_tier2_candidates_avoids_near_duplicate_clones() -> None:
     assert [c["candidate_id"] for c in picked] == ["top", "distinct"]
     # k=1 still returns only the top utility candidate
     assert [c["candidate_id"] for c in _select_diverse_tier2_candidates([c_top, c_clone, c_distinct], 1, space)] == ["top"]
+
+
+def test_surrogate_lp_skips_near_duplicate_previously_evaluated_lp_steps() -> None:
+    """Near-identical perturbed LP steps already evaluated as surrogate_lp are skipped."""
+    work = _clean_dir(TEST_WORK_ROOT / "surrogate_lp_dedup")
+    run_campaign(
+        CampaignConfig(iterations=4, population=11, seed=101, work_dir=work, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+    )
+    entries = [json.loads(ln) for ln in (work / "ledger.jsonl").read_text().splitlines()]
+    anchor = json.loads((work / "pareto.json").read_text())["frontier"][0]["vector"]
+    space = DesignSpace.default()
+    ref = load_baseline_reference()
+    first = _propose_surrogate_lp_vectors(space, ref, entries, anchor)
+    assert first
+
+    scales = np.array([p.scale for p in space.params], dtype=float)
+    rng = np.random.default_rng(9)
+    for k, (vec, _) in enumerate(first):
+        perturbed = space.clamp((np.array(vec, dtype=float) + rng.normal(0.0, 1e-4, len(scales)) * scales).tolist())
+        entries.append(
+            {
+                "candidate_id": f"prev_lp_{k}",
+                "status": "evaluated",
+                "vector": perturbed,
+                "metrics": entries[-1]["metrics"],
+                "provenance": {"strategy": "surrogate_lp"},
+            }
+        )
+
+    second = _propose_surrogate_lp_vectors(space, ref, entries, anchor)
+    assert second == []
