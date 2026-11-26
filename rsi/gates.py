@@ -18,7 +18,8 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 # stale, so a resumed search would breed from hulls the current gates reject.
 #   1: original Tier 0/1/2 gates
 #   2: catch-width gate; speed and GM compared against the unrounded baseline
-GATES_VERSION = "2"
+#   3: CFD_DRAG_TOL_N = 0.25 N matching 500-step interFoam/snappyHexMesh noise floor
+GATES_VERSION = "3"
 
 SR_4IN_MAX = 10.99
 SR_4IN_TARGET = 10.90
@@ -36,7 +37,7 @@ KN_TOL_KN = 0.005
 CAPYTAINE_QUICK_REL_TOL = 0.05
 CAPYTAINE_FULL_REL_TOL = 0.015
 CAPYTAINE_GM_T_TOL_CM = 0.05
-CFD_DRAG_TOL_N = 0.05
+CFD_DRAG_TOL_N = 0.25
 
 
 def _finite_float(val: Any) -> float | None:

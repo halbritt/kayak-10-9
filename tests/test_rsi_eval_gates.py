@@ -630,3 +630,80 @@ def test_tier2_cache_root_opt_out_and_corrupt_entry_fallback(
     (bad_cfd / "meta.json").write_text(json.dumps({"source": "wrong", "key": {"solver": "y"}}))
     (bad_cfd / "openfoam_cfd_metrics.json").write_text(json.dumps({"speeds": {}}))
     assert _load_cfd_cache(root, "cfd_corrupt", {"solver": "y"}, (5.5, 6.2)) is None
+
+
+def test_michell_fast_curve_matches_cad() -> None:
+    from rsi.evaluator import RESISTANCE_SPEEDS_KN, _ensure_cad_on_path, _michell_fast_curve
+
+    _ensure_cad_on_path()
+    from hydro import G, KN, RHO_SEAWATER, michell
+
+    rng = np.random.default_rng(7)
+    xs = np.linspace(-2.7, 2.7, 401)
+    zs = np.linspace(-0.09, 0.0, 81)
+    Y = np.abs(rng.normal(0.10, 0.04, size=(401, 81)))
+    u_arr = RESISTANCE_SPEEDS_KN * KN
+    ref_vals = np.array([michell(xs, zs, Y, float(u), RHO_SEAWATER, 4000) for u in u_arr])
+    fast_vals = _michell_fast_curve(xs, zs, Y, u_arr, RHO_SEAWATER, g=G, ntheta=4000)
+    assert float(np.max(np.abs(ref_vals - fast_vals))) < 1e-12
+
+
+def test_solve_bem_full_fast_matches_solve_bem_case_across_headings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import contextlib
+    import sys
+    import trimesh
+    from rsi.evaluator import _ensure_cad_on_path
+    from rsi.fidelity import _single_thread_blas_env, _solve_bem_full_fast
+
+    _ensure_cad_on_path()
+    import run_capytaine_seakeeping as cap_mod
+    from deck_geometry import SculptedKayakSurface
+    from hydro import LB
+
+    # Include periods on both sides of the 1.90s stern cutoff so heading-dependent filtering is exercised
+    monkeypatch.setattr(cap_mod, "PERIODS", np.array([1.20, 2.10, 4.00], dtype=float))
+
+    ref = load_baseline_reference()
+    tmp_hull = Path.home() / ".cache" / "kayak-10-9" / "test-work" / "bem_fast_eq.hull.json"
+    tmp_hull.parent.mkdir(parents=True, exist_ok=True)
+    tmp_hull.write_text(ref.hull.model_dump_json(indent=2) + "\n")
+    surf = SculptedKayakSurface(tmp_hull)
+    closed = trimesh.util.concatenate((surf.build_hull_shell(), surf.build_deck_shell(cut_openings=False)))
+    closed.merge_vertices(merge_tex=True, merge_norm=True)
+    V = np.asarray(closed.vertices, dtype=float).copy()
+    F = np.asarray(closed.faces, dtype=int).copy()
+    V[:, 0] = -V[:, 0]
+    F = F[:, ::-1]
+    if trimesh.Trimesh(V, F, process=False).volume < 0:
+        F = F[:, ::-1]
+    V[:, 0] -= V[:, 0].min()
+    V[:, 1] -= np.median(V[:, 1])
+    V[:, 2] -= V[:, 2].min()
+
+    with contextlib.redirect_stdout(sys.stderr), _single_thread_blas_env(True):
+        body, I_mat, info = cap_mod.build_bem_body("eq_225", V, F, mass_kg=225.0 * LB, kg_m=0.25)
+        ref_out = cap_mod.solve_bem_case(body, I_mat, info, speeds_kn=(0.0, 4.5), n_jobs=4)
+        fast_out = _solve_bem_full_fast(body, I_mat, info, speeds_kn=(0.0, 4.5), n_jobs=4)
+
+    ref_sp = cap_mod.evaluate_spectra(ref_out)
+    fast_sp = cap_mod.evaluate_spectra(fast_out)
+    assert ref_sp["gm_t_cm"] == fast_sp["gm_t_cm"]
+    ref_map = {(r["speed_kn"], r["heading"], r["sea"]): r for r in ref_sp["rows"]}
+    fast_map = {(r["speed_kn"], r["heading"], r["sea"]): r for r in fast_sp["rows"]}
+    assert set(ref_map) == set(fast_map)
+    for key, ref_row in ref_map.items():
+        for fld in (
+            "heave_sig_cm",
+            "pitch_sig_deg",
+            "roll_sig_deg",
+            "bow_dips_per_min",
+            "seat_acc_rms_ms2",
+            "yaw_mom_rms_Nm",
+        ):
+            assert ref_row[fld] == fast_row_val(fast_map[key], fld), (key, fld)
+
+
+def fast_row_val(row: dict[str, object], key: str) -> object:
+    return row[key]

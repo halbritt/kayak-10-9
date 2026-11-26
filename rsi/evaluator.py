@@ -125,6 +125,49 @@ class CandidateMetrics:
         return d
 
 
+def _michell_fast_curve(
+    xs: np.ndarray,
+    zs: np.ndarray,
+    Y: np.ndarray,
+    u_arr: np.ndarray,
+    rho: float,
+    *,
+    g: float = 9.80665,
+    ntheta: int = 4000,
+) -> np.ndarray:
+    """Vectorized real-GEMM Michell thin-ship wave resistance across speeds u_arr (m/s)."""
+    th = (np.arange(ntheta) + 0.5) * (np.pi / 2.0) / ntheta
+    sec = 1.0 / np.cos(th)
+    sec2 = sec * sec
+    sec3 = sec2 * sec
+    dx = np.diff(xs)
+    xm = 0.5 * (xs[:-1] + xs[1:])
+    S = np.ascontiguousarray(np.diff(Y, axis=0) / dx[:, None])
+    hz = np.diff(zs)
+    out = np.empty(len(u_arr), dtype=float)
+    for idx, u_val in enumerate(u_arr):
+        u = float(u_val)
+        k0 = g / (u * u)
+        kap = k0 * sec
+        a = k0 * sec2
+        half_kd = 0.5 * kap[:, None] * dx[None, :]
+        fac = dx[None, :] * np.sinc(half_kd / np.pi)
+        ph = kap[:, None] * xm[None, :]
+        Qr = (np.cos(ph) * fac) @ S
+        Qi = (np.sin(ph) * fac) @ S
+        t = a[:, None] * hz[None, :]
+        em = np.exp(-t)
+        e1 = np.exp(a[:, None] * zs[None, 1:])
+        inv_t2 = hz[None, :] / (t * t)
+        w_hi = e1 * (t - 1.0 + em) * inv_t2
+        w_lo = e1 * (1.0 - em * (1.0 + t)) * inv_t2
+        Ar = (Qr[:, 1:] * w_hi + Qr[:, :-1] * w_lo).sum(axis=1)
+        Ai = (Qi[:, 1:] * w_hi + Qi[:, :-1] * w_lo).sum(axis=1)
+        integrand = (Ar * Ar + Ai * Ai) * sec3
+        out[idx] = 4.0 * rho * g * g / (np.pi * u * u) * integrand.sum() * (np.pi / 2.0) / ntheta
+    return out
+
+
 def _make_load_case_225() -> LoadCase:
     total_mass = 225.0 * LB_TO_KG
     return LoadCase(
@@ -240,6 +283,7 @@ def evaluate_tier0_tier1(
     *,
     skip_resistance: bool = False,
     mesh_resolution: tuple[int, int] = (441, 129),
+    fast_tier0: bool = False,
 ) -> CandidateMetrics:
     """Evaluate a candidate Hull using kayakgen (Tier 0) and SculptedKayakSurface (Tier 1)."""
     del baseline  # kept in signature for contract uniformity & future baseline-relative checks
@@ -262,49 +306,7 @@ def evaluate_tier0_tier1(
             **partial,
         )
 
-    # Tier 0: kayakgen in-process warm-cache sequence
-    lc_225 = _make_load_case_225()
-    try:
-        st = solve_target_draft(hull, lc_225)
-    except Exception as exc:  # noqa: BLE001
-        return _fail(f"solve_target_draft exception: {exc}")
-
-    if st.status != "converged" or st.sinkage_m is None:
-        return _fail(f"solve_target_draft not converged: status={st.status}, warnings={st.warnings}")
-
-    pose = OperatingPose(sinkage_m=float(st.sinkage_m), trim_angle_deg=float(st.trim_angle_deg or 0.0))
-    try:
-        kg_hydro = evaluate_hydrostatics(hull, pose=pose, density_kg_m3=lc_225.seawater_density_kg_m3)
-    except Exception as exc:  # noqa: BLE001
-        return _fail(f"evaluate_hydrostatics exception: {exc}")
-
-    if (
-        kg_hydro.GM0_m is None
-        or "operating_pose_dry" in kg_hydro.notes
-        or "operating_pose_fully_submerged" in kg_hydro.notes
-    ):
-        return _fail(
-            f"invalid kayakgen hydrostatics at pose: GM0={kg_hydro.GM0_m}, notes={kg_hydro.notes}"
-        )
-
-    kg_rt: dict[str, float] | None = None
-    if not skip_resistance:
-        try:
-            curve = resistance_curve(
-                hull,
-                V_knots=KAYAKGEN_RES_SPEEDS_KN,
-                n_stations=400,
-                n_depths=20,
-                n_theta=30,
-                pose=pose,
-            )
-            rt_arr = np.asarray(curve.Rt_N, dtype=float)
-            if not np.all(np.isfinite(rt_arr)):
-                return _fail("non-finite kayakgen resistance_curve output")
-            kg_rt = {f"{float(v):.1f}": float(r) for v, r in zip(curve.V_knots, rt_arr)}
-        except Exception as exc:  # noqa: BLE001
-            return _fail(f"resistance_curve exception: {exc}")
-
+    # Tier 0: kayakgen form metrics (plus optional full Tier 0 hydrostatics/resistance/GZ)
     try:
         fm = evaluate_form_metrics(
             hull,
@@ -318,40 +320,102 @@ def evaluate_tier0_tier1(
     if fm.class_length_beam_ratio is None or fm.waterline_hollow_max_deg is None:
         return _fail("evaluate_form_metrics returned incomplete waterline metrics")
 
-    try:
-        gz_block = build_high_angle_gz_block(hull, lc_225, heel_grid_deg=(10.0, 20.0, 30.0))
-    except Exception as exc:  # noqa: BLE001
-        return _fail(f"build_high_angle_gz_block exception: {exc}")
+    if fast_tier0:
+        if float(fm.waterline_hollow_max_deg) >= 0.025:
+            return _fail(
+                f"fast_tier0 waterline_hollow_max_deg={float(fm.waterline_hollow_max_deg):.4f} >= 0.025",
+                waterline_hollow_max_deg=float(fm.waterline_hollow_max_deg),
+            )
+        tier0_fields: dict[str, Any] = {
+            "waterline_hollow_max_deg": float(fm.waterline_hollow_max_deg),
+            "plan_hollow_max_deg": (
+                None if fm.plan_hollow_max_deg is None else float(fm.plan_hollow_max_deg)
+            ),
+            "upper_hollow_max_deg": float(fm.upper_hollow_max_deg),
+            "upper_knuckle_max_deg": float(fm.upper_knuckle_max_deg),
+            "waterline_knuckle_max_deg": float(fm.waterline_knuckle_max_deg),
+            "foot_clear_height_m": float(fm.foot_clear_height_m),
+            "foot_clear_width_m": float(fm.foot_clear_width_m),
+            "catch_zone_max_beam_m": float(fm.catch_zone_max_beam_m),
+            "catch_zone_max_upper_beam_m": float(fm.catch_zone_max_upper_beam_m),
+        }
+    else:
+        lc_225 = _make_load_case_225()
+        try:
+            st = solve_target_draft(hull, lc_225)
+        except Exception as exc:  # noqa: BLE001
+            return _fail(f"solve_target_draft exception: {exc}")
 
-    if gz_block.get("available") is not True or gz_block.get("summary") is None:
-        return _fail(f"high_angle_gz unavailable: {gz_block.get('unavailable_reason')}")
-    kg_gz_mm = {
-        str(int(round(float(pt["heel_deg"])))): float(pt["gz_m"]) * 1000.0
-        for pt in gz_block["heel_points"]
-    }
+        if st.status != "converged" or st.sinkage_m is None:
+            return _fail(f"solve_target_draft not converged: status={st.status}, warnings={st.warnings}")
 
-    tier0_fields: dict[str, Any] = {
-        "kg_equilibrium_draft_m": (
-            None if st.equilibrium_draft_m is None else float(st.equilibrium_draft_m)
-        ),
-        "kg_sinkage_m": float(st.sinkage_m),
-        "kg_wetted_surface_m2": float(kg_hydro.wetted_surface_m2),
-        "kg_gm0_m": float(kg_hydro.GM0_m),
-        "kg_lcb_frac": float(kg_hydro.LCB_frac),
-        "kg_rt_N": kg_rt,
-        "waterline_hollow_max_deg": float(fm.waterline_hollow_max_deg),
-        "plan_hollow_max_deg": (
-            None if fm.plan_hollow_max_deg is None else float(fm.plan_hollow_max_deg)
-        ),
-        "upper_hollow_max_deg": float(fm.upper_hollow_max_deg),
-        "upper_knuckle_max_deg": float(fm.upper_knuckle_max_deg),
-        "waterline_knuckle_max_deg": float(fm.waterline_knuckle_max_deg),
-        "foot_clear_height_m": float(fm.foot_clear_height_m),
-        "foot_clear_width_m": float(fm.foot_clear_width_m),
-        "catch_zone_max_beam_m": float(fm.catch_zone_max_beam_m),
-        "catch_zone_max_upper_beam_m": float(fm.catch_zone_max_upper_beam_m),
-        "kg_high_angle_gz_mm": kg_gz_mm,
-    }
+        pose = OperatingPose(sinkage_m=float(st.sinkage_m), trim_angle_deg=float(st.trim_angle_deg or 0.0))
+        try:
+            kg_hydro = evaluate_hydrostatics(hull, pose=pose, density_kg_m3=lc_225.seawater_density_kg_m3)
+        except Exception as exc:  # noqa: BLE001
+            return _fail(f"evaluate_hydrostatics exception: {exc}")
+
+        if (
+            kg_hydro.GM0_m is None
+            or "operating_pose_dry" in kg_hydro.notes
+            or "operating_pose_fully_submerged" in kg_hydro.notes
+        ):
+            return _fail(
+                f"invalid kayakgen hydrostatics at pose: GM0={kg_hydro.GM0_m}, notes={kg_hydro.notes}"
+            )
+
+        kg_rt: dict[str, float] | None = None
+        if not skip_resistance:
+            try:
+                curve = resistance_curve(
+                    hull,
+                    V_knots=KAYAKGEN_RES_SPEEDS_KN,
+                    n_stations=400,
+                    n_depths=20,
+                    n_theta=30,
+                    pose=pose,
+                )
+                rt_arr = np.asarray(curve.Rt_N, dtype=float)
+                if not np.all(np.isfinite(rt_arr)):
+                    return _fail("non-finite kayakgen resistance_curve output")
+                kg_rt = {f"{float(v):.1f}": float(r) for v, r in zip(curve.V_knots, rt_arr)}
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"resistance_curve exception: {exc}")
+
+        try:
+            gz_block = build_high_angle_gz_block(hull, lc_225, heel_grid_deg=(10.0, 20.0, 30.0))
+        except Exception as exc:  # noqa: BLE001
+            return _fail(f"build_high_angle_gz_block exception: {exc}")
+
+        if gz_block.get("available") is not True or gz_block.get("summary") is None:
+            return _fail(f"high_angle_gz unavailable: {gz_block.get('unavailable_reason')}")
+        kg_gz_mm = {
+            str(int(round(float(pt["heel_deg"])))): float(pt["gz_m"]) * 1000.0
+            for pt in gz_block["heel_points"]
+        }
+
+        tier0_fields = {
+            "kg_equilibrium_draft_m": (
+                None if st.equilibrium_draft_m is None else float(st.equilibrium_draft_m)
+            ),
+            "kg_sinkage_m": float(st.sinkage_m),
+            "kg_wetted_surface_m2": float(kg_hydro.wetted_surface_m2),
+            "kg_gm0_m": float(kg_hydro.GM0_m),
+            "kg_lcb_frac": float(kg_hydro.LCB_frac),
+            "kg_rt_N": kg_rt,
+            "waterline_hollow_max_deg": float(fm.waterline_hollow_max_deg),
+            "plan_hollow_max_deg": (
+                None if fm.plan_hollow_max_deg is None else float(fm.plan_hollow_max_deg)
+            ),
+            "upper_hollow_max_deg": float(fm.upper_hollow_max_deg),
+            "upper_knuckle_max_deg": float(fm.upper_knuckle_max_deg),
+            "waterline_knuckle_max_deg": float(fm.waterline_knuckle_max_deg),
+            "foot_clear_height_m": float(fm.foot_clear_height_m),
+            "foot_clear_width_m": float(fm.foot_clear_width_m),
+            "catch_zone_max_beam_m": float(fm.catch_zone_max_beam_m),
+            "catch_zone_max_upper_beam_m": float(fm.catch_zone_max_upper_beam_m),
+            "kg_high_angle_gz_mm": kg_gz_mm,
+        }
 
     # Tier 1: SculptedKayakSurface finished closed outer shell
     _ensure_cad_on_path()
@@ -359,7 +423,7 @@ def evaluate_tier0_tier1(
     from check_fairing_controls import catch_widths as controls_catch_widths
     from check_fairing_controls import immersed as controls_immersed
     from deck_geometry import SculptedKayakSurface
-    from hydro import KN, NU_SEAWATER, float_at, half_breadth_grid, ittc57, michell
+    from hydro import G, KN, NU_SEAWATER, float_at, half_breadth_grid, ittc57
     from inspect_fairness import cut_line, section_curve, turns
 
     try:
@@ -479,15 +543,14 @@ def evaluate_tier0_tier1(
                 if not skip_resistance:
                     lwl_m = float(np.ptp(r_up["wl_x"]))
                     xs, zs, Y = half_breadth_grid(r_up["tris"], 401, 81)
-                    res_n = np.array(
-                        [
-                            ittc57(k * KN, lwl_m, r_up["wet"], RHO_SEAWATER, NU_SEAWATER)[0]
-                            + michell(xs, zs, Y, k * KN, RHO_SEAWATER, 4000)
-                            for k in RESISTANCE_SPEEDS_KN
-                        ],
+                    u_arr = RESISTANCE_SPEEDS_KN * KN
+                    rf_arr = np.array(
+                        [ittc57(float(u), lwl_m, r_up["wet"], RHO_SEAWATER, NU_SEAWATER)[0] for u in u_arr],
                         dtype=float,
                     )
-                    pwr_w = res_n * RESISTANCE_SPEEDS_KN * KN
+                    rw_arr = _michell_fast_curve(xs, zs, Y, u_arr, RHO_SEAWATER, g=G, ntheta=4000)
+                    res_n = rf_arr + rw_arr
+                    pwr_w = res_n * u_arr
                     kn_225_exact = {
                         int(p): float(np.interp(p, pwr_w, RESISTANCE_SPEEDS_KN))
                         for p in POWER_LEVELS_W

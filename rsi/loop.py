@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
+import contextlib
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import multiprocessing
 import os
 from pathlib import Path
 import subprocess
@@ -17,11 +19,7 @@ from typing import Any
 import numpy as np
 from pydantic import ValidationError
 
-from kayakgen.eval.contract import LoadCase
-from kayakgen.eval.form_metrics import evaluate_form_metrics
-from kayakgen.eval.hydrostatics import OperatingPose, evaluate as evaluate_hydrostatics
 from kayakgen.model.hull import Hull
-from kayakgen.services.evaluation import solve_target_draft
 
 from rsi.baseline import DEFAULT_REPO_ROOT, BaselineReference, load_baseline_reference
 from rsi.diagnose import (
@@ -33,9 +31,6 @@ from rsi.diagnose import (
     diagnose_validation_error,
 )
 from rsi.evaluator import (
-    HULL_MASS_KG,
-    KG_M,
-    LB_TO_KG,
     CandidateMetrics,
     LoadEvalMetrics,
     evaluate_tier0_tier1,
@@ -167,13 +162,7 @@ def _composite_utility(objectives: dict[str, float]) -> float:
     stab = float(objectives.get("stability_min_margin", -10.0))
     fair = float(objectives.get("fairness_margin", -10.0))
     seak = float(objectives.get("seakeeping_gain", 0.0))
-    val = (
-        120.0 * sr_c
-        + 2500.0 * spd
-        + 15.0 * min(stab, 0.05)
-        + 10.0 * min(fair, 0.10)
-        + 50.0 * seak
-    )
+    val = 120.0 * sr_c + 2500.0 * spd + 15.0 * min(stab, 0.05) + 10.0 * min(fair, 0.10) + 50.0 * seak
     return round(val if math.isfinite(val) else -1e6, 6)
 
 
@@ -340,6 +329,21 @@ def _gate_report_from_dict(raw: dict[str, Any]) -> GateReport:
     )
 
 
+_WORKER_BASELINES: dict[str, BaselineReference] = {}
+
+
+def _init_eval_worker() -> None:
+    """Pin BLAS/OpenMP threads to 1 per worker process to prevent oversubscription."""
+    for var in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+    ):
+        os.environ[var] = "1"
+
+
 def _prescreen_and_evaluate(
     hull_json: str,
     cand_dir_str: str,
@@ -347,89 +351,21 @@ def _prescreen_and_evaluate(
     skip_resistance: bool,
     pre_screen: bool,
 ) -> CandidateMetrics:
-    """Worker-safe evaluation: optional fast kayakgen pre-screen + full Tier 0/1."""
+    """Worker-safe evaluation: fast single-pass Tier 0 gate + Tier 1."""
     hull = Hull.model_validate_json(hull_json)
     cand_dir = Path(cand_dir_str)
     cand_dir.mkdir(parents=True, exist_ok=True)
-    baseline = load_baseline_reference(Path(repo_root_str))
-    d_hash = hull.design_hash()
-
-    if pre_screen:
-        total_mass = 225.0 * LB_TO_KG
-        lc_225 = LoadCase(
-            name="225lb",
-            paddler_mass_kg=total_mass - HULL_MASS_KG,
-            hull_mass_kg=HULL_MASS_KG,
-            cargo_mass_kg=0.0,
-            kg_above_keel_m=KG_M,
-        )
-        hull_path = cand_dir / "candidate.hull.json"
-        hull_path.write_text(hull.model_dump_json(indent=2) + "\n")
-        try:
-            st = solve_target_draft(hull, lc_225)
-            if st.status != "converged" or st.sinkage_m is None:
-                return CandidateMetrics(
-                    valid=False,
-                    error=f"prescreen solve_target_draft not converged: status={st.status}",
-                    design_hash=d_hash,
-                    hull_json_path=str(hull_path),
-                    mesh_resolution=(441, 129),
-                    elapsed_s=0.0,
-                    skip_resistance=skip_resistance,
-                )
-            pose = OperatingPose(
-                sinkage_m=float(st.sinkage_m), trim_angle_deg=float(st.trim_angle_deg or 0.0)
-            )
-            kg_hydro = evaluate_hydrostatics(
-                hull, pose=pose, density_kg_m3=lc_225.seawater_density_kg_m3
-            )
-            if (
-                kg_hydro.GM0_m is None
-                or "operating_pose_dry" in kg_hydro.notes
-                or "operating_pose_fully_submerged" in kg_hydro.notes
-            ):
-                return CandidateMetrics(
-                    valid=False,
-                    error=f"prescreen invalid kayakgen hydrostatics: GM0={kg_hydro.GM0_m}, notes={kg_hydro.notes}",
-                    design_hash=d_hash,
-                    hull_json_path=str(hull_path),
-                    mesh_resolution=(441, 129),
-                    elapsed_s=0.0,
-                    skip_resistance=skip_resistance,
-                )
-            base_gm_m = baseline.loads[225].gm_cm / 100.0
-            if float(kg_hydro.GM0_m) < 0.80 * base_gm_m:
-                return CandidateMetrics(
-                    valid=False,
-                    error=f"prescreen GM0 {float(kg_hydro.GM0_m):.4f} m below 80% baseline ({0.80 * base_gm_m:.4f} m)",
-                    design_hash=d_hash,
-                    hull_json_path=str(hull_path),
-                    mesh_resolution=(441, 129),
-                    elapsed_s=0.0,
-                    skip_resistance=skip_resistance,
-                    kg_gm0_m=float(kg_hydro.GM0_m),
-                )
-            fm = evaluate_form_metrics(hull)
-            if fm.waterline_hollow_max_deg is not None and float(fm.waterline_hollow_max_deg) >= 0.025:
-                return CandidateMetrics(
-                    valid=False,
-                    error=f"prescreen waterline_hollow_max_deg={float(fm.waterline_hollow_max_deg):.4f} >= 0.025",
-                    design_hash=d_hash,
-                    hull_json_path=str(hull_path),
-                    mesh_resolution=(441, 129),
-                    elapsed_s=0.0,
-                    skip_resistance=skip_resistance,
-                    kg_gm0_m=float(kg_hydro.GM0_m),
-                    waterline_hollow_max_deg=float(fm.waterline_hollow_max_deg),
-                )
-        except Exception:  # noqa: BLE001
-            pass
+    baseline = _WORKER_BASELINES.get(repo_root_str)
+    if baseline is None:
+        baseline = load_baseline_reference(Path(repo_root_str))
+        _WORKER_BASELINES[repo_root_str] = baseline
 
     return evaluate_tier0_tier1(
         hull,
         cand_dir,
         baseline,
         skip_resistance=skip_resistance,
+        fast_tier0=pre_screen,
     )
 
 
@@ -578,10 +514,14 @@ def _propose_candidate_vectors(
         if len(proposals) >= max_attempts:
             break
 
-        # Choose parent vector
+        # Choose rank-weighted elite parent vector
         if pareto_vectors:
             if rng.random() < 0.70:
-                p_idx = int(rng.integers(0, len(pareto_vectors)))
+                p_weights = np.array(
+                    [1.0 / (k + 2.0) for k in range(len(pareto_vectors))], dtype=float
+                )
+                p_weights /= p_weights.sum()
+                p_idx = int(rng.choice(len(pareto_vectors), p=p_weights))
                 parent = list(pareto_vectors[p_idx])
             else:
                 parent = list(mu)
@@ -627,16 +567,24 @@ def _propose_candidate_vectors(
                 cand[idx] += float(rng.normal(0.0, 0.45)) * eff_sigma[idx]
 
         else:
-            # Elite crossover / full-space exploratory step
+            # Subspace elite crossover + light local jitter
             strategy = "elite_crossover"
             if len(pareto_vectors) >= 2:
-                p2_idx = int(rng.integers(0, len(pareto_vectors)))
+                p2_weights = np.array(
+                    [1.0 / (k + 2.0) for k in range(len(pareto_vectors))], dtype=float
+                )
+                p2_weights /= p2_weights.sum()
+                p2_idx = int(rng.choice(len(pareto_vectors), p=p2_weights))
                 other = pareto_vectors[p2_idx]
-                alpha = float(rng.uniform(0.55, 0.85))
-                cand = [alpha * parent[j] + (1.0 - alpha) * other[j] for j in range(d_dim)]
-            noise = rng.normal(0.0, 0.60, size=d_dim)
-            for idx in range(d_dim):
-                cand[idx] += float(noise[idx]) * eff_sigma[idx]
+                k_mask = int(rng.integers(4, min(10, d_dim + 1)))
+                mask_idx = [int(x) for x in rng.choice(d_dim, size=k_mask, replace=False)]
+                alpha = float(rng.uniform(0.35, 0.85))
+                for idx in mask_idx:
+                    cand[idx] = parent[idx] + alpha * (other[idx] - parent[idx])
+            k_jit = int(rng.integers(2, min(5, d_dim + 1)))
+            jit_idx = [int(x) for x in rng.choice(d_dim, size=k_jit, replace=False)]
+            for idx in jit_idx:
+                cand[idx] += float(rng.normal(0.0, 0.30)) * eff_sigma[idx]
 
         # Respect diagnostic avoid_bounds hints softly before clamping
         for idx, spec in enumerate(space.params):
@@ -1015,213 +963,227 @@ def run_campaign(
         ),
         default=-1e6,
     )
+    stagnation_iters = 0
 
-    for it in range(start_iter, config.iterations + 1):
-        # Gather current Pareto vectors (preferring non-baseline feasible) and best near-feasible
-        pareto_now = _update_pareto_frontier(ledger_entries)
-        non_base_pareto = [e for e in pareto_now if e.get("design_hash") != baseline.design_hash]
-        if non_base_pareto:
-            pareto_source = non_base_pareto
-        elif config.seed_hull_path is not None and it <= 2:
-            # Allow diagnostic repair from custom seed_hull before falling back to baseline anchor
-            pareto_source = []
-        else:
-            pareto_source = pareto_now
-        pareto_vecs = [
-            list(e["vector"])
-            for e in pareto_source
-            if isinstance(e.get("vector"), list) and len(e["vector"]) == len(space.params)
-        ]
-
-        near_entries = [
-            e
-            for e in ledger_entries
-            if e.get("status") == "evaluated"
-            and not (e.get("gate_report") or {}).get("passed")
-            and isinstance(e.get("vector"), list)
-            and len(e["vector"]) == len(space.params)
-        ]
-        best_near_vec: list[float] | None = None
-        if near_entries:
-            best_near = min(near_entries, key=lambda e: float(e.get("violation_deficit", 1e6)))
-            best_near_vec = list(best_near["vector"])
-
-        # Step 1: Sequentially propose & validate up to P distinct valid Hull candidates
-        raw_proposals = _propose_candidate_vectors(
-            rng,
-            config.population,
-            space,
-            mu,
-            sigma,
-            current_hints,
-            pareto_vecs,
-            best_near_vec,
-        )
-
-        valid_batch: list[tuple[int, str, list[float], Hull, str]] = []
-        iter_diag_reports: list[DiagnosticReport] = []
-        err_counter = 0
-
-        for vec, strategy in raw_proposals:
-            if len(valid_batch) >= config.population:
-                break
-            try:
-                cand_hull = vector_to_hull(vec, baseline.hull, space, clamp=True)
-            except (ValidationError, ValueError) as exc:
-                err_counter += 1
-                diag_rep = diagnose_validation_error(exc, vector=vec, space=space)
-                iter_diag_reports.append(diag_rep)
-                err_entry = LedgerEntry(
-                    candidate_id=f"iter{it:03d}_err{err_counter:03d}",
-                    iteration=it,
-                    index=-err_counter,
-                    timestamp_utc=_utc_now(),
-                    status="validation_error",
-                    design_hash="",
-                    hull_path=None,
-                    vector=[float(x) for x in vec],
-                    metrics=None,
-                    gate_report=None,
-                    diagnosis=diag_rep.to_dict(),
-                    provenance={**provenance, "strategy": strategy},
-                    utility_score=-1e6,
-                    violation_deficit=10.0,
-                ).to_dict()
-                append_jsonl_atomic(ledger_path, err_entry)
-                ledger_entries.append(err_entry)
-                continue
-
-            d_hash = cand_hull.design_hash()
-            if d_hash in evaluated_hashes:
-                err_counter += 1
-                dup_entry = LedgerEntry(
-                    candidate_id=f"iter{it:03d}_dup{err_counter:03d}",
-                    iteration=it,
-                    index=-err_counter,
-                    timestamp_utc=_utc_now(),
-                    status="duplicate_skipped",
-                    design_hash=d_hash,
-                    hull_path=None,
-                    vector=[float(x) for x in vec],
-                    metrics=None,
-                    gate_report=None,
-                    diagnosis=DiagnosticReport(
-                        feasible=False,
-                        failure_modes=(),
-                        primary_groups=(),
-                        items=(),
-                        hints=AdaptationHints(),
-                        summary="Duplicate design_hash skipped before geometry evaluation.",
-                    ).to_dict(),
-                    provenance={**provenance, "strategy": strategy},
-                ).to_dict()
-                append_jsonl_atomic(ledger_path, dup_entry)
-                ledger_entries.append(dup_entry)
-                continue
-
-            evaluated_hashes.add(d_hash)
-            idx_in_pop = len(valid_batch)
-            cand_id = f"iter{it:03d}_cand{idx_in_pop:03d}"
-            valid_batch.append((idx_in_pop, cand_id, vec, cand_hull, strategy))
-
-        # Step 2: Evaluate batch (in parallel if workers > 1 and no custom evaluator_fn)
-        batch_metrics: list[CandidateMetrics] = []
-        if valid_batch:
-            if config.workers > 1 and evaluator_fn is None:
-                futures = []
-                with ProcessPoolExecutor(max_workers=min(config.workers, len(valid_batch))) as pool:
-                    for _, cand_id, _, cand_hull, _ in valid_batch:
-                        c_dir = cand_root / cand_id
-                        futures.append(
-                            pool.submit(
-                                _prescreen_and_evaluate,
-                                cand_hull.model_dump_json(),
-                                str(c_dir),
-                                str(root),
-                                config.skip_resistance,
-                                config.pre_screen,
-                            )
-                        )
-                    batch_metrics = [f.result() for f in futures]
+    with contextlib.ExitStack() as pool_stack:
+        eval_pool: ProcessPoolExecutor | None = None
+        if config.workers > 1 and evaluator_fn is None and start_iter <= config.iterations:
+            eval_pool = pool_stack.enter_context(
+                ProcessPoolExecutor(
+                    max_workers=min(config.workers, config.population),
+                    mp_context=multiprocessing.get_context("forkserver"),
+                    initializer=_init_eval_worker,
+                )
+            )
+        for it in range(start_iter, config.iterations + 1):
+            # Gather current Pareto vectors (preferring non-baseline feasible) and best near-feasible
+            pareto_now = _update_pareto_frontier(ledger_entries)
+            non_base_pareto = [e for e in pareto_now if e.get("design_hash") != baseline.design_hash]
+            if non_base_pareto:
+                pareto_source = non_base_pareto
+            elif config.seed_hull_path is not None and it <= 2:
+                # Allow diagnostic repair from custom seed_hull before falling back to baseline anchor
+                pareto_source = []
             else:
-                for _, cand_id, _, cand_hull, _ in valid_batch:
-                    c_dir = cand_root / cand_id
-                    batch_metrics.append(_eval_one(cand_hull, c_dir))
-
-        # Step 3: Gate, diagnose, and archive in deterministic order
-        iter_feasible: list[dict[str, Any]] = []
-        iter_evaluated: list[dict[str, Any]] = []
-        for (idx_in_pop, cand_id, vec, cand_hull, strategy), m in zip(valid_batch, batch_metrics):
-            c_dir = cand_root / cand_id
-            c_hull_file = c_dir / "candidate.hull.json"
-            if not c_hull_file.is_file():
-                c_dir.mkdir(parents=True, exist_ok=True)
-                c_hull_file.write_text(cand_hull.model_dump_json(indent=2) + "\n")
-
-            gate_rep = evaluate_gates(m, baseline)
-            diag_rep = diagnose_candidate(m, gate_rep, vector=vec, space=space)
-            iter_diag_reports.append(diag_rep)
-
-            util = _composite_utility(gate_rep.objectives)
-            deficit = _violation_deficit(gate_rep)
-            entry = LedgerEntry(
-                candidate_id=cand_id,
-                iteration=it,
-                index=idx_in_pop,
-                timestamp_utc=_utc_now(),
-                status="evaluated",
-                design_hash=cand_hull.design_hash(),
-                hull_path=str(c_hull_file),
-                vector=[round(float(x), 10) for x in vec],
-                metrics=_metrics_summary_for_ledger(m),
-                gate_report=gate_rep.to_dict(),
-                diagnosis=diag_rep.to_dict(),
-                provenance={**provenance, "strategy": strategy},
-                utility_score=util,
-                violation_deficit=deficit,
-            ).to_dict()
-            append_jsonl_atomic(ledger_path, entry)
-            ledger_entries.append(entry)
-            iter_evaluated.append(entry)
-            if gate_rep.passed:
-                iter_feasible.append(entry)
-
-        # Step 4: Adapt search distribution (mu, sigma, hints)
-        if iter_diag_reports:
-            current_hints = aggregate_diagnostics(iter_diag_reports, space)
-
-        iter_best_util = max((float(e["utility_score"]) for e in iter_feasible), default=-1e6)
-        feasible_rate = len(iter_feasible) / max(len(valid_batch), 1)
-
-        if iter_feasible and iter_best_util >= best_utility:
-            best_utility = iter_best_util
-            sorted_feas = sorted(iter_feasible, key=lambda e: float(e["utility_score"]), reverse=True)
-            top_elites = sorted_feas[: max(1, min(3, len(sorted_feas)))]
-            weights = [1.0 / (k + 1) for k in range(len(top_elites))]
-            w_sum = sum(weights)
-            elite_mu = [
-                sum(w * float(e["vector"][j]) for w, e in zip(weights, top_elites)) / w_sum
-                for j in range(len(space.params))
+                pareto_source = pareto_now
+            pareto_vecs = [
+                list(e["vector"])
+                for e in pareto_source
+                if isinstance(e.get("vector"), list) and len(e["vector"]) == len(space.params)
             ]
-            mu = space.clamp([0.65 * elite_mu[j] + 0.35 * mu[j] for j in range(len(space.params))])
-        elif not non_base_pareto and iter_evaluated:
-            # Move mu toward lowest violation deficit when repairing infeasible region
-            best_near_iter = min(iter_evaluated, key=lambda e: float(e["violation_deficit"]))
-            mu = space.clamp(
-                [
-                    0.50 * float(best_near_iter["vector"][j]) + 0.50 * mu[j]
-                    for j in range(len(space.params))
-                ]
+
+            near_entries = [
+                e
+                for e in ledger_entries
+                if e.get("status") == "evaluated"
+                and not (e.get("gate_report") or {}).get("passed")
+                and isinstance(e.get("vector"), list)
+                and len(e["vector"]) == len(space.params)
+            ]
+            best_near_vec: list[float] | None = None
+            if near_entries:
+                best_near = min(near_entries, key=lambda e: float(e.get("violation_deficit", 1e6)))
+                best_near_vec = list(best_near["vector"])
+
+            # Step 1: Sequentially propose & validate up to P distinct valid Hull candidates
+            raw_proposals = _propose_candidate_vectors(
+                rng,
+                config.population,
+                space,
+                mu,
+                sigma,
+                current_hints,
+                pareto_vecs,
+                best_near_vec,
             )
 
-        step_mult = 1.08 if feasible_rate >= 0.25 else 0.90
-        for j, spec in enumerate(space.params):
-            g_scale = float(current_hints.group_scales.get(spec.group, 1.0))
-            new_sig = sigma[j] * step_mult * (0.65 + 0.35 * g_scale)
-            sigma[j] = min(0.60 * spec.scale, max(0.03 * spec.scale, new_sig))
+            valid_batch: list[tuple[int, str, list[float], Hull, str]] = []
+            iter_diag_reports: list[DiagnosticReport] = []
+            err_counter = 0
 
-        _write_pareto_and_best(work, ledger_entries, tier2_verified, provenance, baseline)
-        _save_checkpoint(it, "running", False)
+            for vec, strategy in raw_proposals:
+                if len(valid_batch) >= config.population:
+                    break
+                try:
+                    cand_hull = vector_to_hull(vec, baseline.hull, space, clamp=True)
+                except (ValidationError, ValueError) as exc:
+                    err_counter += 1
+                    diag_rep = diagnose_validation_error(exc, vector=vec, space=space)
+                    iter_diag_reports.append(diag_rep)
+                    err_entry = LedgerEntry(
+                        candidate_id=f"iter{it:03d}_err{err_counter:03d}",
+                        iteration=it,
+                        index=-err_counter,
+                        timestamp_utc=_utc_now(),
+                        status="validation_error",
+                        design_hash="",
+                        hull_path=None,
+                        vector=[float(x) for x in vec],
+                        metrics=None,
+                        gate_report=None,
+                        diagnosis=diag_rep.to_dict(),
+                        provenance={**provenance, "strategy": strategy},
+                        utility_score=-1e6,
+                        violation_deficit=10.0,
+                    ).to_dict()
+                    append_jsonl_atomic(ledger_path, err_entry)
+                    ledger_entries.append(err_entry)
+                    continue
+
+                d_hash = cand_hull.design_hash()
+                if d_hash in evaluated_hashes:
+                    err_counter += 1
+                    dup_entry = LedgerEntry(
+                        candidate_id=f"iter{it:03d}_dup{err_counter:03d}",
+                        iteration=it,
+                        index=-err_counter,
+                        timestamp_utc=_utc_now(),
+                        status="duplicate_skipped",
+                        design_hash=d_hash,
+                        hull_path=None,
+                        vector=[float(x) for x in vec],
+                        metrics=None,
+                        gate_report=None,
+                        diagnosis=DiagnosticReport(
+                            feasible=False,
+                            failure_modes=(),
+                            primary_groups=(),
+                            items=(),
+                            hints=AdaptationHints(),
+                            summary="Duplicate design_hash skipped before geometry evaluation.",
+                        ).to_dict(),
+                        provenance={**provenance, "strategy": strategy},
+                    ).to_dict()
+                    append_jsonl_atomic(ledger_path, dup_entry)
+                    ledger_entries.append(dup_entry)
+                    continue
+
+                evaluated_hashes.add(d_hash)
+                idx_in_pop = len(valid_batch)
+                cand_id = f"iter{it:03d}_cand{idx_in_pop:03d}"
+                valid_batch.append((idx_in_pop, cand_id, vec, cand_hull, strategy))
+
+            # Step 2: Evaluate batch (using persistent worker pool when workers > 1)
+            batch_metrics: list[CandidateMetrics] = []
+            if valid_batch:
+                if eval_pool is not None:
+                    futures = [
+                        eval_pool.submit(
+                            _prescreen_and_evaluate,
+                            cand_hull.model_dump_json(),
+                            str(cand_root / cand_id),
+                            str(root),
+                            config.skip_resistance,
+                            config.pre_screen,
+                        )
+                        for _, cand_id, _, cand_hull, _ in valid_batch
+                    ]
+                    batch_metrics = [f.result() for f in futures]
+                else:
+                    for _, cand_id, _, cand_hull, _ in valid_batch:
+                        c_dir = cand_root / cand_id
+                        batch_metrics.append(_eval_one(cand_hull, c_dir))
+
+            # Step 3: Gate, diagnose, and archive in deterministic order
+            iter_feasible: list[dict[str, Any]] = []
+            iter_evaluated: list[dict[str, Any]] = []
+            for (idx_in_pop, cand_id, vec, cand_hull, strategy), m in zip(valid_batch, batch_metrics):
+                c_dir = cand_root / cand_id
+                c_hull_file = c_dir / "candidate.hull.json"
+                if not c_hull_file.is_file():
+                    c_dir.mkdir(parents=True, exist_ok=True)
+                    c_hull_file.write_text(cand_hull.model_dump_json(indent=2) + "\n")
+
+                gate_rep = evaluate_gates(m, baseline)
+                diag_rep = diagnose_candidate(m, gate_rep, vector=vec, space=space)
+                iter_diag_reports.append(diag_rep)
+
+                util = _composite_utility(gate_rep.objectives)
+                deficit = _violation_deficit(gate_rep)
+                entry = LedgerEntry(
+                    candidate_id=cand_id,
+                    iteration=it,
+                    index=idx_in_pop,
+                    timestamp_utc=_utc_now(),
+                    status="evaluated",
+                    design_hash=cand_hull.design_hash(),
+                    hull_path=str(c_hull_file),
+                    vector=[round(float(x), 10) for x in vec],
+                    metrics=_metrics_summary_for_ledger(m),
+                    gate_report=gate_rep.to_dict(),
+                    diagnosis=diag_rep.to_dict(),
+                    provenance={**provenance, "strategy": strategy},
+                    utility_score=util,
+                    violation_deficit=deficit,
+                ).to_dict()
+                append_jsonl_atomic(ledger_path, entry)
+                ledger_entries.append(entry)
+                iter_evaluated.append(entry)
+                if gate_rep.passed:
+                    iter_feasible.append(entry)
+
+            # Step 4: Adapt search distribution (mu, sigma, hints)
+            if iter_diag_reports:
+                current_hints = aggregate_diagnostics(iter_diag_reports, space)
+
+            iter_best_util = max((float(e["utility_score"]) for e in iter_feasible), default=-1e6)
+            feasible_rate = len(iter_feasible) / max(len(valid_batch), 1)
+            prev_best_utility = best_utility
+            improved = bool(iter_feasible and iter_best_util > prev_best_utility + 1e-9)
+
+            if iter_feasible and iter_best_util >= best_utility:
+                best_utility = iter_best_util
+                sorted_feas = sorted(iter_feasible, key=lambda e: float(e["utility_score"]), reverse=True)
+                top_elites = sorted_feas[: max(1, min(3, len(sorted_feas)))]
+                weights = [1.0 / (k + 1) for k in range(len(top_elites))]
+                w_sum = sum(weights)
+                elite_mu = [
+                    sum(w * float(e["vector"][j]) for w, e in zip(weights, top_elites)) / w_sum
+                    for j in range(len(space.params))
+                ]
+                mu = space.clamp([0.65 * elite_mu[j] + 0.35 * mu[j] for j in range(len(space.params))])
+            elif not non_base_pareto and iter_evaluated:
+                # Move mu toward lowest violation deficit when repairing infeasible region
+                best_near_iter = min(iter_evaluated, key=lambda e: float(e["violation_deficit"]))
+                mu = space.clamp(
+                    [
+                        0.50 * float(best_near_iter["vector"][j]) + 0.50 * mu[j]
+                        for j in range(len(space.params))
+                    ]
+                )
+
+            stagnation_iters = 0 if improved else (stagnation_iters + 1)
+            step_mult = 1.12 if improved else (0.82 if feasible_rate < 0.15 else 0.94)
+            for j, spec in enumerate(space.params):
+                g_scale = float(current_hints.group_scales.get(spec.group, 1.0))
+                new_sig = sigma[j] * step_mult * (0.75 + 0.25 * g_scale)
+                sigma[j] = min(0.40 * spec.scale, max(0.03 * spec.scale, new_sig))
+            if stagnation_iters >= 10:
+                sigma = [max(sigma[j], 0.16 * spec.scale) for j, spec in enumerate(space.params)]
+                stagnation_iters = 0
+
+            _write_pareto_and_best(work, ledger_entries, tier2_verified, provenance, baseline)
+            _save_checkpoint(it, "running", False)
 
     # Step 5: Optional Tier 2 top-K verification
     ran_new_iterations = start_iter <= config.iterations
@@ -1246,6 +1208,22 @@ def run_campaign(
             if isinstance(cached, dict):
                 c_seak = cached.get("seakeeping") or {}
                 c_cfd = cached.get("cfd") or {}
+                c_gate = cached.get("gate_report") or {}
+                if (
+                    not diagnostic_tier2
+                    and cached.get("seakeeping_rejected")
+                    and c_seak.get("valid")
+                    and not c_seak.get("quick")
+                ):
+                    entry["tier2_seakeeping"] = c_seak
+                    entry["tier2_cfd"] = None
+                    entry["tier2_passed"] = False
+                    if c_gate:
+                        entry["gate_report"] = c_gate
+                        entry["utility_score"] = _composite_utility(c_gate.get("objectives") or {})
+                    if cached.get("diagnosis"):
+                        entry["diagnosis"] = cached["diagnosis"]
+                    continue
                 if (
                     c_seak.get("valid")
                     and bool(c_seak.get("quick")) == bool(config.quick_tier2)
@@ -1255,20 +1233,21 @@ def run_campaign(
                     entry["tier2_seakeeping"] = c_seak
                     entry["tier2_cfd"] = c_cfd
                     entry["tier2_passed"] = bool(
-                        (cached.get("gate_report") or {}).get("passed")
+                        c_gate.get("passed")
                         and not c_seak.get("quick")
                         and not c_cfd.get("dry_run")
                     )
-                    if cached.get("gate_report"):
+                    if c_gate:
+                        objs = dict(c_gate.get("objectives") or {})
                         if diagnostic_tier2:
-                            entry["tier2_gate_report"] = cached["gate_report"]
+                            entry["tier2_gate_report"] = c_gate
                             if cached.get("diagnosis"):
                                 entry["tier2_diagnosis"] = cached["diagnosis"]
                         else:
-                            entry["gate_report"] = cached["gate_report"]
+                            entry["gate_report"] = c_gate
                             if cached.get("diagnosis"):
                                 entry["diagnosis"] = cached["diagnosis"]
-                            entry["utility_score"] = _composite_utility(cached["gate_report"]["objectives"])
+                            entry["utility_score"] = _composite_utility(objs)
                     continue
 
             hull_path = Path(str(entry["hull_path"]))
@@ -1287,6 +1266,42 @@ def run_campaign(
                     n_jobs=config.tier2_n_jobs,
                 )
 
+            cand_metrics = _metrics_from_dict(entry["metrics"])
+            seak_gate = evaluate_gates(cand_metrics, baseline, seakeeping=seak)
+            if not diagnostic_tier2 and (not seak.valid or not seak_gate.passed):
+                seak_diag = diagnose_candidate(
+                    cand_metrics,
+                    seak_gate,
+                    seakeeping=seak,
+                    vector=entry.get("vector"),
+                    space=space,
+                )
+                t2_seak_d = seak.to_dict()
+                t2_gate_d = seak_gate.to_dict()
+                t2_diag_d = seak_diag.to_dict()
+                entry["tier2_seakeeping"] = t2_seak_d
+                entry["tier2_cfd"] = None
+                entry["tier2_passed"] = False
+                entry["gate_report"] = t2_gate_d
+                entry["diagnosis"] = t2_diag_d
+                entry["utility_score"] = _composite_utility(seak_gate.objectives)
+                tier2_verified[d_hash] = {
+                    "candidate_id": entry["candidate_id"],
+                    "design_hash": d_hash,
+                    "hull_path": str(hull_path),
+                    "seakeeping": t2_seak_d,
+                    "cfd": None,
+                    "gate_report": t2_gate_d,
+                    "diagnosis": t2_diag_d,
+                    "tier2_passed": False,
+                    "seakeeping_rejected": True,
+                }
+                t2_ledger = dict(entry)
+                t2_ledger["timestamp_utc"] = _utc_now()
+                t2_ledger["provenance"] = {**provenance, "stage": "tier2_verification"}
+                append_jsonl_atomic(ledger_path, t2_ledger)
+                continue
+
             if cfd_fn is not None:
                 cfd = cfd_fn(cand_hull, t2_dir / "cfd", baseline)
             else:
@@ -1297,7 +1312,6 @@ def run_campaign(
                     dry_run=config.cfd_dry_run,
                 )
 
-            cand_metrics = _metrics_from_dict(entry["metrics"])
             t2_gate = evaluate_gates(cand_metrics, baseline, seakeeping=seak, cfd=cfd)
             t2_diag = diagnose_candidate(
                 cand_metrics,

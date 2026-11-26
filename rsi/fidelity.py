@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import contextlib
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -126,7 +127,7 @@ def _clean_spectra_rows(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _seakeeping_cache_key(hull: Hull, *, quick: bool) -> tuple[str, dict[str, Any]]:
     key_obj = {
         "solver": "capytaine_seakeeping",
-        "schema_version": 2,
+        "schema_version": 1,
         "design_hash": hull.design_hash(),
         "quick": bool(quick),
         "loads": ["225"] if quick else ["225", "265_baja"],
@@ -183,21 +184,23 @@ class CfdMetrics:
         return asdict(self)
 
 
-def _solve_bem_quick(
+def _solve_bem_subset(
     body: Any,
     I_mat: np.ndarray,
     info: dict[str, Any],
     *,
+    periods: np.ndarray,
+    zero_labels: tuple[str, ...],
+    fwd_cases: tuple[tuple[float, tuple[str, ...]], ...],
     n_jobs: int = 1,
 ) -> dict[str, Any]:
-    """Targeted subset Capytaine solve that satisfies evaluate_spectra dependencies."""
+    """Shared Capytaine subset BEM solver for quick and gated-only Tier 2 modes."""
     _ensure_cad_on_path()
     import capytaine as cpt
     import xarray as xr
     from hydro import G, KN, RHO_SEAWATER
-    from run_capytaine_seakeeping import HEADINGS, PERIODS
+    from run_capytaine_seakeeping import HEADINGS
 
-    periods = PERIODS[::2]
     K = body.compute_hydrostatic_stiffness(rho=RHO_SEAWATER, g=G)
     Ixr = xr.DataArray(I_mat, coords=K.coords, dims=K.dims)
     solver = cpt.BEMSolver()
@@ -269,16 +272,164 @@ def _solve_bem_quick(
             "beta": b,
         }
 
-    zero_labels = ("head", "beam")
     ds0 = _run_ds(0.0, periods, [HEADINGS[lbl] for lbl in zero_labels])
     for lbl in zero_labels:
         _pack(ds0, 0.0, lbl, HEADINGS[lbl])
 
-    u_kn = 4.5
-    u_ms = u_kn * KN
-    b = HEADINGS["head"]
-    ds_u = _run_ds(u_ms, periods, [b])
-    _pack(ds_u, u_kn, "head", b)
+    for u_kn, labels in fwd_cases:
+        ds_u = _run_ds(u_kn * KN, periods, [HEADINGS[lbl] for lbl in labels])
+        for lbl in labels:
+            _pack(ds_u, u_kn, lbl, HEADINGS[lbl])
+
+    return out
+
+
+def _solve_bem_quick(
+    body: Any,
+    I_mat: np.ndarray,
+    info: dict[str, Any],
+    *,
+    n_jobs: int = 1,
+) -> dict[str, Any]:
+    """Targeted subset Capytaine solve that satisfies evaluate_spectra dependencies."""
+    _ensure_cad_on_path()
+    from run_capytaine_seakeeping import PERIODS
+
+    return _solve_bem_subset(
+        body,
+        I_mat,
+        info,
+        periods=PERIODS[::2],
+        zero_labels=("head", "beam"),
+        fwd_cases=((4.5, ("head",)),),
+        n_jobs=n_jobs,
+    )
+
+
+def _solve_bem_full_fast(
+    body: Any,
+    I_mat: np.ndarray,
+    info: dict[str, Any],
+    *,
+    speeds_kn: tuple[float, ...],
+    n_jobs: int = 1,
+) -> dict[str, Any]:
+    """Full-spectrum 5-heading BEM solver matching solve_bem_case with single solve_all per speed."""
+    _ensure_cad_on_path()
+    import capytaine as cpt
+    import xarray as xr
+    from hydro import G, KN, RHO_SEAWATER
+    from run_capytaine_seakeeping import HEADINGS, PERIODS
+
+    K = body.compute_hydrostatic_stiffness(rho=RHO_SEAWATER, g=G)
+    Ixr = xr.DataArray(I_mat, coords=K.coords, dims=K.dims)
+    solver = cpt.BEMSolver()
+    kw = dict(body=body, rho=RHO_SEAWATER, g=G, water_depth=np.inf)
+    out: dict[str, Any] = {
+        "info": info,
+        "K": K.values,
+        "I": I_mat,
+        "gm_t_cm": round(float(K.values[3, 3] / (info["mass_kg"] * G)) * 100.0, 2),
+        "cases": {},
+    }
+
+    def _pack(ds: xr.Dataset, u_kn: float, label: str, b: float) -> None:
+        d = (
+            ds.sel(wave_direction=np.radians(b), method="nearest")
+            if "wave_direction" in ds.dims
+            else ds
+        )
+        om = d.omega.values
+        ome = (
+            np.squeeze(d.encounter_omega.transpose("omega", ...).values)
+            if "encounter_omega" in d.coords
+            else om
+        )
+        d = d.squeeze(drop=True)
+        A = d.added_mass.transpose("omega", "influenced_dof", "radiating_dof").values
+        B_mat = d.radiation_damping.transpose("omega", "influenced_dof", "radiating_dof").values
+        Fx = d.excitation_force.transpose("omega", "influenced_dof").values
+        o = np.argsort(om)
+        out["cases"][(u_kn, label)] = {
+            "omega": om[o],
+            "omega_e": np.asarray(ome)[o] if np.ndim(ome) else np.full(len(om), ome),
+            "A": A[o],
+            "B": B_mat[o],
+            "F": Fx[o],
+            "beta": b,
+        }
+
+    for u_kn in speeds_kn:
+        u_ms = float(u_kn) * KN
+        if u_kn == 0.0:
+            betas = list(HEADINGS.values())
+            pbs = []
+            for per_s in PERIODS:
+                om = 2.0 * np.pi / float(per_s)
+                for b in betas:
+                    pbs.append(
+                        cpt.DiffractionProblem(
+                            omega=om, wave_direction=np.radians(b), forward_speed=0.0, **kw
+                        )
+                    )
+                    if b == betas[0]:
+                        pbs.extend(
+                            cpt.RadiationProblem(
+                                omega=om,
+                                wave_direction=np.radians(b),
+                                forward_speed=0.0,
+                                radiating_dof=d,
+                                **kw,
+                            )
+                            for d in body.dofs
+                        )
+            res = solver.solve_all(
+                pbs,
+                n_jobs=n_jobs,
+                n_threads=1 if n_jobs > 1 else None,
+                progress_bar=False,
+            )
+            ds0 = cpt.assemble_dataset(res, hydrostatics=False)
+            ds0["inertia_matrix"], ds0["hydrostatic_stiffness"] = Ixr, K
+            for lbl, b in HEADINGS.items():
+                _pack(ds0, 0.0, lbl, b)
+        else:
+            pbs = []
+            for lbl, b in HEADINGS.items():
+                min_p = (
+                    1.05
+                    if b >= 90.0
+                    else max(1.90, 2.0 * np.pi * u_ms * np.cos(np.radians(b)) / G * 1.35)
+                )
+                for per_s in PERIODS[PERIODS >= min_p]:
+                    om = 2.0 * np.pi / float(per_s)
+                    pbs.append(
+                        cpt.DiffractionProblem(
+                            omega=om, wave_direction=np.radians(b), forward_speed=u_ms, **kw
+                        )
+                    )
+                    pbs.extend(
+                        cpt.RadiationProblem(
+                            omega=om,
+                            wave_direction=np.radians(b),
+                            forward_speed=u_ms,
+                            radiating_dof=d,
+                            **kw,
+                        )
+                        for d in body.dofs
+                    )
+            res = solver.solve_all(
+                pbs,
+                n_jobs=n_jobs,
+                n_threads=1 if n_jobs > 1 else None,
+                progress_bar=False,
+            )
+            for lbl, b in HEADINGS.items():
+                b_rad = float(np.radians(b))
+                res_b = [r for r in res if abs(float(r.wave_direction) - b_rad) < 1e-9]
+                ds_b = cpt.assemble_dataset(res_b, hydrostatics=False)
+                ds_b["inertia_matrix"], ds_b["hydrostatic_stiffness"] = Ixr, K
+                _pack(ds_b, u_kn, lbl, b)
 
     return out
 
@@ -370,7 +521,7 @@ def evaluate_tier2_seakeeping(
         import capytaine as cpt
         from deck_geometry import SculptedKayakSurface
         from hydro import LB
-        from run_capytaine_seakeeping import build_bem_body, evaluate_spectra, solve_bem_case
+        from run_capytaine_seakeeping import build_bem_body, evaluate_spectra
 
         surf = SculptedKayakSurface(hull_path)
         closed = trimesh.util.concatenate(
@@ -409,7 +560,7 @@ def evaluate_tier2_seakeeping(
             if quick:
                 bem_out = _solve_bem_quick(body, I_mat, info, n_jobs=eff_jobs)
             else:
-                bem_out = solve_bem_case(
+                bem_out = _solve_bem_full_fast(
                     body, I_mat, info, speeds_kn=(0.0, 4.5, 5.7), n_jobs=eff_jobs
                 )
             spectra = evaluate_spectra(bem_out)
@@ -419,7 +570,7 @@ def evaluate_tier2_seakeeping(
                 body_265, I_mat_265, info_265 = build_bem_body(
                     "candidate_265_baja", V, F, mass_kg=mass_265, kg_m=0.25
                 )
-                bem_out_265 = solve_bem_case(
+                bem_out_265 = _solve_bem_full_fast(
                     body_265, I_mat_265, info_265, speeds_kn=(0.0, 4.5), n_jobs=eff_jobs
                 )
                 spectra_265 = evaluate_spectra(bem_out_265)
@@ -780,8 +931,8 @@ def evaluate_tier2_cfd(
 
         with contextlib.redirect_stdout(sys.stderr):
             mesh_info = build_mesh(hull_name, work, resolved_bashrc, np_ranks=np_ranks)
-            speed_metrics: dict[str, dict[str, Any]] = {}
-            for sp in speeds_kn:
+
+            def _solve_speed(sp: float) -> tuple[str, dict[str, Any]]:
                 cdir, _ = run_interfoam_case(
                     hull_name,
                     sp,
@@ -791,10 +942,18 @@ def evaluate_tier2_cfd(
                     end_steps=end_steps,
                     np_ranks=np_ranks,
                 )
-                key = f"{sp:.1f}kn"
-                speed_metrics[key] = parse_openfoam_case_metrics(
+                return f"{sp:.1f}kn", parse_openfoam_case_metrics(
                     cdir, posed, sp, hull_name=hull_name
                 )
+
+            cpu_cnt = os.cpu_count() or 1
+            concurrent_slots = min(len(speeds_kn), cpu_cnt // max(1, int(np_ranks)))
+            if len(speeds_kn) > 1 and concurrent_slots >= 2:
+                with ThreadPoolExecutor(max_workers=concurrent_slots) as pool:
+                    speed_pairs = list(pool.map(_solve_speed, speeds_kn))
+                speed_metrics = dict(speed_pairs)
+            else:
+                speed_metrics = dict(_solve_speed(sp) for sp in speeds_kn)
 
         payload = {
             "posed": posed,

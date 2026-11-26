@@ -91,7 +91,7 @@ def evaluate(
     skip_resistance: Annotated[bool, typer.Option("--skip-resistance", help="Skip resistance curve")] = False,
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick subset for Capytaine Tier 2")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM without solving")] = False,
-    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 6,
+    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
 ) -> None:
     """Evaluate a hull JSON against Tier 0/1 (and optionally Tier 2) gates."""
     if tier not in (1, 2):
@@ -258,7 +258,7 @@ def run(
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick subset for Capytaine Tier 2")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM without solving")] = False,
     skip_resistance: Annotated[bool, typer.Option("--skip-resistance", help="Skip resistance curve")] = False,
-    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 6,
+    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
 ) -> None:
     """Execute or resume a multi-iteration recursive self-improvement campaign."""
     if iterations < 1 or population < 1 or tier2_top < 0 or workers < 1:
@@ -338,7 +338,7 @@ def compare(
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick Capytaine subset")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM without solving")] = False,
     skip_resistance: Annotated[bool, typer.Option("--skip-resistance", help="Skip resistance curve")] = False,
-    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 6,
+    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
     emit_json: Annotated[bool, typer.Option("--json", help="Emit JSON to stdout")] = False,
 ) -> None:
     """Compare a candidate hull against baseline v0.2.3 metrics and gates."""
@@ -397,7 +397,7 @@ def promote(
     tier2: Annotated[bool, typer.Option("--tier2", help="Run/verify Tier 2 Capytaine & OpenFOAM")] = False,
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick Capytaine subset (disallowed for --apply)")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM only (disallowed for --apply)")] = False,
-    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 6,
+    tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
     out: Annotated[Path | None, typer.Option("--out", help="Output JSON path")] = None,
     json_out: Annotated[Path | None, typer.Option("--json-out", help="Output JSON path alias")] = None,
     emit_json: Annotated[bool, typer.Option("--json", help="Emit JSON to stdout")] = False,

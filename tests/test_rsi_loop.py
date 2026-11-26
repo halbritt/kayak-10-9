@@ -574,6 +574,94 @@ def test_resume_does_not_resurrect_tier2_failed_candidate() -> None:
     assert all(e.get("design_hash") != bad_hash for e in res2.pareto_front)
 
 
+def test_step5_skips_cfd_when_seakeeping_fails_and_caches_rejection() -> None:
+    """When Capytaine fails a hull in Step 5, OpenFOAM must be skipped and cached across resume."""
+    work = _clean_dir(TEST_WORK_ROOT / "tier2_skip_cfd_on_seak_fail")
+    seen_hashes: list[str] = []
+    calls = {"cfd": 0}
+
+    def bad_seak(hull: Hull, out_dir: Path, ref) -> SeakeepingMetrics:
+        seen_hashes.append(hull.design_hash())
+        out_dir.mkdir(parents=True, exist_ok=True)
+        rows = tuple(
+            {
+                "speed_kn": r.speed_kn,
+                "heading": r.heading,
+                "sea": r.sea,
+                "bow_dips_per_min": r.bow_dips_per_min,
+                "seat_acc_rms_ms2": r.seat_acc_rms_ms2 + 0.30,
+            }
+            for r in ref.capytaine.rows_225
+        )
+        return SeakeepingMetrics(
+            valid=True,
+            error=None,
+            quick=False,
+            elapsed_s=0.1,
+            gm_t_cm=ref.capytaine.gm_t_cm,
+            roll_period_s=ref.capytaine.roll_period_s,
+            rows=rows,
+        )
+
+    def counted_cfd(hull: Hull, out_dir: Path, ref) -> CfdMetrics:
+        calls["cfd"] += 1
+        raise AssertionError("cfd_fn should not be called after seakeeping gate failure")
+
+    res1 = run_campaign(
+        CampaignConfig(iterations=1, population=1, seed=42, work_dir=work, tier2_top=1, pre_screen=False),
+        evaluator_fn=_surrogate_evaluator,
+        seakeeping_fn=bad_seak,
+        cfd_fn=counted_cfd,
+    )
+    assert len(seen_hashes) == 1
+    assert calls["cfd"] == 0
+    assert len(res1.tier2_verified) == 1
+    rec = next(iter(res1.tier2_verified.values()))
+    assert rec["seakeeping_rejected"] is True
+    assert rec["cfd"] is None
+    assert rec["tier2_passed"] is False
+
+    # Rejected iter1 hull drops from Pareto, leaving only baseline; once both are rejected,
+    # subsequent resumes make zero additional Tier 2 seakeeping or CFD calls.
+    run_campaign(
+        CampaignConfig(
+            iterations=1, population=1, seed=42, work_dir=work, tier2_top=1, resume=True, pre_screen=False
+        ),
+        evaluator_fn=_surrogate_evaluator,
+        seakeeping_fn=bad_seak,
+        cfd_fn=counted_cfd,
+    )
+    assert len(seen_hashes) == 2
+    assert len(set(seen_hashes)) == 2
+    run_campaign(
+        CampaignConfig(
+            iterations=1, population=1, seed=42, work_dir=work, tier2_top=1, resume=True, pre_screen=False
+        ),
+        evaluator_fn=_surrogate_evaluator,
+        seakeeping_fn=bad_seak,
+        cfd_fn=counted_cfd,
+    )
+    assert len(seen_hashes) == 2
+    assert calls["cfd"] == 0
+
+
+def test_sigma_anneals_when_feasible_without_utility_gain() -> None:
+    """When feasible candidates stop improving best utility, sigma must decay below initial scale."""
+    work = _clean_dir(TEST_WORK_ROOT / "sigma_anneal")
+    space = DesignSpace.default()
+
+    def flat_eval(hull: Hull, cand_dir: Path, ref) -> CandidateMetrics:
+        return _surrogate_evaluator(ref.hull, cand_dir, ref)
+
+    run_campaign(
+        CampaignConfig(iterations=5, population=3, seed=42, work_dir=work, tier2_top=0, pre_screen=False),
+        evaluator_fn=flat_eval,
+    )
+    st = json.loads((work / "state.json").read_text())
+    max_rel_sigma = max(float(s) / spec.scale for s, spec in zip(st["sigma"], space.params))
+    assert max_rel_sigma < 0.16
+
+
 def test_tier2_diagnostic_mode_preserves_pareto_candidates() -> None:
     base_work = _clean_dir(TEST_WORK_ROOT / "tier2_diag_base")
     dry_work = _clean_dir(TEST_WORK_ROOT / "tier2_diag_dry")
