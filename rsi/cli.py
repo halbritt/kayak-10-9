@@ -259,6 +259,10 @@ def run(
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM without solving")] = False,
     skip_resistance: Annotated[bool, typer.Option("--skip-resistance", help="Skip resistance curve")] = False,
     tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
+    freeze_group: Annotated[
+        list[str] | None,
+        typer.Option("--freeze-group", help="Parameter group(s) to hold fixed at initial/seed values"),
+    ] = None,
 ) -> None:
     """Execute or resume a multi-iteration recursive self-improvement campaign."""
     if iterations < 1 or population < 1 or tier2_top < 0 or workers < 1:
@@ -280,6 +284,7 @@ def run(
         quick_tier2=quick_tier2,
         cfd_dry_run=cfd_dry_run,
         tier2_n_jobs=tier2_n_jobs,
+        frozen_groups=tuple(freeze_group or ()),
     )
     try:
         result = run_campaign(cfg)

@@ -435,6 +435,7 @@ class CampaignConfig:
     cfd_dry_run: bool = False
     tier2_n_jobs: int = 6
     pre_screen: bool = True
+    frozen_groups: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -451,6 +452,7 @@ class CampaignConfig:
             "cfd_dry_run": self.cfd_dry_run,
             "tier2_n_jobs": self.tier2_n_jobs,
             "pre_screen": self.pre_screen,
+            "frozen_groups": list(self.frozen_groups),
         }
 
 
@@ -541,9 +543,16 @@ def _propose_candidate_vectors(
     hints: AdaptationHints,
     pareto_vectors: list[list[float]],
     best_near_vec: list[float] | None,
+    *,
+    frozen_groups: Sequence[str] = (),
 ) -> list[tuple[list[float], str]]:
     """Deterministically propose candidate vectors using multi-strategy RSI search."""
     d_dim = len(space.params)
+    frozen_set = set(frozen_groups)
+    active_groups = [g for g in PARAMETER_GROUPS if g not in frozen_set]
+    non_frozen_idx = [i for i, spec in enumerate(space.params) if spec.group not in frozen_set]
+    if not non_frozen_idx:
+        raise ValueError("Cannot freeze all parameter groups")
     by_group: dict[str, list[int]] = {g: [] for g in PARAMETER_GROUPS}
     for idx, spec in enumerate(space.params):
         by_group.setdefault(spec.group, []).append(idx)
@@ -593,16 +602,21 @@ def _propose_candidate_vectors(
         if u < 0.42:
             # Sparse group-local / coordinate perturbation (preserves tight coupled margins)
             strategy = "sparse_group"
-            if rng.random() < 0.60:
-                n_grp = int(rng.integers(1, 3))
-                chosen_groups = rng.choice(PARAMETER_GROUPS, size=n_grp, replace=False)
+            if active_groups and rng.random() < 0.60:
+                max_g = min(2, len(active_groups))
+                n_grp = int(rng.integers(1, max_g + 1))
+                chosen_groups = rng.choice(active_groups, size=n_grp, replace=False)
                 active_idx = [i for g in chosen_groups for i in by_group.get(str(g), [])]
-                if len(active_idx) > 5:
+                if not active_idx:
+                    active_idx = list(non_frozen_idx)
+                elif len(active_idx) > 5:
                     k_sub = int(rng.integers(2, 6))
                     active_idx = [int(x) for x in rng.choice(active_idx, size=k_sub, replace=False)]
             else:
-                k_sub = int(rng.integers(2, 6))
-                active_idx = [int(x) for x in rng.choice(d_dim, size=k_sub, replace=False)]
+                k_lo = min(2, len(non_frozen_idx))
+                k_hi = min(5, len(non_frozen_idx))
+                k_sub = int(rng.integers(k_lo, k_hi + 1))
+                active_idx = [int(x) for x in rng.choice(non_frozen_idx, size=k_sub, replace=False)]
 
             for idx in active_idx:
                 cand[idx] += float(rng.normal(0.0, 1.0)) * eff_sigma[idx]
@@ -612,14 +626,16 @@ def _propose_candidate_vectors(
             strategy = "diagnostic_steered"
             dirs = hints.preferred_directions
             for idx, spec in enumerate(space.params):
+                if spec.group in frozen_set:
+                    continue
                 d_val = float(dirs.get(spec.name, 0.0))
                 if abs(d_val) > 0.05:
                     step_mag = float(rng.uniform(0.30, 1.15))
                     cand[idx] += d_val * eff_sigma[idx] * step_mag
                 elif spec.name == "draft_a1" and "draft_a1" in hints.avoid_bounds:
                     cand[idx] *= 0.25
-            k_jit = int(rng.integers(1, 5))
-            jit_idx = [int(x) for x in rng.choice(d_dim, size=k_jit, replace=False)]
+            k_jit = int(rng.integers(1, min(4, len(non_frozen_idx)) + 1))
+            jit_idx = [int(x) for x in rng.choice(non_frozen_idx, size=k_jit, replace=False)]
             for idx in jit_idx:
                 cand[idx] += float(rng.normal(0.0, 0.45)) * eff_sigma[idx]
 
@@ -633,18 +649,25 @@ def _propose_candidate_vectors(
                 p2_weights /= p2_weights.sum()
                 p2_idx = int(rng.choice(len(pareto_vectors), p=p2_weights))
                 other = pareto_vectors[p2_idx]
-                k_mask = int(rng.integers(4, min(10, d_dim + 1)))
-                mask_idx = [int(x) for x in rng.choice(d_dim, size=k_mask, replace=False)]
+                m_lo = min(4, len(non_frozen_idx))
+                m_hi = min(9, len(non_frozen_idx))
+                k_mask = int(rng.integers(m_lo, m_hi + 1))
+                mask_idx = [int(x) for x in rng.choice(non_frozen_idx, size=k_mask, replace=False)]
                 alpha = float(rng.uniform(0.35, 0.85))
                 for idx in mask_idx:
                     cand[idx] = parent[idx] + alpha * (other[idx] - parent[idx])
-            k_jit = int(rng.integers(2, min(5, d_dim + 1)))
-            jit_idx = [int(x) for x in rng.choice(d_dim, size=k_jit, replace=False)]
+            j_lo = min(2, len(non_frozen_idx))
+            j_hi = min(4, len(non_frozen_idx))
+            k_jit = int(rng.integers(j_lo, j_hi + 1))
+            jit_idx = [int(x) for x in rng.choice(non_frozen_idx, size=k_jit, replace=False)]
             for idx in jit_idx:
                 cand[idx] += float(rng.normal(0.0, 0.30)) * eff_sigma[idx]
 
         # Respect diagnostic avoid_bounds hints softly before clamping
         for idx, spec in enumerate(space.params):
+            if spec.group in frozen_set:
+                cand[idx] = mu[idx]
+                continue
             rule = hints.avoid_bounds.get(spec.name)
             if not rule:
                 continue
@@ -671,7 +694,7 @@ def _propose_candidate_vectors(
         clamped = space.clamp(cand)
         # Ensure we didn't produce an exact zero-step copy of parent on attempt
         if attempt < max_attempts - 1 and all(abs(a - b) <= 1e-12 for a, b in zip(clamped, parent)):
-            idx = int(rng.integers(0, d_dim))
+            idx = int(rng.choice(non_frozen_idx))
             clamped[idx] = space.clamp(
                 [
                     clamped[j] + (eff_sigma[j] * (1.0 if rng.random() >= 0.5 else -1.0) if j == idx else 0.0)
@@ -786,6 +809,8 @@ def _propose_surrogate_lp_vectors(
     baseline: BaselineReference,
     ledger_entries: Sequence[dict[str, Any]],
     anchor_vec: list[float],
+    *,
+    frozen_groups: Sequence[str] = (),
 ) -> list[tuple[list[float], str]]:
     """Propose local LP steps maximizing 90/120 W race-pace speed along linearized feasible gates."""
     dataset = _build_surrogate_dataset(space, baseline, ledger_entries)
@@ -823,6 +848,9 @@ def _propose_surrogate_lp_vectors(
     out: list[tuple[list[float], str]] = []
     l1_penalty = 5e-5
     d_dim = len(space.params)
+    # Hold topsides parameters (plus any campaign-frozen group) at anchor so the LP cannot
+    # trade away bow freeboard or foot-box clearance for catch-width slack.
+    lp_frozen = set(frozen_groups) | {"topsides"}
 
     def _offer(step: np.ndarray) -> None:
         cand = space.clamp((x0 + step * scales).tolist())
@@ -846,7 +874,7 @@ def _propose_surrogate_lp_vectors(
         bounds_pos: list[tuple[float, float]] = []
         bounds_neg: list[tuple[float, float]] = []
         for i in range(d_dim):
-            if i == draft_a1_idx and abs(x0[i]) < 1e-6:
+            if (i == draft_a1_idx and abs(x0[i]) < 1e-6) or space.params[i].group in lp_frozen:
                 lo_i, hi_i = 0.0, 0.0
             else:
                 lo_i = max(float(lo_full[i]), -radius)
@@ -1081,6 +1109,12 @@ def run_campaign(
         raise ValueError(f"tier2_top must be >= 0, got {config.tier2_top}")
     if config.workers < 1:
         raise ValueError(f"workers must be >= 1, got {config.workers}")
+    frozen_groups = tuple(dict.fromkeys(str(g) for g in config.frozen_groups))
+    unknown_frozen = [g for g in frozen_groups if g not in PARAMETER_GROUPS]
+    if unknown_frozen:
+        raise ValueError(f"Unknown parameter group(s) in frozen_groups: {unknown_frozen}")
+    if len(frozen_groups) >= len(PARAMETER_GROUPS):
+        raise ValueError("Cannot freeze all parameter groups")
 
     root = DEFAULT_REPO_ROOT if repo_root is None else Path(repo_root).resolve()
     work = Path(config.work_dir)
@@ -1091,7 +1125,10 @@ def run_campaign(
 
     baseline = load_baseline_reference(root)
     space = DesignSpace.default()
-    provenance = _collect_provenance(root, space, baseline, config.seed)
+    provenance = {
+        **_collect_provenance(root, space, baseline, config.seed),
+        "frozen_groups": list(frozen_groups),
+    }
 
     def _eval_one(hull: Hull, c_dir: Path) -> CandidateMetrics:
         if evaluator_fn is not None:
@@ -1136,11 +1173,18 @@ def run_campaign(
             avoid_bounds=dict(state.adaptation_hints.get("avoid_bounds") or {}),
             tight_margins=tuple(state.adaptation_hints.get("tight_margins") or ()),
         )
+        eff_frozen_groups = tuple(
+            dict.fromkeys(
+                str(g) for g in (frozen_groups or state.provenance.get("frozen_groups") or ())
+            )
+        )
+        frozen_groups = eff_frozen_groups
         provenance = {
             **state.provenance,
             **provenance,
             "seed": effective_seed,
             "created_utc": created_utc,
+            "frozen_groups": list(frozen_groups),
         }
         final_completed = max(state.completed_iterations, config.iterations)
         prior_tier2_completed = state.tier2_completed
@@ -1257,6 +1301,11 @@ def run_campaign(
         _write_pareto_and_best(work, ledger_entries, tier2_verified, provenance, baseline)
         _save_checkpoint(0, "running", False)
 
+    frozen_set = set(frozen_groups)
+    frozen_anchor = {
+        i: float(mu[i]) for i, spec in enumerate(space.params) if spec.group in frozen_set
+    }
+
     # Track best utility and lowest deficit across history
     best_utility = max(
         (
@@ -1319,9 +1368,16 @@ def run_campaign(
                 current_hints,
                 pareto_vecs,
                 best_near_vec,
+                frozen_groups=frozen_groups,
             )
             anchor_vec = pareto_vecs[0] if pareto_vecs else (best_near_vec or mu)
-            lp_proposals = _propose_surrogate_lp_vectors(space, baseline, ledger_entries, anchor_vec)
+            lp_proposals = _propose_surrogate_lp_vectors(
+                space,
+                baseline,
+                ledger_entries,
+                anchor_vec,
+                frozen_groups=frozen_groups,
+            )
             if lp_proposals:
                 raw_proposals = lp_proposals + raw_proposals
 
@@ -1479,6 +1535,9 @@ def run_campaign(
                         for j in range(len(space.params))
                     ]
                 )
+
+            for idx_f, val_f in frozen_anchor.items():
+                mu[idx_f] = val_f
 
             stagnation_iters = 0 if improved else (stagnation_iters + 1)
             step_mult = 1.12 if improved else (0.82 if feasible_rate < 0.15 else 0.94)

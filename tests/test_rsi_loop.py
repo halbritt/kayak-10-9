@@ -936,21 +936,57 @@ def test_surrogate_lp_also_offers_parts_of_its_first_step() -> None:
 
 
 def test_surrogate_lp_keeps_zero_sensitivity_topsides_untouched() -> None:
-    """L1 step regularization keeps zero-sensitivity parameters at their anchor value."""
+    """Primary LP pass holds all topsides parameters at anchor to preserve bow freeboard and foot room."""
     work = _clean_dir(TEST_WORK_ROOT / "surrogate_lp_l1")
     run_campaign(
         CampaignConfig(iterations=4, population=11, seed=101, work_dir=work, pre_screen=False),
         evaluator_fn=_surrogate_evaluator,
     )
     entries = [json.loads(ln) for ln in (work / "ledger.jsonl").read_text().splitlines()]
-    anchor = json.loads((work / "pareto.json").read_text())["frontier"][0]["vector"]
     space = DesignSpace.default()
     idx = space.index_by_name()
+    # Even if catch_widths_mm artificially decreases with lower sheer_h_fwd_frac, LP must hold topsides.
+    for ent in entries:
+        m = ent.get("metrics")
+        vec = ent.get("vector")
+        if isinstance(m, dict) and isinstance(vec, list) and isinstance(m.get("catch_widths_mm"), list):
+            delta = (vec[idx["sheer_h_fwd_frac"]] - space.params[idx["sheer_h_fwd_frac"]].baseline) * 100.0
+            m["catch_widths_mm"] = [float(cw) + delta for cw in m["catch_widths_mm"]]
+
+    anchor = json.loads((work / "pareto.json").read_text())["frontier"][0]["vector"]
     lp_props = _propose_surrogate_lp_vectors(space, load_baseline_reference(), entries, anchor)
     assert lp_props
     for vec, _ in lp_props:
-        for name in ("crown_fwd", "deck_fb_fwd_scale", "sheer_h_fwd_frac", "shoulder_round_m"):
-            assert abs(vec[idx[name]] - anchor[idx[name]]) < 1e-9, name
+        for spec in space.params:
+            if spec.group == "topsides":
+                assert abs(vec[idx[spec.name]] - anchor[idx[spec.name]]) < 1e-12, spec.name
+
+
+def test_run_campaign_frozen_groups_holds_topsides_exact() -> None:
+    """frozen_groups=('topsides',) freezes all topsides parameters at baseline/seed values."""
+    work = _clean_dir(TEST_WORK_ROOT / "frozen_topsides")
+    res = run_campaign(
+        CampaignConfig(
+            iterations=4,
+            population=8,
+            seed=77,
+            work_dir=work,
+            pre_screen=False,
+            frozen_groups=("topsides",),
+        ),
+        evaluator_fn=_surrogate_evaluator,
+    )
+    assert res.feasible_count >= 2
+    assert res.provenance.get("frozen_groups") == ["topsides"]
+    space = DesignSpace.default()
+    base_vec = space.baseline_vector()
+    top_indices = [i for i, spec in enumerate(space.params) if spec.group == "topsides"]
+    entries = [json.loads(ln) for ln in (work / "ledger.jsonl").read_text().splitlines()]
+    evals = [e for e in entries if e.get("status") == "evaluated"]
+    assert len(evals) > 1
+    for ent in evals:
+        for i in top_indices:
+            assert ent["vector"][i] in (base_vec[i], round(base_vec[i], 10)), space.params[i].name
 
 
 def test_select_diverse_tier2_candidates_avoids_near_duplicate_clones() -> None:
