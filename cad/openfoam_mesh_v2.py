@@ -1,12 +1,10 @@
-"""OpenFOAM-v2606 Reference Mesh v2 (graded waterline + hull prism layers) & morph helpers."""
+"""OpenFOAM-v2606 Reference Mesh v2 dictionaries and configurable interFoam case writer."""
 
 from __future__ import annotations
 
 from pathlib import Path
-import re
-import numpy as np
 
-from openfoam_dicts import FV_SCHEMES, FV_SOLUTION, SFE_DICT, CTRL_MESH, decompose_dict
+from openfoam_dicts import CTRL_MESH, SFE_DICT, decompose_dict
 
 BLOCK_MESH_DICT_V2 = """FoamFile { version 2.0; format ascii; class dictionary; object blockMeshDict; }
 scale 1;
@@ -72,295 +70,149 @@ snapControls
 }
 addLayersControls
 {
-    relativeSizes false;
-    thicknessModel firstAndExpansion;
-    expansionRatio 1.25;
-    firstLayerThickness 0.00105;
-    minThickness 0.00035;
+    relativeSizes false; thicknessModel firstAndExpansion;
+    expansionRatio 1.25; firstLayerThickness 0.00105; minThickness 0.00035;
     layers { hull { nSurfaceLayers 5; } }
-    nGrow 0;
-    featureAngle 140;
-    slipFeatureAngle 30;
-    nRelaxIter 5;
-    nSmoothSurfaceNormals 3;
-    nSmoothNormals 5;
-    nSmoothThickness 10;
-    maxFaceThicknessRatio 0.5;
-    maxThicknessToMedialRatio 0.4;
-    minMedialAxisAngle 75;
-    nBufferCellsNoExtrude 0;
-    nLayerIter 50;
-    nRelaxedIter 20;
+    nGrow 0; featureAngle 140; slipFeatureAngle 30; nRelaxIter 5;
+    nSmoothSurfaceNormals 3; nSmoothNormals 5; nSmoothThickness 10;
+    maxFaceThicknessRatio 0.5; maxThicknessToMedialRatio 0.4; minMedialAxisAngle 75;
+    nBufferCellsNoExtrude 0; nLayerIter 50; nRelaxedIter 20;
 }
-meshQualityControls
-{
-    #include "meshQualityDict"
-    nSmoothScale 4;
-    errorReduction 0.75;
-}
+meshQualityControls { #include "meshQualityDict" nSmoothScale 4; errorReduction 0.75; }
 mergeTolerance 1e-6;
 """
 
 MESH_QUALITY_DICT_V2 = """FoamFile { version 2.0; format ascii; class dictionary; object meshQualityDict; }
 #includeEtc "caseDicts/meshQualityDict"
-maxNonOrtho 62;
-maxBoundarySkewness 3.8;
-maxInternalSkewness 3.8;
-maxConcave 80;
-minVol 1e-13;
-minTetQuality 1e-30;
-minArea -1;
-minTwist 0.02;
-minDeterminant 0.001;
-minFaceWeight 0.05;
-minVolRatio 0.01;
-minTriangleTwist -1;
-nSmoothScale 4;
-errorReduction 0.75;
+maxNonOrtho 62; maxBoundarySkewness 3.8; maxInternalSkewness 3.8; maxConcave 80;
+minVol 1e-13; minTetQuality 1e-30; minArea -1; minTwist 0.02; minDeterminant 0.001;
+minFaceWeight 0.05; minVolRatio 0.01; minTriangleTwist -1; nSmoothScale 4; errorReduction 0.75;
 """
 
-DYNAMIC_MESH_DICT_MORPH = """FoamFile { version 2.0; format ascii; class dictionary; object dynamicMeshDict; }
-dynamicFvMesh   dynamicMotionSolverFvMesh;
-motionSolverLibs ("libfvMotionSolvers.so");
-solver          displacementLaplacian;
-displacementLaplacianCoeffs
-{
-    diffusivity quadratic inverseDistance 1(hull);
-}
+TOPO_SET_DICT_DAMPING = """FoamFile { version 2.0; format ascii; class dictionary; object topoSetDict; }
+actions
+(
+    { name dampInletSet;  type cellSet; action new; source boxToCell; box (-8.1 -1 -3) (-5.8 5 2); }
+    { name dampInlet;     type cellZoneSet; action new; source setToCellZone; set dampInletSet; }
+    { name dampOutletSet; type cellSet; action new; source boxToCell; box (10.0 -1 -3) (13.2 5 2); }
+    { name dampOutlet;    type cellZoneSet; action new; source setToCellZone; set dampOutletSet; }
+    { name dampSideSet;   type cellSet; action new; source boxToCell; box (-5.8 2.9 -3) (10.0 5 2); }
+    { name dampSide;      type cellZoneSet; action new; source setToCellZone; set dampSideSet; }
+);
 """
 
-MORPH_FV_SCHEMES = """FoamFile { version 2.0; format ascii; class dictionary; object fvSchemes; }
-ddtSchemes { default Euler; }
-gradSchemes { default Gauss linear; }
-divSchemes { default none; }
-laplacianSchemes
-{
-    default Gauss linear corrected;
-    laplacian(diffusivity,cellDisplacement) Gauss linear corrected;
-}
-interpolationSchemes { default linear; }
-snGradSchemes { default corrected; }
-"""
 
-MORPH_FV_SOLUTION = """FoamFile { version 2.0; format ascii; class dictionary; object fvSolution; }
-solvers
-{
-    "cellDisplacement.*"
-    {
-        solver PCG;
-        preconditioner DIC;
-        tolerance 1e-6;
-        relTol 0;
-        minIter 2;
-    }
-}
-"""
+def fv_options_damping(damping_coeff: float = 2.5e6) -> str:
+    """Vertical-velocity DarcyForchheimer damping zones (in water: damping rate = nu * d)."""
+    hdr = "FoamFile { version 2.0; format ascii; class dictionary; object fvOptions; }\n"
+    blocks = []
+    for zone in ("dampInlet", "dampOutlet", "dampSide"):
+        blocks.append(
+            f"{zone}\n{{\n    type explicitPorositySource;\n    explicitPorositySourceCoeffs\n    {{\n"
+            f"        selectionMode cellZone; cellZone {zone}; type DarcyForchheimer;\n"
+            f"        d (0 0 {damping_coeff:.6g}); f (0 0 0);\n"
+            f"        coordinateSystem {{ origin (0 0 0); e1 (1 0 0); e2 (0 1 0); }}\n    }}\n}}\n"
+        )
+    return hdr + "".join(blocks)
+
+
+def fv_schemes_v2(include_potential_foam: bool = True) -> str:
+    """Return fvSchemes for interFoam LTS + optional potentialFoam calm-start init."""
+    from openfoam_dicts import FV_SCHEMES
+
+    if not include_potential_foam:
+        return FV_SCHEMES
+    return FV_SCHEMES.replace(
+        "div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;",
+        "div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;\n    div(div(phi,U)) Gauss linear;",
+    )
+
+
+def fv_solution_v2(
+    max_co: float = 50.0,
+    max_alpha_co: float = 5.0,
+    r_delta_t_smoothing: float = 0.05,
+    include_potential_foam: bool = True,
+) -> str:
+    """Return fvSolution with configurable maxCo/maxAlphaCo and optional potentialFlow block."""
+    from openfoam_dicts import FV_SOLUTION
+
+    txt = FV_SOLUTION.replace(
+        "maxCo 10; maxAlphaCo 5; rDeltaTSmoothingCoeff 0.05;",
+        f"maxCo {max_co:g}; maxAlphaCo {max_alpha_co:g}; rDeltaTSmoothingCoeff {r_delta_t_smoothing:g};",
+    )
+    if include_potential_foam:
+        txt = txt.replace(
+            "    p_rghFinal { $p_rgh; relTol 0; }",
+            "    p_rghFinal { $p_rgh; relTol 0; }\n    Phi { solver GAMG; smoother DIC; tolerance 1e-6; relTol 0.01; }\n    PhiFinal { $Phi; relTol 0; }",
+        ) + "\npotentialFlow { nNonOrthogonalCorrectors 4; }\n"
+    return txt
 
 
 def write_mesh_dicts_v2(cdir: Path, np_ranks: int = 4) -> None:
     """Write Reference Mesh v2 OpenFOAM meshing dictionaries without touching baseline dicts."""
+    from openfoam_dicts import FV_SCHEMES, FV_SOLUTION
+
     (cdir / "system").mkdir(parents=True, exist_ok=True)
-    (cdir / "system/blockMeshDict").write_text(BLOCK_MESH_DICT_V2)
-    (cdir / "system/snappyHexMeshDict").write_text(SNAPPY_DICT_V2)
-    (cdir / "system/meshQualityDict").write_text(MESH_QUALITY_DICT_V2)
-    (cdir / "system/surfaceFeatureExtractDict").write_text(SFE_DICT)
-    (cdir / "system/controlDict").write_text(CTRL_MESH)
-    (cdir / "system/decomposeParDict").write_text(decompose_dict(np_ranks))
-    (cdir / "system/fvSchemes").write_text(FV_SCHEMES)
-    (cdir / "system/fvSolution").write_text(FV_SOLUTION)
+    (cdir / "system/blockMeshDict").write_text(BLOCK_MESH_DICT_V2, encoding="utf-8")
+    (cdir / "system/snappyHexMeshDict").write_text(SNAPPY_DICT_V2, encoding="utf-8")
+    (cdir / "system/meshQualityDict").write_text(MESH_QUALITY_DICT_V2, encoding="utf-8")
+    (cdir / "system/surfaceFeatureExtractDict").write_text(SFE_DICT, encoding="utf-8")
+    (cdir / "system/controlDict").write_text(CTRL_MESH, encoding="utf-8")
+    (cdir / "system/decomposeParDict").write_text(decompose_dict(np_ranks), encoding="utf-8")
+    (cdir / "system/fvSchemes").write_text(FV_SCHEMES, encoding="utf-8")
+    (cdir / "system/fvSolution").write_text(FV_SOLUTION, encoding="utf-8")
 
 
-def _project_points_to_triangles(
-    pts: np.ndarray, verts: np.ndarray, faces: np.ndarray, k: int = 12
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Project points onto closest STL triangles using scipy cKDTree (no rtree required)."""
-    from scipy.spatial import cKDTree
+def write_interfoam_case_files_v2(
+    cdir: Path,
+    u_mps: float,
+    cg: list[float],
+    *,
+    end_steps: int = 2000,
+    np_ranks: int = 6,
+    max_co: float = 50.0,
+    max_alpha_co: float = 5.0,
+    r_delta_t_smoothing: float = 0.05,
+    damping_zones: bool = False,
+    damping_coeff: float = 2.5e6,
+    calm_start: str = "potential",
+    ramp_steps: int = 300,
+) -> list[str]:
+    """Write a Mesh v2 interFoam case reusing baseline fields without modifying cad/openfoam_dicts.py."""
+    from openfoam_dicts import write_interfoam_case_files
 
-    tri = verts[faces]
-    tree = cKDTree(tri.mean(axis=1))
-    _, cand = tree.query(pts, k=min(k, len(faces)))
-    cand = np.atleast_2d(cand)
-    a, b, c = tri[cand, 0], tri[cand, 1], tri[cand, 2]
-    ab, ac, ap = b - a, c - a, pts[:, None, :] - a
-    d1 = np.sum(ab * ap, axis=-1)
-    d2 = np.sum(ac * ap, axis=-1)
-    d3 = np.sum(ab * (pts[:, None, :] - b), axis=-1)
-    d4 = np.sum(ac * (pts[:, None, :] - b), axis=-1)
-    d5 = np.sum(ab * (pts[:, None, :] - c), axis=-1)
-    d6 = np.sum(ac * (pts[:, None, :] - c), axis=-1)
-    vc = d1 * d4 - d3 * d2
-    vb = d5 * d2 - d1 * d6
-    va = d3 * d6 - d5 * d4
-    v = np.zeros_like(d1)
-    w = np.zeros_like(d1)
-    # Vertex A
-    m_a = (d1 <= 0) & (d2 <= 0)
-    # Vertex B
-    m_b = ~m_a & (d3 >= 0) & (d4 <= d3)
-    v[m_b] = 1.0
-    # Edge AB
-    m_ab = ~m_a & ~m_b & (vc <= 0) & (d1 >= 0) & (d3 <= 0)
-    v[m_ab] = np.clip(d1[m_ab] / np.maximum(d1[m_ab] - d3[m_ab], 1e-30), 0.0, 1.0)
-    # Vertex C
-    m_c = ~m_a & ~m_b & ~m_ab & (d6 >= 0) & (d5 <= d6)
-    w[m_c] = 1.0
-    # Edge AC
-    m_ac = ~m_a & ~m_b & ~m_ab & ~m_c & (vb <= 0) & (d2 >= 0) & (d6 <= 0)
-    w[m_ac] = np.clip(d2[m_ac] / np.maximum(d2[m_ac] - d6[m_ac], 1e-30), 0.0, 1.0)
-    # Edge BC
-    m_bc = ~m_a & ~m_b & ~m_ab & ~m_c & ~m_ac & (va <= 0) & ((d4 - d3) >= 0) & ((d5 - d6) >= 0)
-    w[m_bc] = np.clip((d4[m_bc] - d3[m_bc]) / np.maximum((d4[m_bc] - d3[m_bc]) + (d5[m_bc] - d6[m_bc]), 1e-30), 0.0, 1.0)
-    v[m_bc] = 1.0 - w[m_bc]
-    # Interior
-    m_in = ~(m_a | m_b | m_ab | m_c | m_ac | m_bc)
-    inv = 1.0 / np.maximum(va[m_in] + vb[m_in] + vc[m_in], 1e-30)
-    v[m_in] = vb[m_in] * inv
-    w[m_in] = vc[m_in] * inv
-    u = 1.0 - v - w
-    proj = u[..., None] * a + v[..., None] * b + w[..., None] * c
-    dists = np.linalg.norm(proj - pts[:, None, :], axis=-1)
-    best = np.argmin(dists, axis=1)
-    idx = np.arange(len(pts))
-    tri_idx = cand[idx, best]
-    bary = np.stack([u[idx, best], v[idx, best], w[idx, best]], axis=-1)
-    return tri_idx, bary, dists[idx, best]
-
-
-def read_polymesh_points_ascii(points_path: Path) -> np.ndarray:
-    """Parse an ASCII OpenFOAM polyMesh/points vectorField into an (N, 3) float64 array."""
-    ptxt = points_path.read_text(encoding="utf-8")
-    anchor = ptxt.find("// *")
-    psub = ptxt[anchor:] if anchor >= 0 else ptxt
-    pm0 = re.search(r"(\d+)\s*\(", psub)
-    if pm0 is None:
-        raise ValueError(f"Could not parse points count in {points_path}")
-    n_pts = int(pm0.group(1))
-    pbody = psub[pm0.end() :]
-    pend = pbody.find(")\n\n") if ")\n\n" in pbody else pbody.rfind(")")
-    return np.fromstring(
-        pbody[:pend].replace("(", " ").replace(")", " "), sep=" ", count=n_pts * 3
-    ).reshape(n_pts, 3)
-
-
-def extract_patch_mesh_points(
-    poly_mesh_dir: Path, patch_name: str = "hull"
-) -> tuple[np.ndarray, list[int]]:
-    """Read ASCII polyMesh and return patch vertices in OpenFOAM first-appearance meshPoints order."""
-    btxt = (poly_mesh_dir / "boundary").read_text(encoding="utf-8")
-    mb = re.search(
-        rf"\b{re.escape(patch_name)}\s*\{{[^}}]*?nFaces\s+(\d+);[^}}]*?startFace\s+(\d+);",
-        btxt,
-        re.S,
+    if calm_start not in ("none", "potential", "ramp"):
+        raise ValueError(f"Unsupported calm_start mode: {calm_start!r}")
+    for sub in ("constant", "system", "logs"):
+        (cdir / sub).mkdir(parents=True, exist_ok=True)
+    write_interfoam_case_files(cdir, u_mps, cg, end_steps=end_steps, np_ranks=np_ranks)
+    use_pot = calm_start == "potential"
+    (cdir / "system/fvSchemes").write_text(fv_schemes_v2(use_pot), encoding="utf-8")
+    (cdir / "system/fvSolution").write_text(
+        fv_solution_v2(max_co, max_alpha_co, r_delta_t_smoothing, use_pot), encoding="utf-8"
     )
-    if mb is None:
-        raise ValueError(f"Patch {patch_name!r} not found in {poly_mesh_dir / 'boundary'}")
-    n_faces, start_face = int(mb.group(1)), int(mb.group(2))
-
-    ftxt = (poly_mesh_dir / "faces").read_text(encoding="utf-8")
-    anchor = ftxt.find("// *")
-    fsub = ftxt[anchor:] if anchor >= 0 else ftxt
-    fm0 = re.search(r"(\d+)\s*\(", fsub)
-    if fm0 is None:
-        raise ValueError(f"Could not parse faces count in {poly_mesh_dir / 'faces'}")
-    face_pat = re.compile(r"\d+\(([^)]+)\)")
-    mesh_point_ids = list(
-        dict.fromkeys(
-            int(idx)
-            for face_idx, m_face in enumerate(face_pat.finditer(fsub, fm0.end()))
-            if start_face <= face_idx < start_face + n_faces
-            for idx in m_face.group(1).split()
+    if damping_zones:
+        (cdir / "system/topoSetDict").write_text(TOPO_SET_DICT_DAMPING, encoding="utf-8")
+        (cdir / "constant/fvOptions").write_text(fv_options_damping(damping_coeff), encoding="utf-8")
+    if use_pot:
+        (cdir / "0.orig/p").write_text(
+            'FoamFile { version 2.0; format ascii; class volScalarField; object p; }\ndimensions [0 2 -2 0 0 0 0];\ninternalField uniform 0;\nboundaryField\n{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      { type zeroGradient; }\n    outlet     { type fixedValue; value uniform 0; }\n    atmosphere { type fixedValue; value uniform 0; }\n    hull       { type zeroGradient; }\n}\n',
+            encoding="utf-8",
         )
-    )
-    pts = read_polymesh_points_ascii(poly_mesh_dir / "points")
-    return pts[mesh_point_ids], mesh_point_ids
-
-
-def build_stl_vertex_displacement(
-    v_base: np.ndarray,
-    f_base: np.ndarray,
-    v_target: np.ndarray,
-    hull_pts: np.ndarray,
-    *,
-    mode: str = "normal",
-) -> np.ndarray:
-    """Compute patch displacements from base STL to target STL ('normal' adds a 10 mm keel-seam blend)."""
-    f_pos_mask = v_base[f_base].mean(axis=1)[:, 1] >= -1e-6
-    f_pos = f_base[f_pos_mask] if np.any(f_pos_mask) else f_base
-    tri_idx, bary, _ = _project_points_to_triangles(hull_pts, v_base, f_pos, k=32)
-    d_param = np.einsum("ij,ijk->ik", bary, v_target[f_pos[tri_idx]]) - hull_pts
-    if mode == "parametric":
-        return d_param
-    if mode == "normal":
-        w_seam = np.exp(-((np.maximum(hull_pts[:, 1], 0.0) / 0.010) ** 2))[:, None]
-        seed_pts = hull_pts + w_seam * d_param
-        t_idx, t_bary, _ = _project_points_to_triangles(seed_pts, v_target, f_pos, k=32)
-        target_pts = np.einsum("ij,ijk->ik", t_bary, v_target[f_pos[t_idx]])
-        target_pts[hull_pts[:, 1] <= 1e-6, 1] = 0.0
-        return target_pts - hull_pts
-    raise ValueError(f"Unknown displacement mode: {mode}")
-
-
-def write_point_displacement_field(path: Path, hull_disp: np.ndarray) -> None:
-    """Write 0/pointDisplacement fixedValue boundary field for OpenFOAM moveDynamicMesh."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    vec_lines = "\n".join(f"({d[0]:.8e} {d[1]:.8e} {d[2]:.8e})" for d in hull_disp)
-    path.write_text(
-        "FoamFile { version 2.0; format ascii; class pointVectorField; object pointDisplacement; }\n"
-        "dimensions [0 1 0 0 0 0 0];\n"
-        "internalField uniform (0 0 0);\n"
-        "boundaryField\n{\n"
-        "    inlet      { type fixedValue; value uniform (0 0 0); }\n"
-        "    outlet     { type fixedValue; value uniform (0 0 0); }\n"
-        "    midPlane   { type symmetryPlane; }\n"
-        "    side       { type symmetryPlane; }\n"
-        "    bottom     { type symmetryPlane; }\n"
-        "    atmosphere { type fixedValue; value uniform (0 0 0); }\n"
-        f"    hull       {{ type fixedValue; value nonuniform List<vector> {len(hull_disp)} (\n{vec_lines}\n); }}\n"
-        "}\n",
-        encoding="utf-8",
-    )
-
-
-def write_polymesh_points_ascii(points_path: Path, pts: np.ndarray) -> None:
-    """Write an (N, 3) float array as an ASCII OpenFOAM polyMesh/points file."""
-    pts_arr = np.asarray(pts, dtype=float)
-    lines = [f"({x:.9g} {y:.9g} {z:.9g})" for x, y, z in pts_arr]
-    header = (
-        "FoamFile\n{\n    version     2.0;\n    format      ascii;\n"
-        '    class       vectorField;\n    location    "constant/polyMesh";\n'
-        "    object      points;\n}\n// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n\n"
-    )
-    points_path.write_text(f"{header}\n{len(pts_arr)}\n(\n" + "\n".join(lines) + "\n)\n", encoding="utf-8")
-
-
-def morph_polymesh_points(
-    poly_mesh_dir: Path,
-    hull_pt_ids: list[int] | np.ndarray,
-    hull_disp: np.ndarray,
-    *,
-    r_core: float = 0.015,
-    r_outer: float = 0.45,
-    k: int = 16,
-    out_points_path: Path | None = None,
-) -> np.ndarray:
-    """Morph all mesh points via cKDTree k-NN IDW with rigid prism core and C^2 quintic cutoff."""
-    from scipy.spatial import cKDTree
-
-    pts = read_polymesh_points_ascii(poly_mesh_dir / "points")
-    hull_ids_arr = np.asarray(hull_pt_ids, dtype=int)
-    hull_pts = pts[hull_ids_arr]
-    dists, idx = cKDTree(hull_pts).query(pts, k=min(int(k), len(hull_pts)))
-    dists = np.atleast_2d(dists)
-    idx = np.atleast_2d(idx)
-    w = 1.0 / (dists + 2e-4) ** 2
-    w /= w.sum(axis=1, keepdims=True)
-    d_local = np.einsum("ij,ijk->ik", w, hull_disp[idx])
-    s = np.clip((dists[:, 0] - r_core) / max(r_outer - r_core, 1e-9), 0.0, 1.0)
-    decay = 1.0 - s**3 * (10.0 - 15.0 * s + 6.0 * s**2)
-    disp_all = d_local * decay[:, None]
-    disp_all[hull_ids_arr] = hull_disp
-    disp_all[pts[:, 1] <= 1e-7, 1] = 0.0
-    morphed = pts + disp_all
-    if out_points_path is not None:
-        write_polymesh_points_ascii(out_points_path, morphed)
-    return morphed
+    elif calm_start == "ramp":
+        (cdir / "0.orig/U").write_text(
+            f'FoamFile {{ version 2.0; format ascii; class volVectorField; object U; }}\ndimensions [0 1 -1 0 0 0 0];\ninternalField uniform (0 0 0);\nboundaryField\n{{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      {{ type uniformFixedValue; uniformValue table ( (0 (0 0 0)) ({ramp_steps} ({u_mps:.6f} 0 0)) ); value uniform (0 0 0); }}\n    outlet     {{ type inletOutlet; inletValue uniform (0 0 0); value uniform (0 0 0); }}\n    atmosphere {{ type pressureInletOutletVelocity; value uniform (0 0 0); }}\n    hull       {{ type movingWallVelocity; value uniform (0 0 0); }}\n}}\n',
+            encoding="utf-8",
+        )
+    cmds = [
+        "setFields > logs/setFields.log 2>&1",
+        "decomposePar > logs/decomposePar.log 2>&1",
+        f"mpirun -np {np_ranks} renumberMesh -parallel -overwrite > logs/renumber.log 2>&1",
+    ]
+    if damping_zones:
+        cmds.append(f"mpirun -np {np_ranks} topoSet -parallel > logs/topoSet.log 2>&1")
+    if use_pot:
+        cmds.append(f"mpirun -np {np_ranks} potentialFoam -initialiseUBCs -parallel -noFunctionObjects > logs/potentialFoam.log 2>&1")
+    cmds.append(f"mpirun -np {np_ranks} interFoam -parallel > logs/interFoam.log 2>&1")
+    return cmds
