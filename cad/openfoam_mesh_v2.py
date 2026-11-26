@@ -174,6 +174,7 @@ def write_interfoam_case_files_v2(
     max_co: float = 50.0,
     max_alpha_co: float = 5.0,
     r_delta_t_smoothing: float = 0.05,
+    pin_outlet: bool = True,
     damping_zones: bool = False,
     sponge_frequency: float = 0.15,
     sponge_w: float = 20.0,
@@ -193,6 +194,19 @@ def write_interfoam_case_files_v2(
     (cdir / "system/fvSolution").write_text(
         fv_solution_v2(max_co, max_alpha_co, r_delta_t_smoothing, use_pot), encoding="utf-8"
     )
+    if pin_outlet and calm_start != "ramp":
+        (cdir / "0.orig/p_rgh").write_text(
+            'FoamFile { version 2.0; format ascii; class volScalarField; object p_rgh; }\ndimensions [1 -1 -2 0 0 0 0];\ninternalField uniform 0;\nboundaryField\n{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      { type fixedFluxPressure; value uniform 0; }\n    outlet     { type fixedValue; value uniform 0; }\n    atmosphere { type totalPressure; p0 uniform 0; }\n    hull       { type fixedFluxPressure; value uniform 0; }\n}\n',
+            encoding="utf-8",
+        )
+        (cdir / "0.orig/U").write_text(
+            f'FoamFile {{ version 2.0; format ascii; class volVectorField; object U; }}\ndimensions [0 1 -1 0 0 0 0];\ninternalField uniform ({u_mps:.6f} 0 0);\nboundaryField\n{{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      {{ type fixedValue; value uniform ({u_mps:.6f} 0 0); }}\n    outlet     {{ type inletOutlet; inletValue uniform ({u_mps:.6f} 0 0); value uniform ({u_mps:.6f} 0 0); }}\n    atmosphere {{ type pressureInletOutletVelocity; value uniform (0 0 0); }}\n    hull       {{ type movingWallVelocity; value uniform (0 0 0); }}\n}}\n',
+            encoding="utf-8",
+        )
+        (cdir / "0.orig/alpha.water").write_text(
+            'FoamFile { version 2.0; format ascii; class volScalarField; object alpha.water; }\ndimensions [0 0 0 0 0 0 0];\ninternalField uniform 0;\nboundaryField\n{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      { type fixedValue; value $internalField; }\n    outlet     { type zeroGradient; }\n    atmosphere { type inletOutlet; inletValue uniform 0; value uniform 0; }\n    hull       { type zeroGradient; }\n}\n',
+            encoding="utf-8",
+        )
     if damping_zones:
         (cdir / "constant/fvOptions").write_text(
             fv_options_end_sponge(frequency=sponge_frequency, w=sponge_w), encoding="utf-8"
