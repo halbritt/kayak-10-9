@@ -14,6 +14,10 @@ SITE_DIR = REPO_ROOT / "site"
 REL_BASE = "https://github.com/halbritt/kayak-10-9/releases/latest/download"
 REPO_URL = "https://github.com/halbritt/kayak-10-9"
 KAYAKGEN_URL = "https://github.com/halbritt/kayak-gen"
+CFD_DRAG_NOTE = (
+    "Drag had not converged when the OpenFOAM runs ended after 500 solver steps. "
+    "The percentage differences from the Epic 18X are provisional."
+)
 
 SVG_CALIPER = """
 <svg viewBox="0 0 760 225" width="100%" style="background:#f8fbff;border:1px solid #d6e0ea;border-radius:8px;margin-top:0.6rem">
@@ -138,6 +142,7 @@ def make_master_table(specs: dict, cfd: dict, seak: dict, stiff: dict, sr_4in: f
     <tr><td>Seat, Footbrace &amp; Keel Architecture</td><td class="hi">10 mm pan on twin &plusmn;12.5 cm carbon foil tracks + 12&deg; wing footboard (-0.82 m) + 60 mm flush UD keel strap</td><td>Center plastic notched rail + SmartTrack toe pegs</td><td>Cheek-bolted 3-pos seat + 3-cam QR full footplate</td><td><span class="badge b-spec">CAD / Maker</span></td></tr>
     <tr class="group-hdr"><td colspan="5">3. Calm-Water Speed &amp; OpenFOAM-v2606 Free-Surface RANS CFD (225 lb Seawater, Unvalidated Comparative)</td></tr>
     <tr><td>Speed @ 40 / 60 / 90 / 120 W (ITTC-57 + Michell)</td><td class="hi">{kn["40"]:.2f} / {kn["60"]:.2f} / {kn["90"]:.2f} / {kn["120"]:.2f} kn</td><td>4.47 / 5.02 / 5.58 / 6.06 kn</td><td>&mdash; (no 3D scan)</td><td><span class="badge b-cfd">Analytical</span></td></tr>
+    <tr><td colspan="5"><span style="display:block;max-width:65vw">{CFD_DRAG_NOTE}</span></td></tr>
     <tr><td>OpenFOAM-v2606 Total Drag @ 5.50 kn (Fn 0.386)</td><td class="hi">{k55["drag_total_N"]:.2f} &plusmn; {k55["drag_std_N"]:.2f} N ({d_tot55:+.1f}%, {k55["effective_power_W"]:.1f} W)</td><td>{e55["drag_total_N"]:.2f} &plusmn; {e55["drag_std_N"]:.2f} N ({e55["effective_power_W"]:.1f} W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM-2606</span></td></tr>
     <tr><td>OpenFOAM-v2606 Pressure/Wave Drag @ 5.50 kn</td><td class="hi">{k55["drag_pressure_N"]:.2f} N ({d_p55:+.1f}% wave drag)</td><td>{e55["drag_pressure_N"]:.2f} N</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM-2606</span></td></tr>
     <tr><td>OpenFOAM-v2606 Total Drag @ 6.20 kn (Fn 0.435)</td><td class="hi">{k62["drag_total_N"]:.2f} &plusmn; {k62["drag_std_N"]:.2f} N ({d_tot62:+.1f}%, {k62["effective_power_W"]:.1f} W)</td><td>{e62["drag_total_N"]:.2f} &plusmn; {e62["drag_std_N"]:.2f} N ({e62["effective_power_W"]:.1f} W)</td><td>&mdash;</td><td><span class="badge b-cfd">OpenFOAM-2606</span></td></tr>
@@ -193,7 +198,7 @@ def build_html(specs: dict, cfd: dict, seak: dict, stiff: dict) -> str:
     <div class="kpi-grid">
       <div class="kpi"><div class="val">{sr_4in:.2f}</div><div class="lbl">Sound Rowers 4&quot; Ratio (&le; 10.99 FSK Cap)</div></div>
       <div class="kpi"><div class="val">27.0–29.4 lb</div><div class="lbl">TeXtreme + Rohacell Target Mass</div></div>
-      <div class="kpi"><div class="val">{d_p62:+.1f}%</div><div class="lbl">OpenFOAM-v2606 Wave Drag vs. 18X @ 6.2 kn</div></div>
+      <div class="kpi"><div class="val">{d_p62:+.1f}%</div><div class="lbl">OpenFOAM-v2606 Wave Drag vs. 18X @ 6.2 kn (provisional, 500 steps)</div></div>
       <div class="kpi"><div class="val">{d_dips:+.0f}%</div><div class="lbl">Calc. Bow Plunges in Bay Chop (Capytaine 3.0)</div></div>
       <div class="kpi"><div class="val">{tot_l:.1f} L</div><div class="lbl">Sealed Dry Storage (2 BHs + 5.5 L Pod)</div></div>
       <div class="kpi"><div class="val">{defl_mm:.2f} mm</div><div class="lbl">Calc. Aft-Deck Flex @ 180 lbf (+64 g Grid)</div></div>
@@ -311,7 +316,7 @@ def _body_sections_1(sr_4in: float, b_oa: float, catch_1m: float, bow_l: float, 
     <h2>Plates 5, 6 &amp; 7 — OpenFOAM-v2606 RANS CFD, Capytaine 3.0 Seakeeping &amp; X-Ray Cutaways</h2>
     <div class="plate-box">
       <img src="plates/plate5_openfoam_cfd.png" alt="Plate 5 OpenFOAM-v2606 RANS CFD"/>
-      <div class="caption"><strong>Plate 5 (Calculated / Unvalidated Comparative):</strong> Matched OpenFOAM-v2606 <code>snappyHexMesh</code> + <code>interFoam</code> (<code>kOmegaSST</code>) VOF RANS on the finished Kayak 10.9 whole-hull faired surface vs. Epic 18X scan at 225 lb seawater equilibrium (5.50 &amp; 6.20 kn).</div>
+      <div class="caption"><strong>Plate 5 (Calculated / Unvalidated Comparative):</strong> Matched OpenFOAM-v2606 <code>snappyHexMesh</code> + <code>interFoam</code> (<code>kOmegaSST</code>) VOF RANS on the finished Kayak 10.9 whole-hull faired surface vs. Epic 18X scan at 225 lb seawater equilibrium (5.50 &amp; 6.20 kn). {CFD_DRAG_NOTE}</div>
     </div>
     <div class="plate-box">
       <img src="plates/plate6_seakeeping_and_windage.png" alt="Plate 6 Capytaine 3.0 3D Seakeeping"/>
