@@ -35,7 +35,7 @@ from rsi.promote import (
 
 CFD_MODE_HELP = (
     "Tier 2 CFD: 'paired' compares with the baseline on one mesh from one flow state; "
-    "'cold' meshes the hull alone and runs it from rest"
+    "'cold' meshes the hull alone and runs it from rest. Promotion requires paired CFD."
 )
 
 app = typer.Typer(

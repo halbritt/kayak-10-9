@@ -753,7 +753,7 @@ def compare_candidate(
         and "6.2kn" in eff_cfd.speeds
     )
     tier2_passed = bool(tier2_complete and gate_report.passed)
-    promotion_eligible = bool(tier2_passed)
+    promotion_eligible = tier2_passed and eff_cfd is not None and eff_cfd.mode == PAIRED_MODE
     deltas = _compute_deltas(eval_metrics, baseline, eff_seak, eff_cfd)
 
     return ComparisonReport(
@@ -870,57 +870,24 @@ def promote_candidate(
         cfd=eff_cfd,
     )
 
-    if not apply:
-        reason = (
-            "Dry-run passed evaluated gates (full Tier 2 required before --apply)."
-            if comp.passed and not comp.promotion_eligible
-            else (
-                "Dry-run passed all Tier 0/1 and Tier 2 gates; candidate is promotion-eligible."
-                if comp.promotion_eligible
-                else f"Dry-run failed {len(comp.gate_report.violations)} gate(s)."
-            )
-        )
+    if not comp.passed:
+        reason = f"Candidate failed {len(comp.gate_report.violations)} gate(s)."
+    elif not comp.tier2_complete:
+        reason = "Promotion requires full seakeeping and executed paired CFD at both speeds."
+    elif not comp.promotion_eligible:
+        reason = "The cold CFD screen passed. Promotion requires a paired CFD comparison."
+    else:
+        reason = "All promotion gates passed."
+
+    if not apply or not comp.promotion_eligible:
         return PromotionReport(
             candidate_path=str(candidate_path),
             target_hull_path=str(target_hull_path),
-            dry_run=True,
+            dry_run=not apply,
             applied=False,
-            passed=comp.passed,
+            passed=comp.passed if not apply else False,
             promotion_eligible=comp.promotion_eligible,
             reason=reason,
-            comparison=comp,
-            preview_diff=preview,
-        )
-
-    # apply=True path: strict Tier 0/1 + full Tier 2 enforcement
-    if not comp.tier2_complete:
-        return PromotionReport(
-            candidate_path=str(candidate_path),
-            target_hull_path=str(target_hull_path),
-            dry_run=False,
-            applied=False,
-            passed=False,
-            promotion_eligible=False,
-            reason=(
-                "Tier 2 verification (full Capytaine quick=False and OpenFOAM dry_run=False) "
-                "is required before --apply"
-            ),
-            comparison=comp,
-            preview_diff=preview,
-        )
-
-    if not comp.promotion_eligible:
-        return PromotionReport(
-            candidate_path=str(candidate_path),
-            target_hull_path=str(target_hull_path),
-            dry_run=False,
-            applied=False,
-            passed=False,
-            promotion_eligible=False,
-            reason=(
-                f"Promotion refused: {len(comp.gate_report.violations)} gate violation(s) "
-                "must be resolved."
-            ),
             comparison=comp,
             preview_diff=preview,
         )

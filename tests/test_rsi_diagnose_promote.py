@@ -218,7 +218,8 @@ def test_compare_candidate_baseline_and_deltas(baseline_eval: tuple) -> None:
     assert comp_base.passed is True
     assert comp_base.tier01_passed is True
     assert comp_base.tier2_complete is True
-    assert comp_base.promotion_eligible is True
+    assert comp_base.tier2_passed is True
+    assert comp_base.promotion_eligible is False
     assert comp_base.deltas["class_form"]["sr_4in"] == 0.0
     assert abs(comp_base.deltas["kn_225"]["mean_speed_gain_kn"]) < 1e-3
     fair_deltas = comp_base.deltas["fairness"]
@@ -349,6 +350,7 @@ def test_promote_candidate_dry_run_and_apply_strict_gating(baseline_eval: tuple)
         ("no_tier2", None, None),
         ("quick_seak", replace(seak, quick=True), cfd),
         ("dry_cfd", seak, replace(cfd, dry_run=True)),
+        ("passing_cold_screen", seak, cfd),
         (
             "bad_cfd",
             seak,
@@ -375,7 +377,7 @@ def test_promote_candidate_dry_run_and_apply_strict_gating(baseline_eval: tuple)
         assert rep_refused.passed is False, tag
         assert target_hull.read_bytes() == original_bytes, tag
 
-    # 5. --apply succeeds with full non-quick Capytaine & executed OpenFOAM passing all gates
+    # 5. Only executed paired CFD can qualify a passing candidate for promotion.
     prom_work = TEST_WORK_ROOT / "prom_apply_ok"
     rep_applied = promote_candidate(
         cand_path,
@@ -385,7 +387,7 @@ def test_promote_candidate_dry_run_and_apply_strict_gating(baseline_eval: tuple)
         apply=True,
         metrics=metrics,
         seakeeping=seak,
-        cfd=cfd,
+        cfd=_paired_cfd(0.0, 0.0),
     )
     assert rep_applied.applied is True
     assert rep_applied.passed is True
