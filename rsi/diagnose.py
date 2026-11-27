@@ -1053,6 +1053,21 @@ def diagnose_candidate(
             if fwd_flare_room:
                 acc.add_direction("sec_side_fwd", -0.5, weight=0.8)
 
+        elif g_id.startswith("cfd_baseline_settled_"):
+            # A moving or unmeasured reference provides no direction for a hull change.
+            items.append(
+                DiagnosticItem(
+                    code="cfd_baseline_drift",
+                    source="cfd",
+                    gate=g_id,
+                    severity="error",
+                    groups=(),
+                    parameters=(),
+                    message=v.message,
+                    margin=margin,
+                )
+            )
+
         elif g_id.startswith("kn_225_") or g_id.startswith("kn_265_") or g_id.startswith("cfd_"):
             is_cfd = g_id.startswith("cfd_")
             groups = ("waterline", "fairing", "draft", "rocker", "section")

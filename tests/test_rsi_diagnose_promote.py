@@ -471,6 +471,7 @@ def _paired_cfd(delta_55: float, delta_62: float) -> CfdMetrics:
         bashrc=str(resolve_openfoam_bashrc()),
         bashrc_exists=True,
         staging_dir="",
+        mesh_info={"baseline_drift_N": {"5.5kn": 0.0, "6.2kn": 0.0}},
         speeds={"5.5kn": sp(5.5, delta_55), "6.2kn": sp(6.2, delta_62)},
         mode="paired_warm_start",
     )

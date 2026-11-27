@@ -11,8 +11,8 @@ state). To judge a
 candidate, the reference mesh is moved onto the candidate's skin (``openfoam_morph``), the
 candidate continues from the reference flow state for ``pair_steps``, and its drag history is
 compared step for step with the baseline continued from the same state for the same steps. Mesh
-connectivity, wall spacing, decomposition and whatever drift remains are common to both, so the
-difference belongs to the hull.
+connectivity, wall spacing and decomposition are common to both. Drift in the reference can still
+bias the difference if the two flows respond at different rates.
 
 Why the settling: the start from rest leaves the tank's water level and waves several metres long
 in motion. 1 mm of level is 15.6 N of vertical force, and a surface slope of 1 mm per metre over
@@ -20,7 +20,8 @@ the hull is 1 N of drag (the boat's weight times the slope). With the case's own
 velocity prescribed, level free) v0.2.3's drag went from 18.2 N to 15.5 N between steps 2050 and
 2400 and back to 18.3 N by 3600. A difference taken while the baseline moves 0.01 N per step is
 contaminated by any lag between the two runs. Damping vertical velocity in zones did not help:
-long waves are nearly horizontal motion. Pinning the level made it converge (2026-11-26).
+long waves are nearly horizontal motion. The excursion also appeared with the outlet level pinned
+from the start. Its cause remains open.
 
 A candidate must come from the same parametric surface as the baseline (same STL topology).
 """
@@ -810,7 +811,8 @@ def evaluate_tier2_cfd_paired(
             "mesh_info": {
                 "reference": reference.key,
                 "reference_dir": str(reference.root),
-                # how much the baseline itself moved over the averaging window, per speed
+                # Difference between the final two means of the baseline continuation. Each
+                # uses tail_steps or half the available history, whichever is shorter.
                 "baseline_drift_N": reference.settle_drift_N,
                 "settings": asdict(settings),
                 "surface_change": surface_change_report(base_tri, cand_tri),

@@ -321,6 +321,7 @@ def _paired_metrics(delta_55: float, delta_62: float, drift_55: float = 0.0, dri
         bashrc="/usr/lib/openfoam/openfoam2606/etc/bashrc",
         bashrc_exists=True,
         staging_dir="",
+        mesh_info={"baseline_drift_N": {"5.5kn": 0.0, "6.2kn": 0.0}},
         speeds={"5.5kn": sp(5.5, delta_55, drift_55), "6.2kn": sp(6.2, delta_62, drift_62)},
         mode=PAIRED_MODE,
     )
@@ -343,7 +344,11 @@ def test_paired_result_is_judged_on_its_difference_not_on_absolute_drag(baseline
     # 18 N is 2.5 N below the published 500-step baseline; only the difference may count
     report = evaluate_gates(metrics, ref, cfd=_paired_metrics(-0.10, +0.02))
     gates = _cfd_gates(report)
-    assert set(gates) == {"cfd_drag_delta_5.5kn", "cfd_settled_5.5kn", "cfd_drag_delta_6.2kn", "cfd_settled_6.2kn"}
+    assert set(gates) == {
+        f"cfd_{gate}_{speed}kn"
+        for gate in ("drag_delta", "settled", "baseline_settled")
+        for speed in (5.5, 6.2)
+    }
     assert gates["cfd_drag_delta_5.5kn"] == pytest.approx(CFD_PAIRED_DRAG_TOL_N + 0.10)
     assert gates["cfd_drag_delta_6.2kn"] == pytest.approx(CFD_PAIRED_DRAG_TOL_N - 0.02)
     assert not [v for v in report.violations if v.gate.startswith("cfd_")]
@@ -358,6 +363,34 @@ def test_paired_result_that_has_not_settled_cannot_pass(baseline_and_metrics: tu
     report = evaluate_gates(metrics, ref, cfd=moving)
     assert [v.gate for v in report.violations if v.gate.startswith("cfd_")] == ["cfd_settled_5.5kn"]
     assert "still moving" in next(v.message for v in report.violations if v.gate == "cfd_settled_5.5kn")
+
+
+def test_baseline_drift_alone_fails_the_affected_speed(baseline_and_metrics: tuple) -> None:
+    from rsi.diagnose import diagnose_candidate
+
+    ref, metrics = baseline_and_metrics
+    cfd = replace(
+        _paired_metrics(-0.30, -0.30),
+        mesh_info={"baseline_drift_N": {"5.5kn": CFD_PAIRED_DRIFT_TOL_N, "6.2kn": -0.87}},
+    )
+    report = evaluate_gates(metrics, ref, cfd=cfd)
+    assert [v.gate for v in report.violations if v.gate.startswith("cfd_")] == ["cfd_baseline_settled_6.2kn"]
+    assert report.margins["cfd_baseline_settled_6.2kn"] == pytest.approx(CFD_PAIRED_DRIFT_TOL_N - 0.87)
+    diagnosis = diagnose_candidate(metrics, report, cfd=cfd)
+    item = next(i for i in diagnosis.items if i.gate == "cfd_baseline_settled_6.2kn")
+    assert item.code == "cfd_baseline_drift" and not item.parameters and not item.groups
+
+
+@pytest.mark.parametrize(
+    "info",
+    [None, {}, {"baseline_drift_N": []}, {"baseline_drift_N": {"6.2kn": float("nan"), "5.5kn": True}}],
+)
+def test_paired_result_without_finite_reference_drift_fails_closed(baseline_and_metrics, info) -> None:
+    ref, metrics = baseline_and_metrics
+    report = evaluate_gates(metrics, ref, cfd=replace(_paired_metrics(0.0, 0.0), mesh_info=info))
+    assert {v.gate for v in report.violations if v.gate.startswith("cfd_")} == {
+        "cfd_baseline_settled_5.5kn", "cfd_baseline_settled_6.2kn"
+    }
 
 
 def test_paired_result_with_a_missing_difference_fails_that_speed(baseline_and_metrics: tuple) -> None:

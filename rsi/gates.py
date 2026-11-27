@@ -29,7 +29,8 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #      moves every speed objective and speed gate; a paired warm-start CFD result
 #      (rsi.paired_cfd) is judged on its drag difference against the baseline on the same mesh,
 #      and must have settled; cold-start results keep the absolute 0.25 N screen
-GATES_VERSION = "7"
+#   8: the baseline continuation must also have settled for a paired CFD result to pass
+GATES_VERSION = "8"
 
 SR_4IN_MIN = 10.875
 SR_4IN_MAX = 10.99
@@ -59,7 +60,8 @@ CAPYTAINE_GM_T_TOL_CM = 0.05
 CFD_DRAG_TOL_N = 0.25
 # Paired warm-start CFD: candidate minus baseline at matching steps, same mesh, same flow state.
 # The drag may not exceed the baseline's by more than the tolerance, and the difference must have
-# stopped moving (second half of the averaging window against the first half).
+# stopped moving (second half of the averaging window against the first half). The baseline
+# continuation must meet the same drift tolerance between its last two reference windows.
 # The tolerance stays the owner's coarse-screen value. Measured on 2026-11-26 at 5.5 kn: 100-step
 # means of the difference scattered between +0.04 and +0.33 N around +0.14 N (standard error of a
 # 600-step mean 0.04 N), on a baseline that itself swings 0.3 N every 300 steps. The mesh has four
@@ -924,9 +926,36 @@ def evaluate_gates(
                 "6.2kn": baseline.openfoam.speed_6_2kn,
             }
             paired = cfd.mode == CFD_PAIRED_MODE
+            baseline_drifts = (
+                cfd.mesh_info.get("baseline_drift_N") if isinstance(cfd.mesh_info, Mapping) else None
+            )
             for sp_key, base_sp in base_cfd_by_key.items():
                 sp_data = speeds_map.get(sp_key)
                 if paired:
+                    baseline_drift = (
+                        _finite_float(baseline_drifts.get(sp_key))
+                        if isinstance(baseline_drifts, Mapping)
+                        else None
+                    )
+                    if baseline_drift is None:
+                        _require(
+                            f"cfd_baseline_settled_{sp_key}",
+                            False,
+                            -1.0,
+                            f"Missing or non-finite OpenFOAM baseline drag drift for {sp_key}",
+                            None,
+                            CFD_PAIRED_DRIFT_TOL_N,
+                        )
+                    else:
+                        _require(
+                            f"cfd_baseline_settled_{sp_key}",
+                            abs(baseline_drift) <= CFD_PAIRED_DRIFT_TOL_N,
+                            CFD_PAIRED_DRIFT_TOL_N - abs(baseline_drift),
+                            f"OpenFOAM baseline drag at {sp_key} moved {baseline_drift:+.3f} N "
+                            f"between reference windows (limit {CFD_PAIRED_DRIFT_TOL_N:.3f} N)",
+                            baseline_drift,
+                            CFD_PAIRED_DRIFT_TOL_N,
+                        )
                     delta = drift = None
                     if isinstance(sp_data, Mapping):
                         delta = _finite_float(sp_data.get("drag_delta_N"))
