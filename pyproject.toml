@@ -35,6 +35,10 @@ dev = [
     "pytest>=9.0",
     "ruff>=0.5",
 ]
+# rsi.panel_solver backend "cupy" (CUDA 12). Not needed for the numpy backend.
+gpu = [
+    "cupy-cuda12x",
+]
 
 [project.scripts]
 kayak109-rsi = "rsi.cli:app"

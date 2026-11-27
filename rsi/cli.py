@@ -472,3 +472,74 @@ def promote(
 
 
 __all__ = ["app", "default_work_dir"]
+
+
+@app.command("panel-wave")
+def panel_wave(
+    hull: Annotated[Path, typer.Option("--hull", help="Path to a *.hull.json")],
+    baseline: Annotated[
+        Path | None,
+        typer.Option("--baseline", help="Second *.hull.json; differences are hull minus baseline"),
+    ] = None,
+    speed_kn: Annotated[list[float] | None, typer.Option("--speed-kn", help="Speed in knots (repeatable)")] = None,
+    load_lb: Annotated[float, typer.Option("--load-lb", help="Displacement in pounds")] = 225.0,
+    fixed: Annotated[bool, typer.Option("--fixed", help="Hold the static pose (no sinkage, no trim)")] = False,
+    nx: Annotated[int, typer.Option("--nx", help="Panels along the waterline")] = 60,
+    nz: Annotated[int, typer.Option("--nz", help="Panels along the girth of a half section")] = 8,
+    ny: Annotated[int, typer.Option("--ny", help="Free-surface rows on one side")] = 36,
+    half_width: Annotated[float, typer.Option("--half-width", help="Free-surface half width, waterline lengths")] = 0.6,
+    downstream: Annotated[float, typer.Option("--downstream", help="Free surface behind the stern, waterline lengths")] = 0.5,
+    end_cluster: Annotated[float, typer.Option("--end-cluster", help="Station clustering at the waterline ends, 0 to <1")] = 0.8,
+    linearisation: Annotated[str, typer.Option("--linearisation", help="'dawson' or 'kelvin'")] = "dawson",
+    farfield: Annotated[bool, typer.Option("--farfield", help="Also compute the control-surface estimate")] = False,
+    backend: Annotated[str, typer.Option("--backend", help="'numpy' or 'cupy'")] = "numpy",
+    out: Annotated[Path | None, typer.Option("--out", help="Output JSON path")] = None,
+    emit_json: Annotated[bool, typer.Option("--json", help="Emit JSON to stdout")] = False,
+) -> None:
+    """Wave resistance of a hull from the free-surface panel solver, beside the Tier 1 parts.
+
+    A diagnostic: it does not feed the gates, the campaign loop or promotion.
+    """
+    from rsi.panel_hull import evaluate_hull
+    from rsi.panel_solver import PanelConfig
+
+    for path in (hull, baseline):
+        if path is not None and not path.is_file():
+            _err(f"Hull file not found: {path}", code=2)
+    if linearisation not in ("dawson", "kelvin"):
+        _err(f"--linearisation must be 'dawson' or 'kelvin', got {linearisation}", code=2)
+    if backend not in ("numpy", "cupy"):
+        _err(f"--backend must be 'numpy' or 'cupy', got {backend}", code=2)
+    speeds = list(speed_kn) if speed_kn else [5.5, 6.2]
+    cfg = PanelConfig(
+        nx_hull=nx,
+        nz_hull=nz,
+        ny_fs=ny,
+        half_width=half_width,
+        downstream=downstream if not farfield else max(downstream, 1.25),
+        end_cluster=end_cluster,
+        linearisation=linearisation,
+        farfield=farfield,
+    )
+    try:
+        report = evaluate_hull(
+            hull, speeds, cfg, load_lb=load_lb, baseline_json=baseline, free=not fixed, backend=backend
+        )
+    except (ValueError, RuntimeError) as exc:
+        _err(f"panel solve failed: {exc}", code=1)
+    payload = {"command": "panel-wave", **report}
+    lines = []
+    for i, kn in enumerate(speeds):
+        r = report["candidate"]["panel"][i]
+        line = (
+            f"{kn:g} kn: panel wave {r['rw_N']:.3f} N, Michell {report['candidate']['tier1']['michell_N'][i]:.3f} N, "
+            f"friction {report['candidate']['tier1']['friction_by_position_N'][i]:.3f} N"
+        )
+        if "difference_N" in report:
+            d = report["difference_N"][i]
+            line += (
+                f"; minus baseline: panel {d['panel_wave']:+.4f} N, Michell {d['michell_wave']:+.4f} N, "
+                f"friction {d['friction_by_position']:+.4f} N"
+            )
+        lines.append(line)
+    _emit_output(payload, out=out, emit_json=emit_json, human_summary="\n".join(lines))
