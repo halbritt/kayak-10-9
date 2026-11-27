@@ -391,6 +391,8 @@ def test_tier2_top_k_promotion_and_cached_reuse() -> None:
                 "heading": r.heading,
                 "sea": r.sea,
                 "bow_dips_per_min": r.bow_dips_per_min,
+                "pitch_sig_deg": r.pitch_sig_deg,
+                "roll_sig_deg": r.roll_sig_deg,
                 "seat_acc_rms_ms2": r.seat_acc_rms_ms2,
             }
             for r in ref.capytaine.rows_225
@@ -471,6 +473,8 @@ def test_resume_tier2_top_verifies_new_higher_utility_candidates() -> None:
                 "heading": r.heading,
                 "sea": r.sea,
                 "bow_dips_per_min": r.bow_dips_per_min,
+                "pitch_sig_deg": r.pitch_sig_deg,
+                "roll_sig_deg": r.roll_sig_deg,
                 "seat_acc_rms_ms2": r.seat_acc_rms_ms2,
             }
             for r in ref.capytaine.rows_225
@@ -541,6 +545,8 @@ def test_resume_does_not_resurrect_tier2_failed_candidate() -> None:
                 "heading": r.heading,
                 "sea": r.sea,
                 "bow_dips_per_min": r.bow_dips_per_min,
+                "pitch_sig_deg": r.pitch_sig_deg,
+                "roll_sig_deg": r.roll_sig_deg,
                 "seat_acc_rms_ms2": r.seat_acc_rms_ms2 + (0.25 if fail_this else 0.0),
             }
             for r in ref.capytaine.rows_225
@@ -607,6 +613,8 @@ def test_step5_skips_cfd_when_seakeeping_fails_and_caches_rejection() -> None:
                 "heading": r.heading,
                 "sea": r.sea,
                 "bow_dips_per_min": r.bow_dips_per_min,
+                "pitch_sig_deg": r.pitch_sig_deg,
+                "roll_sig_deg": r.roll_sig_deg,
                 "seat_acc_rms_ms2": r.seat_acc_rms_ms2 + 0.30,
             }
             for r in ref.capytaine.rows_225
@@ -693,6 +701,8 @@ def test_tier2_diagnostic_mode_preserves_pareto_candidates() -> None:
                 "heading": r.heading,
                 "sea": r.sea,
                 "bow_dips_per_min": r.bow_dips_per_min,
+                "pitch_sig_deg": r.pitch_sig_deg,
+                "roll_sig_deg": r.roll_sig_deg,
                 "seat_acc_rms_ms2": r.seat_acc_rms_ms2,
             }
             for r in ref.capytaine.rows_225

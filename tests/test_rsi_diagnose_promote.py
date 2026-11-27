@@ -47,6 +47,7 @@ def _synthetic_full_tier2(ref) -> tuple[SeakeepingMetrics, CfdMetrics]:
             "heading": r.heading,
             "sea": r.sea,
             "bow_dips_per_min": r.bow_dips_per_min,
+            "roll_sig_deg": r.roll_sig_deg,
             "seat_acc_rms_ms2": r.seat_acc_rms_ms2,
             "heave_sig_cm": r.heave_sig_cm,
             "pitch_sig_deg": r.pitch_sig_deg,
@@ -140,13 +141,19 @@ def test_diagnose_draft_a1_z_min_and_fairness_violations(baseline_eval: tuple) -
     json.dumps(diag.to_dict(), allow_nan=False)
 
 
-def test_diagnose_stability_losses_across_225_265_300_and_aggregate(baseline_eval: tuple) -> None:
+def test_diagnose_stability_losses_at_the_gated_load_and_aggregate(baseline_eval: tuple) -> None:
     ref, metrics = baseline_eval
     assert metrics.loads is not None
     space = DesignSpace.default()
 
+    # 265 and 300 lb are reported loads since gates version 9: a loss there is not a failure.
+    for lb in (265, 300):
+        ld = metrics.loads[lb]
+        m_rep = replace(metrics, loads={**metrics.loads, lb: replace(ld, gm_cm=ld.gm_cm - 0.35)})
+        assert evaluate_gates(m_rep, ref).passed is True
+
     reports = []
-    for lb in (225, 265, 300):
+    for lb in (225,):
         loads_bad = dict(metrics.loads)
         ld = loads_bad[lb]
         loads_bad[lb] = replace(
@@ -268,6 +275,8 @@ def test_compare_candidate_baseline_and_deltas(baseline_eval: tuple) -> None:
         metrics,
         sr_4in=11.05,
         sr_4in_exact=11.05,
+        usca_4in_pct=8.40,
+        usca_4in_pct_exact=8.40,
         buttock_0075_peak_deg=4.1,
     )
     comp_bad = compare_candidate(
@@ -279,7 +288,8 @@ def test_compare_candidate_baseline_and_deltas(baseline_eval: tuple) -> None:
     assert comp_bad.passed is False
     assert comp_bad.promotion_eligible is False
     assert comp_bad.deltas["class_form"]["sr_4in"] == pytest.approx(11.05 - ref.sr_4in, abs=1e-4)
-    assert len(comp_bad.gate_report.violations) >= 2
+    # The Sound Rowers ratio is reported, not gated; the USCA beam and the fairness limit fail.
+    assert {v.gate for v in comp_bad.gate_report.violations} == {"usca_4in_pct_min", "buttock_0075_peak_deg"}
     json.dumps(comp_bad.to_dict(), allow_nan=False)
 
 
@@ -318,7 +328,7 @@ def test_promote_candidate_dry_run_and_apply_strict_gating(baseline_eval: tuple)
         )
 
     # 2. Dry-run failing Tier 0/1 gate
-    failing_metrics = replace(metrics, sr_4in=11.10, sr_4in_exact=11.10)
+    failing_metrics = replace(metrics, usca_4in_pct=8.40, usca_4in_pct_exact=8.40)
     rep_fail_dry = promote_candidate(
         cand_path,
         TEST_WORK_ROOT / "prom_fail_dry",

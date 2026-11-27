@@ -75,7 +75,7 @@ def test_the_friction_reference_file_is_the_baselines_own_ratio(baseline_and_dee
     stored = json.loads((DEFAULT_REPO_ROOT / "data" / FRICTION_REFERENCE_FILE).read_text())
     assert stored["design_hash"] == ref.design_hash
     assert stored["speeds_kn"] == [float(v) for v in RESISTANCE_SPEEDS_KN]
-    assert sorted(ref.friction_ratio) == sorted(base.friction_ratio) == [225, 265]
+    assert sorted(ref.friction_ratio) == sorted(base.friction_ratio) == [225, 230, 265]
     for lb, vals in base.friction_ratio.items():
         assert vals == pytest.approx(ref.friction_ratio[lb], rel=1e-10), (
             "data/rsi-friction-reference.json is stale; run scripts/build_rsi_friction_reference.py"
@@ -85,7 +85,7 @@ def test_the_friction_reference_file_is_the_baselines_own_ratio(baseline_and_dee
 
 def test_a_reference_that_does_not_fit_is_refused_not_ignored(tmp_path) -> None:
     ref = load_baseline_reference()
-    no_265 = replace(ref, friction_ratio={225: ref.friction_ratio[225]})
+    no_265 = replace(ref, friction_ratio={lb: ref.friction_ratio[lb] for lb in (225, 230)})
     out = evaluate_tier0_tier1(ref.hull, tmp_path / "a", no_265)
     assert out.valid is False and "265 lb" in (out.error or "")
     other_speeds = replace(ref, friction_speeds_kn=tuple(v + 0.25 for v in ref.friction_speeds_kn))

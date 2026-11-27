@@ -27,8 +27,11 @@ SEAKEEPING_REFERENCE_FILE = "rsi-seakeeping-reference.json"
 # Candidates are charged friction relative to these, so the baseline keeps its published speeds.
 FRICTION_REFERENCE_FILE = "rsi-friction-reference.json"
 
+# Conditions the Tier 2 seakeeping gates read, all at the 225 lb race load. Head and bow-quarter
+# seas have been gated since gates version 5; following and stern-quarter seas were added by the
+# owner on 2026-11-27 (rsi.gates SEAKEEPING_ASTERN_HEADINGS, gates version 9).
 TARGET_CAPYTAINE_SPEEDS_KN = (4.5, 5.7)
-TARGET_CAPYTAINE_HEADINGS = ("head", "bow_quarter")
+TARGET_CAPYTAINE_HEADINGS = ("head", "bow_quarter", "following", "stern_quarter")
 TARGET_CAPYTAINE_SEAS = (
     "Bay chop (Hs 0.35m, Tp 2.5s)",
     "Steep whitecaps (Hs 0.65m, Tp 3.8s)",
@@ -454,6 +457,19 @@ def load_baseline_reference(
         and r.heading in TARGET_CAPYTAINE_HEADINGS
         and r.sea in TARGET_CAPYTAINE_SEAS
     )
+    expected_conditions = {
+        (speed, heading, sea)
+        for speed in TARGET_CAPYTAINE_SPEEDS_KN
+        for heading in TARGET_CAPYTAINE_HEADINGS
+        for sea in TARGET_CAPYTAINE_SEAS
+    }
+    for boat, boat_rows in (("k10_9_225", target_225), ("epic18x_225", epic_225)):
+        missing = expected_conditions - {(r.speed_kn, r.heading, r.sea) for r in boat_rows}
+        if missing:
+            raise ValueError(
+                f"data/{SEAKEEPING_REFERENCE_FILE} has no {boat} row for {sorted(missing)}; "
+                "regenerate it with cad/run_capytaine_seakeeping.py"
+            )
     capytaine = CapytaineBaseline(
         outer_stl_sha256=str(capytaine_raw["metadata"]["kayak_10_9_outer_stl_sha256"]),
         capytaine_version=str(capytaine_raw["metadata"]["capytaine_version"]),

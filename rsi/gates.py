@@ -30,22 +30,54 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #      (rsi.paired_cfd) is judged on its drag difference against the baseline on the same mesh,
 #      and must have settled; cold-start results keep the absolute 0.25 N screen
 #   8: the baseline continuation must also have settled for a paired CFD result to pass
-GATES_VERSION = "8"
+#   9: owner rulings of 2026-11-27. Class limits are an 18 ft overall length (new gate
+#      l_oa_m_max) and USCA's 8.5 % beam at the 4 in waterline; the Sound Rowers band (sr_4in_min
+#      10.875, sr_4in_max 10.99) is no longer gated and the ratio is a reported metric. Stability
+#      and speed are gated at the 225 lb race load only: the 265 and 300 lb GM and GZ gates and the
+#      265 lb speed gates are dropped, and those loads, with a new 230 lb case, are reported.
+#      Tier 2 seakeeping also gates following and stern-quarter seas at 225 lb against the Epic 18X
+#      row: pitch, bow dips and seat acceleration no worse, roll at most 20 % worse. The speed
+#      objective is the mean gain at 60 and 90 W (it was 90 and 120 W); 120 W stays a no-loss gate.
+GATES_VERSION = "9"
 
-SR_4IN_MIN = 10.875
-SR_4IN_MAX = 10.99
-SR_4IN_TARGET = 10.90
+# Class limits (owner, 2026-11-27): "it's just an 18ft cap. USCA is 18ft and 8.5% beam at 4 in.
+# I can't think of any reason to go stricter". USCA 2026 Sea Kayak: "Maximum overall length of 18'
+# and a 4" waterline beam of at least 8.5% of length."
+#
+# Overall length is the length of the closed hull-and-deck shell (CandidateMetrics.l_oa_m). The
+# rudder assembly is not part of that shell and is not counted, following USCA: "Over-stern
+# mounted flip-up rudders that do not contribute to the waterline length of the boat shall not
+# count in the boat's overall length." That assembly includes its stern gudgeon bracket
+# (cad/outfitting_geometry.py::build_overstern_rudder), which is why the project quotes 5.470 m
+# for the hull and 5.480 m with the gudgeon. The same shell length is the divisor of the USCA
+# beam percentage.
+L_OA_MAX_M = 18.0 * 0.3048  # 5.4864 m
 USCA_4IN_MIN_PCT = 8.50
+# The Sound Rowers 4 in ratio (waterline length over beam) is reported, not gated. Up to gates
+# version 8 it was held to [10.875, 10.99]. The target below only feeds the reported
+# "sr_closeness_to_10_9" objective, which the owner has not ruled on.
+SR_4IN_TARGET = 10.90
+# Loads (lb, total displacement) whose stability and speed are gated. The owner's stability floor
+# is "no regression from v0.2.3" at the race load. The other loads of rsi.evaluator.LOADS_LB are
+# computed and reported only.
+GATED_LOADS_LB = (225,)
 L4_MIN_M = 5.442
 FOOT_BOX_MIN_WIDTH_M = 0.28
 FOOT_BOX_MIN_HEIGHT_M = 0.25
 LCB_225_TOL_MM = 10.0
-RACE_PACE_POWERS_W = (90, 120)
+# Powers whose mean speed gain at 225 lb is the objective (owner, 2026-11-27): sustained power in
+# a 100-mile river race is about 60 W for this paddler, with 90 W above it. It was (90, 120) up to
+# gates version 8. Every power of rsi.evaluator.POWER_LEVELS_W (40, 60, 90, 120 W) keeps its
+# no-loss gate kn_225_<p>w with tolerance KN_TOL_KN, so 120 W, now outside the objective, cannot
+# be traded away.
+RACE_PACE_POWERS_W = (60, 90)
 Z_MIN_ABS_TOL_M = 1e-5
 WATERLINE_HOLLOW_MAX_DEG = 0.02
 # Upper-hull width over the paddle stroke (at the LCG and 0.8-1.2 m forward, from 100 mm above the
 # 225 lb waterline) may not grow by more than the project's catch-width comparison limit
 # (docs/surface-fairing/README.md, cad/check_fairing_controls.py). One-sided: narrower is allowed.
+# v0.2.3 + 2 mm is the owner's rule as of 2026-11-27 ("keep v0.2.3 + 2 mm"); before that the number
+# was an agent's placeholder.
 CATCH_WIDTH_TOL_MM = 2.0
 GM_TOL_CM = 0.01
 GZ_TOL_MM = 1e-3
@@ -55,6 +87,15 @@ KN_TOL_KN = 0.005
 # the same model. Where v0.2.3 is itself worse than the 18X the limit is v0.2.3's value, so the
 # baseline always passes and nothing may fall below both boats. Quick mode solves every second
 # period, so it gets an allowance against rows computed on the full grid.
+#
+# Following and stern-quarter seas (owner, 2026-11-27), same speeds, seas and 225 lb load: pitch,
+# bow dips (bow burying) and seat acceleration may not exceed the Epic 18X row, and roll may be at
+# most 20 % above it. These limits are the Epic 18X row alone; v0.2.3's own value does not raise
+# them. Forefoot emergence is reported in the rows and is not gated: v0.2.3 exceeds the Epic 18X
+# in every one of these rows (4.12 against 2.30 per minute at 4.5 kn following in bay chop), so
+# gating it is an owner decision that has not been made.
+SEAKEEPING_ASTERN_HEADINGS = ("following", "stern_quarter")
+SEAKEEPING_ASTERN_ROLL_REL_ALLOWANCE = 0.20
 CAPYTAINE_QUICK_REL_TOL = 0.05
 CAPYTAINE_GM_T_TOL_CM = 0.05
 CFD_DRAG_TOL_N = 0.25
@@ -216,60 +257,29 @@ def evaluate_gates(
             Z_MIN_ABS_TOL_M,
         )
 
-    # 2. Class dimensions: SR_4in, USCA_4in_pct, l4_m
-    raw_sr_pairs = (
-        ("sr_4in_exact", metrics.sr_4in_exact),
-        ("sr_4in", metrics.sr_4in),
-    )
-    sr_nonfinite = [
-        (name, val) for name, val in raw_sr_pairs if val is not None and _finite_float(val) is None
-    ]
-    sr_candidates = [
-        f for _, val in raw_sr_pairs if (f := _finite_float(val)) is not None
-    ]
-    if sr_nonfinite or not sr_candidates:
-        bad_desc = (
-            ", ".join(f"{name}={val}" for name, val in sr_nonfinite)
-            if sr_nonfinite
-            else "missing"
-        )
+    # 2. Class dimensions: overall length, USCA_4in_pct, l4_m. SR_4in is reported, not gated.
+    sr_exact_obj = _finite_float(metrics.sr_4in_exact)
+    if sr_exact_obj is None:
+        sr_exact_obj = _finite_float(metrics.sr_4in)
+
+    l_oa_val = _finite_float(metrics.l_oa_m)
+    if l_oa_val is None:
         _require(
-            "sr_4in_min",
+            "l_oa_m_max",
             False,
             -1.0,
-            f"Missing or non-finite SR_4in: {bad_desc}",
-            bad_desc,
-            SR_4IN_MIN,
+            f"Missing or non-finite overall length: {metrics.l_oa_m}",
+            "missing" if metrics.l_oa_m is None else str(metrics.l_oa_m),
+            L_OA_MAX_M,
         )
-        _require(
-            "sr_4in_max",
-            False,
-            -1.0,
-            f"Missing or non-finite SR_4in: {bad_desc}",
-            bad_desc,
-            SR_4IN_MAX,
-        )
-        sr_exact_obj: float | None = None
     else:
-        sr_min_check = min(sr_candidates)
-        sr_check = max(sr_candidates)
-        sr_exact_f = _finite_float(metrics.sr_4in_exact)
-        sr_exact_obj = sr_exact_f if sr_exact_f is not None else sr_check
         _require(
-            "sr_4in_min",
-            sr_min_check >= SR_4IN_MIN,
-            sr_min_check - SR_4IN_MIN,
-            f"SR_4in {sr_min_check:.4f} below minimum {SR_4IN_MIN:.3f}",
-            sr_min_check,
-            SR_4IN_MIN,
-        )
-        _require(
-            "sr_4in_max",
-            sr_check <= SR_4IN_MAX,
-            SR_4IN_MAX - sr_check,
-            f"SR_4in {sr_check:.4f} exceeds USCA FSK limit {SR_4IN_MAX}",
-            sr_check,
-            SR_4IN_MAX,
+            "l_oa_m_max",
+            l_oa_val <= L_OA_MAX_M,
+            L_OA_MAX_M - l_oa_val,
+            f"Overall hull length {l_oa_val:.4f} m exceeds 18 ft ({L_OA_MAX_M:.4f} m)",
+            l_oa_val,
+            L_OA_MAX_M,
         )
 
     raw_usca_pairs = (
@@ -554,10 +564,12 @@ def evaluate_gates(
     fairness_margin_raw = float(min(fairness_norm_margins))
     fairness_margin = fairness_margin_raw if math.isfinite(fairness_margin_raw) else -1.0
 
-    # 5. Stability non-regression across 225 / 265 / 300 lb
+    # 5. Stability non-regression at the gated load (225 lb). Other loads are reported only.
     stability_margins_raw: list[float] = []
     loads = metrics.loads or {}
     for lb, base_load in baseline.loads.items():
+        if lb not in GATED_LOADS_LB:
+            continue
         cand_load = loads.get(lb)
         if cand_load is None:
             _require(
@@ -652,7 +664,8 @@ def evaluate_gates(
                 LCB_225_TOL_MM,
             )
 
-    # 6. Speed non-regression across 225 lb and 265 lb; race-pace objective = mean(90W, 120W) at 225 lb
+    # 6. Speed non-regression at 225 lb; race-pace objective = mean gain over RACE_PACE_POWERS_W.
+    #    Speeds at the other loads are reported only.
     def _check_speed_load(
         prefix: str,
         cand_kn: dict[int, float] | None,
@@ -734,14 +747,6 @@ def evaluate_gates(
             baseline.kn_225_exact,
             record_powers=RACE_PACE_POWERS_W,
         )
-        if baseline.kn_265:
-            _check_speed_load(
-                "kn_265",
-                metrics.kn_265,
-                metrics.kn_265_exact,
-                baseline.kn_265,
-                baseline.kn_265_exact,
-            )
     speed_gain_kn = float(sum(speed_gains) / len(speed_gains)) if speed_gains else 0.0
 
     # 7. Optional Tier 2 Capytaine seakeeping non-regression
@@ -848,35 +853,75 @@ def evaluate_gates(
                         str(key),
                     )
                     continue
-                dips_lim = max(floor_row.bow_dips_per_min, base_row.bow_dips_per_min) * (1.0 + rel_tol)
-                raw_dips = cand_row.get("bow_dips_per_min")
-                dips_val = _finite_float(raw_dips)
-                _require(
+                astern = base_row.heading in SEAKEEPING_ASTERN_HEADINGS
+
+                def _seak_limit(
+                    gate: str,
+                    field: str,
+                    limit: float,
+                    label: str,
+                    fmt: str,
+                    *,
+                    cand_row: Mapping[str, Any] = cand_row,
+                    key: tuple[float, str, str] = key,
+                ) -> float | None:
+                    raw = cand_row.get(field)
+                    val = _finite_float(raw)
+                    _require(
+                        gate,
+                        val is not None and val <= limit,
+                        (limit - val) if val is not None else -1.0,
+                        (
+                            f"{label} at {key} worse than the Epic 18X floor: {val:{fmt}} > {limit:{fmt}}"
+                            if val is not None
+                            else f"Missing or non-finite {label.lower()} at {key}: {raw}"
+                        ),
+                        val if val is not None else ("missing" if raw is None else str(raw)),
+                        limit,
+                    )
+                    return val
+
+                if astern:
+                    # The Epic 18X row alone sets these limits (see SEAKEEPING_ASTERN_HEADINGS).
+                    scale = 1.0 + rel_tol
+                    _seak_limit(
+                        f"seak_pitch_{tag}", "pitch_sig_deg", floor_row.pitch_sig_deg * scale, "Pitch", ".2f"
+                    )
+                    _seak_limit(
+                        f"seak_bow_dips_{tag}",
+                        "bow_dips_per_min",
+                        floor_row.bow_dips_per_min * scale,
+                        "Bow dips",
+                        ".2f",
+                    )
+                    _seak_limit(
+                        f"seak_seat_acc_{tag}",
+                        "seat_acc_rms_ms2",
+                        floor_row.seat_acc_rms_ms2 * scale,
+                        "Seat accel",
+                        ".3f",
+                    )
+                    _seak_limit(
+                        f"seak_roll_{tag}",
+                        "roll_sig_deg",
+                        floor_row.roll_sig_deg * (1.0 + SEAKEEPING_ASTERN_ROLL_REL_ALLOWANCE) * scale,
+                        "Roll",
+                        ".2f",
+                    )
+                    continue
+                dips_val = _seak_limit(
                     f"seak_bow_dips_{tag}",
-                    dips_val is not None and dips_val <= dips_lim,
-                    (dips_lim - dips_val) if dips_val is not None else -1.0,
-                    (
-                        f"Bow dips at {key} worse than the Epic 18X floor: {dips_val:.2f} > {dips_lim:.2f}"
-                        if dips_val is not None
-                        else f"Missing or non-finite bow dips at {key}: {raw_dips}"
-                    ),
-                    dips_val if dips_val is not None else ("missing" if raw_dips is None else str(raw_dips)),
-                    dips_lim,
+                    "bow_dips_per_min",
+                    max(floor_row.bow_dips_per_min, base_row.bow_dips_per_min) * (1.0 + rel_tol),
+                    "Bow dips",
+                    ".2f",
                 )
-                acc_lim = max(floor_row.seat_acc_rms_ms2, base_row.seat_acc_rms_ms2) * (1.0 + rel_tol)
-                raw_acc = cand_row.get("seat_acc_rms_ms2")
-                acc_val = _finite_float(raw_acc)
-                _require(
+                acc_val = _seak_limit(
                     f"seak_seat_acc_{tag}",
-                    acc_val is not None and acc_val <= acc_lim,
-                    (acc_lim - acc_val) if acc_val is not None else -1.0,
-                    (
-                        f"Seat accel at {key} worse than the Epic 18X floor: {acc_val:.3f} > {acc_lim:.3f}"
-                        if acc_val is not None
-                        else f"Missing or non-finite seat accel at {key}: {raw_acc}"
-                    ),
-                    acc_val if acc_val is not None else ("missing" if raw_acc is None else str(raw_acc)),
-                    acc_lim,
+                    "seat_acc_rms_ms2",
+                    max(floor_row.seat_acc_rms_ms2, base_row.seat_acc_rms_ms2) * (1.0 + rel_tol),
+                    "Seat accel",
+                    ".3f",
                 )
                 if dips_val is not None and base_row.bow_dips_per_min > 0:
                     seakeeping_gains.append(

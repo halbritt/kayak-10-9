@@ -56,10 +56,11 @@ from rsi.gates import (
     GATES_VERSION,
     GM_TOL_CM,
     KN_TOL_KN,
+    GATED_LOADS_LB,
     L4_MIN_M,
+    L_OA_MAX_M,
     LCB_225_TOL_MM,
-    SR_4IN_MAX,
-    SR_4IN_MIN,
+    RACE_PACE_POWERS_W,
     USCA_4IN_MIN_PCT,
     WATERLINE_HOLLOW_MAX_DEG,
     GateReport,
@@ -181,7 +182,8 @@ def _collect_provenance(repo_root: Path, space: DesignSpace, baseline: BaselineR
 
 
 def _composite_utility(objectives: dict[str, float]) -> float:
-    # Speed at 90/120 W is primary; fairness & seakeeping break ties. Stability and SR band are floors only.
+    # Speed at the race-pace powers (rsi.gates.RACE_PACE_POWERS_W) is primary; fairness & seakeeping
+    # break ties. Stability is a floor only.
     spd = float(objectives.get("speed_gain_kn", -10.0))
     fair = float(objectives.get("fairness_margin", -10.0))
     seak = float(objectives.get("seakeeping_gain", 0.0))
@@ -281,6 +283,10 @@ def _metrics_from_dict(raw: dict[str, Any]) -> CandidateMetrics:
     kn265_obj = {int(k): float(v) for k, v in kn265_raw.items()} if isinstance(kn265_raw, dict) else None
     kn265_ex_raw = raw.get("kn_265_exact")
     kn265_ex_obj = {int(k): float(v) for k, v in kn265_ex_raw.items()} if isinstance(kn265_ex_raw, dict) else None
+    kn230_raw = raw.get("kn_230")
+    kn230_obj = {int(k): float(v) for k, v in kn230_raw.items()} if isinstance(kn230_raw, dict) else None
+    kn230_ex_raw = raw.get("kn_230_exact")
+    kn230_ex_obj = {int(k): float(v) for k, v in kn230_ex_raw.items()} if isinstance(kn230_ex_raw, dict) else None
     mesh_res = tuple(int(x) for x in raw.get("mesh_resolution", (441, 129)))
     return CandidateMetrics(
         valid=bool(raw.get("valid", False)),
@@ -336,6 +342,8 @@ def _metrics_from_dict(raw: dict[str, Any]) -> CandidateMetrics:
         kn_225_exact=kn_ex_obj,
         kn_265=kn265_obj,
         kn_265_exact=kn265_ex_obj,
+        kn_230=kn230_obj,
+        kn_230_exact=kn230_ex_obj,
         shell_area_m2=raw.get("shell_area_m2"),
         aft_coaming_above_225wl_cm=raw.get("aft_coaming_above_225wl_cm"),
         rear_deck_above_225wl_cm=raw.get("rear_deck_above_225wl_cm"),
@@ -744,7 +752,8 @@ def _build_surrogate_dataset(
             not isinstance(m.get("kn_225_exact"), dict)
             or not isinstance(m.get("loads"), dict)
             or not isinstance(m.get("catch_widths_mm"), list)
-            or m.get("sr_4in_exact") is None
+            or m.get("usca_4in_pct_exact") is None
+            or m.get("l_oa_m") is None
             or m.get("waterline_hollow_max_deg") is None
             or m.get("foot_clear_height_m") is None
             or m.get("foot_clear_width_m") is None
@@ -758,12 +767,7 @@ def _build_surrogate_dataset(
 
     X = np.array([[float(v) for v in r["vector"]] for r in rows], dtype=float)
     base_225 = baseline.kn_225_exact or baseline.kn_225
-    base_265 = baseline.kn_265_exact or baseline.kn_265 or {}
     base_lcg_225 = baseline.loads[225].lcg_m if 225 in baseline.loads else None
-    has_265 = bool(base_265) and all(
-        isinstance(r["metrics"].get("kn_265_exact") or r["metrics"].get("kn_265"), dict)
-        for r in rows
-    )
 
     targets: list[tuple[str, float | None, float | None, list[float]]] = []
 
@@ -777,15 +781,9 @@ def _build_surrogate_dataset(
 
     for pw in (40, 60, 90, 120):
         _add(f"kn_225_{pw}", float(base_225[pw]) - 0.85 * KN_TOL_KN, None, lambda m, k=str(pw): m["kn_225_exact"][k])
-    if has_265:
-        for pw in (40, 60, 90, 120):
-            _add(
-                f"kn_265_{pw}",
-                float(base_265[pw]) - 0.85 * KN_TOL_KN,
-                None,
-                lambda m, k=str(pw): (m.get("kn_265_exact") or m["kn_265"])[k],
-            )
-    _add("sr_4in", SR_4IN_MIN + 0.0005, SR_4IN_MAX - 0.002, lambda m: m["sr_4in_exact"])
+    # Only gated quantities are constrained: speeds and stability at the other loads, and the
+    # Sound Rowers ratio, are reported metrics since gates version 9.
+    _add("l_oa_m", None, L_OA_MAX_M - 0.0005, lambda m: m["l_oa_m"])
     _add("usca_4in", USCA_4IN_MIN_PCT + 0.01, None, lambda m: m["usca_4in_pct_exact"])
     _add("l4_m", L4_MIN_M + 0.0005, None, lambda m: m["l4_m"])
     _add("wl_hollow", None, WATERLINE_HOLLOW_MAX_DEG - 0.0015, lambda m: m["waterline_hollow_max_deg"])
@@ -801,6 +799,8 @@ def _build_surrogate_dataset(
     for k_idx, base_cw in enumerate(baseline.catch_widths_mm):
         _add(f"catch_{k_idx}", None, float(base_cw) + (CATCH_WIDTH_TOL_MM - 0.12), lambda m, i=k_idx: m["catch_widths_mm"][i])
     for lb, b_ld in baseline.loads.items():
+        if lb not in GATED_LOADS_LB:
+            continue
         base_gm = float(b_ld.gm_cm_exact if b_ld.gm_cm_exact is not None else b_ld.gm_cm)
         _add(f"gm_{lb}", base_gm - 0.5 * GM_TOL_CM, None, lambda m, lb_key=str(lb): m["loads"][lb_key]["gm_cm"])
         for g_idx, g_base in enumerate(b_ld.gz_mm):
@@ -822,12 +822,13 @@ def _propose_surrogate_lp_vectors(
     *,
     frozen_groups: Sequence[str] = (),
 ) -> list[tuple[list[float], str]]:
-    """Propose local LP steps maximizing 90/120 W race-pace speed along linearized feasible gates."""
+    """Propose local LP steps maximizing race-pace speed (RACE_PACE_POWERS_W) along linearized feasible gates."""
     dataset = _build_surrogate_dataset(space, baseline, ledger_entries)
     if dataset is None:
         return []
     X, specs = dataset
-    if not any(n == "kn_225_90" for n, *_ in specs) or not any(n == "kn_225_120" for n, *_ in specs):
+    obj_names = [f"kn_225_{pw}" for pw in RACE_PACE_POWERS_W]
+    if not all(any(n == obj for n, *_ in specs) for obj in obj_names):
         return []
 
     x0 = np.array(anchor_vec, dtype=float)
@@ -847,7 +848,7 @@ def _propose_surrogate_lp_vectors(
     grads = beta[1:].T
 
     names = [n for n, *_ in specs]
-    c_obj = -0.5 * (grads[names.index("kn_225_90")] + grads[names.index("kn_225_120")])
+    c_obj = -sum(grads[names.index(obj)] for obj in obj_names) / len(obj_names)
     lo_full = np.array([(p.lower - x0[i]) / scales[i] for i, p in enumerate(space.params)], dtype=float)
     hi_full = np.array([(p.upper - x0[i]) / scales[i] for i, p in enumerate(space.params)], dtype=float)
     draft_a1_idx = space.index_by_name().get("draft_a1")

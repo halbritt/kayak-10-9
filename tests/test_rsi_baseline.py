@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from rsi.baseline import load_baseline_reference
 
 
@@ -55,7 +57,14 @@ def test_load_baseline_reference_exact_values() -> None:
     assert ref.capytaine.roll_period_s == 2.07
     assert ref.capytaine.gm_t_cm == 4.09
     assert ref.capytaine.gm_t_cm_265_baja == 3.12
-    assert len(ref.capytaine.target_conditions_225) == 8
+    # Head, bow-quarter, following and stern-quarter seas at 4.5 and 5.7 kn in two seas.
+    assert len(ref.capytaine.target_conditions_225) == 16
+    assert {r.heading for r in ref.capytaine.target_conditions_225} == {
+        "head",
+        "bow_quarter",
+        "following",
+        "stern_quarter",
+    }
     # The seakeeping floor is the Epic 18X in the same conditions, and both sets of rows must come
     # from a body with irregular-frequency removal (the released dataset has none).
     assert [(r.speed_kn, r.heading, r.sea) for r in ref.capytaine.epic18x_conditions_225] == [
@@ -76,3 +85,28 @@ def test_baseline_reference_default_root_and_json_serializable() -> None:
     assert decoded["design_hash"] == ref.design_hash
     assert decoded["sr_4in"] == 10.88
     assert decoded["kn_225"] == {"40": 4.47, "60": 5.08, "90": 5.67, "120": 6.17}
+
+
+def test_a_seakeeping_reference_without_a_gated_row_is_refused(tmp_path) -> None:
+    """Both boats need a row for every gated condition; a missing one must not pass silently."""
+    import shutil
+
+    from rsi.baseline import DEFAULT_REPO_ROOT, SEAKEEPING_REFERENCE_FILE
+
+    for rel in (
+        "hull/kayak-10-9.hull.json",
+        "data/kayak-10-9-specs.json",
+        "data/rsi-friction-reference.json",
+        "data/openfoam-cfd-metrics.json",
+        "docs/surface-fairing/controls.json",
+        "docs/surface-fairing/fairness.json",
+    ):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(DEFAULT_REPO_ROOT / rel, tmp_path / rel)
+    raw = json.loads((DEFAULT_REPO_ROOT / "data" / SEAKEEPING_REFERENCE_FILE).read_text())
+    raw["epic18x_225"]["rows"] = [
+        r for r in raw["epic18x_225"]["rows"] if not (r["heading"] == "stern_quarter" and r["speed_kn"] == 5.7)
+    ]
+    (tmp_path / "data" / SEAKEEPING_REFERENCE_FILE).write_text(json.dumps(raw))
+    with pytest.raises(ValueError, match="epic18x_225.*stern_quarter"):
+        load_baseline_reference(tmp_path)

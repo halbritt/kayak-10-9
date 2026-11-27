@@ -25,11 +25,25 @@ from kayakgen.services.evaluation import solve_target_draft
 
 from rsi.baseline import BaselineReference
 
+# Height of the combined centre of gravity (hull, paddler and kit) above the keel, held the same
+# at every load. It is an input, not derived from the hull mass below.
 KG_M = 0.25
-HULL_MASS_KG = 18.0
+# Bare hull mass (owner target, 2026-11-27: "13.6kg or less"; 18.0 kg before). Every load in
+# LOADS_LB is total displacement, so this only sets how the kayakgen Tier 0 load case splits that
+# total between hull and paddler. Both parts sit at KG_M and at the same station, so no Tier 0,
+# Tier 1 or Tier 2 result depends on it: the v0.2.3 metrics are identical at 18.0 and 13.6 kg, and
+# no reference data had to be rebuilt for the change. A lighter hull under the same total does
+# raise the real combined centre of gravity (the paddler sits higher than the shell's own centre),
+# but the model does not carry separate heights, and KG_M is unchanged.
+HULL_MASS_KG = 13.6
 LB_TO_KG = 0.45359237
 RHO_SEAWATER = 1025.0
-LOADS_LB = (225, 265, 300)
+# Total displacement cases, lb. 225 is the race load and the only gated one (rsi.gates
+# GATED_LOADS_LB). 230 is the 100-mile race load (owner, 2026-11-27), 265 and 300 the former
+# expedition loads; those three are computed and reported, not gated.
+LOADS_LB = (225, 230, 265, 300)
+# Loads with a speed table (CandidateMetrics.kn_<lb>).
+SPEED_LOADS_LB = (225, 230, 265)
 HEEL_DEGS = (10, 20, 30)
 RESISTANCE_SPEEDS_KN = np.arange(3.5, 7.76, 0.25)
 POWER_LEVELS_W = (40.0, 60.0, 90.0, 120.0)
@@ -121,6 +135,9 @@ class CandidateMetrics:
     kn_225_exact: dict[int, float] | None = None
     kn_265: dict[int, float] | None = None
     kn_265_exact: dict[int, float] | None = None
+    # 100-mile race load, reported only.
+    kn_230: dict[int, float] | None = None
+    kn_230_exact: dict[int, float] | None = None
     # Per load: this hull's local-friction ratio at each speed of RESISTANCE_SPEEDS_KN (see
     # local_friction_ratio). Diagnostic; the speed tables already include it.
     friction_ratio: dict[int, tuple[float, ...]] | None = None
@@ -140,6 +157,10 @@ class CandidateMetrics:
             d["kn_265"] = {str(k): v for k, v in self.kn_265.items()}
         if self.kn_265_exact is not None:
             d["kn_265_exact"] = {str(k): v for k, v in self.kn_265_exact.items()}
+        if self.kn_230 is not None:
+            d["kn_230"] = {str(k): v for k, v in self.kn_230.items()}
+        if self.kn_230_exact is not None:
+            d["kn_230_exact"] = {str(k): v for k, v in self.kn_230_exact.items()}
         return d
 
 
@@ -580,6 +601,8 @@ def evaluate_tier0_tier1(
     kn_225_exact: dict[int, float] | None = None
     kn_265: dict[int, float] | None = None
     kn_265_exact: dict[int, float] | None = None
+    kn_230: dict[int, float] | None = None
+    kn_230_exact: dict[int, float] | None = None
     friction_ratio: dict[int, tuple[float, ...]] = {}
     aft_coaming_above_225wl_cm: float | None = None
     rear_deck_above_225wl_cm: float | None = None
@@ -667,6 +690,8 @@ def evaluate_tier0_tier1(
                     kn_225, kn_225_exact = _speed_tables(r_up, lb)
             elif lb == 265 and not skip_resistance:
                 kn_265, kn_265_exact = _speed_tables(r_up, lb)
+            elif lb == 230 and not skip_resistance:
+                kn_230, kn_230_exact = _speed_tables(r_up, lb)
     except Exception as exc:  # noqa: BLE001
         return _fail(f"Hydrostatics / stability / resistance failed: {exc}", **tier0_fields)
 
@@ -706,6 +731,8 @@ def evaluate_tier0_tier1(
         kn_225_exact=kn_225_exact,
         kn_265=kn_265,
         kn_265_exact=kn_265_exact,
+        kn_230=kn_230,
+        kn_230_exact=kn_230_exact,
         friction_ratio=dict(friction_ratio) or None,
         shell_area_m2=shell_area_m2,
         aft_coaming_above_225wl_cm=aft_coaming_above_225wl_cm,

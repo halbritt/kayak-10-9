@@ -99,11 +99,19 @@ def test_gates_pass_on_baseline_and_fail_on_regressions(baseline_eval: tuple) ->
     assert ok_report.violations == ()
     assert json.loads(json.dumps(ok_report.to_dict(), allow_nan=False))["passed"] is True
 
-    # 1. SR_4in > 10.99
-    bad_sr = replace(metrics, sr_4in=11.02, sr_4in_exact=11.02)
-    r_sr = evaluate_gates(bad_sr, ref)
-    assert r_sr.passed is False
-    assert any(v.gate == "sr_4in_max" for v in r_sr.violations)
+    # 1. The Sound Rowers ratio is reported, not gated (gates version 9): above the former 10.99
+    #    ceiling and below the former 10.875 floor both pass.
+    for sr in (11.02, 10.80):
+        r_sr = evaluate_gates(replace(metrics, sr_4in=sr, sr_4in_exact=sr), ref)
+        assert r_sr.passed is True, r_sr.violations
+        assert not any(k.startswith("sr_4in") for k in r_sr.margins)
+
+    # 1b. Overall length may not exceed 18 ft (5.4864 m)
+    assert ok_report.margins["l_oa_m_max"] == pytest.approx(5.4864 - metrics.l_oa_m)
+    assert evaluate_gates(replace(metrics, l_oa_m=5.4864), ref).passed is True
+    r_len = evaluate_gates(replace(metrics, l_oa_m=5.4865), ref)
+    assert r_len.passed is False
+    assert [v.gate for v in r_len.violations] == ["l_oa_m_max"]
 
     # 2. USCA < 8.50%
     bad_usca = replace(metrics, usca_4in_pct=8.40, usca_4in_pct_exact=8.40)
@@ -262,7 +270,8 @@ def test_gates_fail_closed_on_missing_or_incomplete_metrics(baseline_eval: tuple
     )
     r_seak_full = evaluate_gates(metrics, ref, seakeeping=seak_full_empty)
     assert r_seak_full.passed is False
-    assert len(r_seak_full.violations) == len(ref.capytaine.target_conditions_225)
+    assert len(r_seak_full.violations) == len(ref.capytaine.target_conditions_225) == 16
+    assert {v.gate[:13] for v in r_seak_full.violations} == {"seak_missing_"}
 
     seak_quick_empty = SeakeepingMetrics(
         valid=True,
@@ -352,10 +361,10 @@ def test_gates_fail_closed_on_nonfinite_tier1_and_none_rows(baseline_eval: tuple
     neg_inf = float("-inf")
 
     cases: list[tuple[str, object]] = [
-        ("sr_4in_max", replace(metrics, sr_4in=nan)),
-        ("sr_4in_max", replace(metrics, sr_4in_exact=nan)),
-        ("sr_4in_max", replace(metrics, sr_4in=neg_inf, sr_4in_exact=neg_inf)),
-        ("sr_4in_max", replace(metrics, sr_4in=pos_inf)),
+        ("l_oa_m_max", replace(metrics, l_oa_m=nan)),
+        ("l_oa_m_max", replace(metrics, l_oa_m=neg_inf)),
+        ("l_oa_m_max", replace(metrics, l_oa_m=pos_inf)),
+        ("l_oa_m_max", replace(metrics, l_oa_m=None)),
         ("usca_4in_pct_min", replace(metrics, usca_4in_pct=nan)),
         ("usca_4in_pct_min", replace(metrics, usca_4in_pct_exact=nan)),
         ("usca_4in_pct_min", replace(metrics, usca_4in_pct=pos_inf, usca_4in_pct_exact=pos_inf)),
@@ -382,7 +391,7 @@ def test_gates_fail_closed_on_nonfinite_tier1_and_none_rows(baseline_eval: tuple
         ("forebody_dk_ds_max", replace(metrics, forebody_max_abs_dk_ds=nan)),
         ("forebody_dk_ds_max", replace(metrics, forebody_max_abs_dk_ds=neg_inf)),
     ]
-    for lb in (225, 265, 300):
+    for lb in (225,):
         base_load = metrics.loads[lb]
         for bad_gm in (nan, pos_inf, neg_inf):
             cases.append(
@@ -502,7 +511,7 @@ def test_gates_fail_closed_on_malformed_tier2_and_numpy_bool(baseline_eval: tupl
     base_load = metrics.loads[225]
     np_bool_cases: list[tuple[str, object]] = [
         ("z_min_m", replace(metrics, z_min_m=nb)),  # type: ignore[arg-type]
-        ("sr_4in_max", replace(metrics, sr_4in=nb, sr_4in_exact=nb)),  # type: ignore[arg-type]
+        ("l_oa_m_max", replace(metrics, l_oa_m=nb)),  # type: ignore[arg-type]
         ("usca_4in_pct_min", replace(metrics, usca_4in_pct=nb, usca_4in_pct_exact=nb)),  # type: ignore[arg-type]
         ("l4_m_min", replace(metrics, l4_m=nb)),  # type: ignore[arg-type]
         ("transition_monotonic", replace(metrics, transition_dB_per_20cm=(0.5, nb, 0.4))),  # type: ignore[arg-type]

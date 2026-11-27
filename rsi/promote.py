@@ -20,7 +20,7 @@ from rsi.fidelity import (
     evaluate_tier2_seakeeping,
     resolve_openfoam_bashrc,
 )
-from rsi.gates import GateReport, evaluate_gates
+from rsi.gates import RACE_PACE_POWERS_W, GateReport, evaluate_gates
 from rsi.genome import DesignSpace, hull_to_vector
 from rsi.paired_cfd import (
     PAIRED_MODE,
@@ -145,8 +145,12 @@ def _compute_deltas(
             if d_exact is not None:
                 gains.append(d_exact)
     kn_deltas["mean_speed_gain_kn"] = round(sum(gains) / len(gains), 6) if gains else None
-    race_gains = [kn_deltas[k] for k in ("90", "120") if kn_deltas.get(k) is not None]
-    kn_deltas["race_pace_90_120_gain_kn"] = (
+    # The objective's powers (60 and 90 W since gates version 9; 90 and 120 W before).
+    race_gains = [
+        kn_deltas[str(p)] for p in RACE_PACE_POWERS_W if kn_deltas.get(str(p)) is not None
+    ]
+    kn_deltas["race_pace_powers_w"] = list(RACE_PACE_POWERS_W)
+    kn_deltas["race_pace_gain_kn"] = (
         round(sum(race_gains) / len(race_gains), 6) if race_gains else None
     )
 
@@ -333,7 +337,24 @@ def _compute_deltas(
 
     ld_225_c = cand_loads.get(225)
     ld_225_b = baseline.loads.get(225)
+    ld_230_c = cand_loads.get(230)
     report_only = {
+        # 100-mile race load (230 lb total): this hull's own values. data/kayak-10-9-specs.json
+        # has no 230 lb case, so there is no stored baseline to difference against.
+        "kn_230_exact": (
+            {str(k): _finite_or_none(v) for k, v in metrics.kn_230_exact.items()}
+            if metrics.kn_230_exact is not None
+            else None
+        ),
+        "load_230": (
+            {
+                "draft_mm": _finite_or_none(ld_230_c.draft_mm),
+                "gm_cm": _finite_or_none(ld_230_c.gm_cm),
+                "gz_mm": [_finite_or_none(x) for x in (ld_230_c.gz_mm or ())],
+            }
+            if ld_230_c is not None
+            else None
+        ),
         "draft_225_mm": _finite_or_none(ld_225_c.draft_mm) if ld_225_c is not None else None,
         "draft_225_mm_delta": (
             _delta(ld_225_c.draft_mm, ld_225_b.draft_mm, 3)
