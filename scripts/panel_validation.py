@@ -230,7 +230,10 @@ KAYAK_CASES: list[dict[str, Any]] = [
     dict(fs_raise=1.0),
     dict(fs_shift=0.25),
     dict(linearisation="kelvin"),
+    dict(first_row=0.5625),
     dict(first_row=0.375, waterline_eta="extrapolated"),
+    dict(fs_raise=0.55),
+    dict(first_row=0.375, ny_fs=40),
 ]
 
 

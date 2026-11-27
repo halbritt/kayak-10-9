@@ -195,13 +195,16 @@ An independent check varied the near-hull free-surface spacing while holding 50 
 | First row (nominal station spacings) | Pressure difference at 5.5 kn (N) | Pressure difference at 6.2 kn (N) |
 |---|---:|---:|
 | 0.750 | −0.01703 | −0.05134 |
+| 0.5625 | −0.04225 | −0.02774 |
 | 0.375 | +0.00194 | −0.09104 |
 
-Changing this spacing reverses the pressure difference at 5.5 kn and shifts it by 0.0397 N at 6.2 kn, more than the entire seven-grid range of 0.0301 N. The narrower-row case also extrapolated the waterline elevation. That option affects only the separately reported waterline force. Including it gives +0.00891 and −0.08128 N on the narrower grid. The `paired` validation study includes this control.
+The three spacings give a nonmonotonic sequence at both speeds. Changing this spacing reverses the pressure difference at 5.5 kn and shifts it by 0.0397 N at 6.2 kn, more than the entire seven-grid range of 0.0301 N. The narrower-row case also extrapolated the waterline elevation. That option affects only the separately reported waterline force. Including it gives +0.00891 and −0.08128 N on the narrower grid. Lowering the sources from 0.80 to 0.55 local panel lengths on the nominal grid instead gives −0.03116 and −0.02549 N. Across the nominal, narrower-row and lower-source settings, the 6.2 kn differences span 0.06554 N. The `paired` validation study includes these controls.
+
+Increasing the narrow-row case from 30 to 40 rows while retaining the 0.375 first-row setting gives +0.00023 and −0.09165 N at 5.5 and 6.2 kn. The outermost row then has almost the nominal width, 1.31 versus 1.30 station spacings. At 6.2 kn its separate waterline correction adds +0.02172 N to the paired pressure difference, bringing it to −0.06993 N. The fixed-level pressure differences across the tested source heights and row spacings span 0.06616 N at that speed. These checks identify a sensitivity; selecting one of these grids as the reference requires further refinement.
 
 For comparison, changing the shift from 0.50 to 0.25 panel lengths changes the pressure difference by −0.00778 and +0.00614 N at 5.5 and 6.2 kn. Moving the end clustering between 0.7 and 0.9 changes the nominal difference by at most 0.00370 N across those speeds. Refining the input hull shell from 441 × 129 to 661 × 161 with the flow grid held at 40 × 24 and eight girth panels changes the paired pressure result by at most 0.00014 N across all three speeds. This separates the sensitivity to the flow grid from one test of hull tessellation.
 
-The control-surface force integral gives another check on the difference. At 40 stations and 32 rows, with half-width 0.8 L and downstream extent 1.0 L, the 6.2 kn pressure difference is −0.03883 N. Pressure plus the waterline strip gives −0.04880 N and the control-surface integral gives −0.01608 N. All three use the same two computed flows. Agreement of their signs on this grid leaves a 0.03272 N spread in magnitude.
+The control-surface force integral gives another check on the difference. At 40 stations and 32 rows, with half-width 0.8 L and downstream extent 1.0 L, the 6.2 kn pressure difference is −0.03883 N. Pressure plus the waterline strip gives −0.04880 N and the control-surface integral gives −0.01608 N. All three use the same two computed flows. Agreement of their signs on this grid leaves a 0.03273 N spread in magnitude. At 50 stations and 40 rows on the same domain, the three differences are −0.05157, −0.05345 and −0.04286 N. The spread falls to 0.01059 N, while the control-surface difference itself changes by 0.02679 N between grids.
 
 Free to sink and trim the difference is **not** resolved:
 
