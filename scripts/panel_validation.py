@@ -146,7 +146,12 @@ def wigley_free(_: argparse.Namespace) -> dict[str, Any]:
     for fn in (0.25, 0.30, 0.35, 0.40, 0.45):
         u = fn * math.sqrt(ps.G)
         # centre of gravity at the still waterplane; the towing force acts through it
-        r = ps.solve_free(v, f, u, cfg, volume_m3=volume, vcg_m=0.0, rho=RHO_FRESH)
+        try:
+            r = ps.solve_free(v, f, u, cfg, volume_m3=volume, vcg_m=0.0, rho=RHO_FRESH)
+        except ValueError as exc:  # a pose the solver refuses is a result, not a crash
+            rows.append({"froude": fn, "rejected": str(exc)})
+            print(f"Fn {fn:.2f} rejected: {exc}", flush=True)
+            continue
         d = _row(r, RHO_FRESH)
         d["sinkage_coefficient"] = 2.0 * ps.G * r.sinkage_m / u**2  # 2 g s / U^2, s over L = 1
         d["trim_percent_L"] = 100.0 * math.tan(r.trim_change_rad)  # (dA - dF) / L x 100, bow up +

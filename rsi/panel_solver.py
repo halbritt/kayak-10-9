@@ -169,7 +169,7 @@ class PanelResult:
     rw_N: float  # wave resistance: hull pressure below z = 0, double-body zero removed
     rw_waterline_N: float  # waterline term, reported apart (see the module docstring)
     rw_doublebody_zero_N: float  # the discretisation error that was removed
-    rw_pressure_linear_N: float  # as rw_pressure_N with the pressure linearised about the base flow
+    rw_pressure_linear_N: float  # as rw_N with the pressure linearised about the base flow
     rw_farfield_N: float | None  # control-surface estimate
     farfield_parts_N: dict[str, float] | None
     fz_dyn_N: float  # dynamic vertical force, positive up
@@ -952,7 +952,7 @@ def _farfield_points(grid: _Grid, cfg: PanelConfig, u_max: float, g: float) -> d
         yy, zz = np.meshgrid(yq, zq, indexing="ij")
         return np.column_stack([np.full(yy.size, x), yy.ravel(), zz.ravel()])
 
-    xs_side = xcol[i_fwd : i_aft + 1]  # column centres: midpoint rule between the two planes
+    xs_side = xcol[i_fwd : i_aft + 1]  # collocation columns between the two planes
     xx, zz = np.meshgrid(xs_side, zq, indexing="ij")
     side = np.column_stack([xx.ravel(), np.full(xx.size, y_side), zz.ravel()])
     # trapezoid rule along the side plane, from plane to plane
