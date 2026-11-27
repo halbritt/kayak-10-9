@@ -13,7 +13,8 @@ import typer
 from rsi.baseline import load_baseline_reference
 from rsi.diagnose import diagnose_candidate, diagnose_validation_error
 from rsi.evaluator import evaluate_tier0_tier1
-from rsi.fidelity import evaluate_tier2_cfd, evaluate_tier2_seakeeping
+from rsi.fidelity import evaluate_tier2_seakeeping
+from rsi.paired_cfd import CFD_MODES, evaluate_tier2_cfd_mode
 from rsi.gates import evaluate_gates
 from rsi.genome import DesignSpace, hull_to_vector
 from rsi.loop import (
@@ -30,6 +31,11 @@ from rsi.promote import (
     compare_candidate,
     load_candidate_hull,
     promote_candidate,
+)
+
+CFD_MODE_HELP = (
+    "Tier 2 CFD: 'paired' compares with the baseline on one mesh from one flow state; "
+    "'cold' meshes the hull alone and runs it from rest"
 )
 
 app = typer.Typer(
@@ -91,11 +97,14 @@ def evaluate(
     skip_resistance: Annotated[bool, typer.Option("--skip-resistance", help="Skip resistance curve")] = False,
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick subset for Capytaine Tier 2")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM without solving")] = False,
+    cfd_mode: Annotated[str, typer.Option("--cfd-mode", help=CFD_MODE_HELP)] = "paired",
     tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
 ) -> None:
     """Evaluate a hull JSON against Tier 0/1 (and optionally Tier 2) gates."""
     if tier not in (1, 2):
         _err(f"--tier must be 1 or 2, got {tier}", code=2)
+    if cfd_mode not in CFD_MODES:
+        _err(f"--cfd-mode must be one of {', '.join(CFD_MODES)}, got {cfd_mode}", code=2)
     if not hull.is_file():
         _err(f"Hull file not found: {hull}", code=2)
 
@@ -140,10 +149,11 @@ def evaluate(
             quick=quick_tier2,
             n_jobs=tier2_n_jobs,
         )
-        cfd = evaluate_tier2_cfd(
+        cfd = evaluate_tier2_cfd_mode(
             cand_hull,
             eval_dir / "cfd",
             baseline,
+            mode=cfd_mode,
             dry_run=cfd_dry_run,
         )
 
@@ -257,6 +267,7 @@ def run(
     emit_json: Annotated[bool, typer.Option("--json", help="Emit JSON to stdout")] = False,
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick subset for Capytaine Tier 2")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM without solving")] = False,
+    cfd_mode: Annotated[str, typer.Option("--cfd-mode", help=CFD_MODE_HELP)] = "paired",
     skip_resistance: Annotated[bool, typer.Option("--skip-resistance", help="Skip resistance curve")] = False,
     tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
     freeze_group: Annotated[
@@ -267,6 +278,8 @@ def run(
     """Execute or resume a multi-iteration recursive self-improvement campaign."""
     if iterations < 1 or population < 1 or tier2_top < 0 or workers < 1:
         _err("Invalid numeric campaign bounds", code=2)
+    if cfd_mode not in CFD_MODES:
+        _err(f"--cfd-mode must be one of {', '.join(CFD_MODES)}, got {cfd_mode}", code=2)
     if seed_hull is not None and not seed_hull.is_file():
         _err(f"Seed hull file not found: {seed_hull}", code=2)
 
@@ -283,6 +296,7 @@ def run(
         skip_resistance=skip_resistance,
         quick_tier2=quick_tier2,
         cfd_dry_run=cfd_dry_run,
+        cfd_mode=cfd_mode,
         tier2_n_jobs=tier2_n_jobs,
         frozen_groups=tuple(freeze_group or ()),
     )
@@ -342,6 +356,7 @@ def compare(
     tier2: Annotated[bool, typer.Option("--tier2", help="Include Tier 2 Capytaine & OpenFOAM")] = False,
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick Capytaine subset")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM without solving")] = False,
+    cfd_mode: Annotated[str, typer.Option("--cfd-mode", help=CFD_MODE_HELP)] = "paired",
     skip_resistance: Annotated[bool, typer.Option("--skip-resistance", help="Skip resistance curve")] = False,
     tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
     emit_json: Annotated[bool, typer.Option("--json", help="Emit JSON to stdout")] = False,
@@ -349,6 +364,8 @@ def compare(
     """Compare a candidate hull against baseline v0.2.3 metrics and gates."""
     if not candidate.is_file():
         _err(f"Candidate file not found: {candidate}", code=2)
+    if cfd_mode not in CFD_MODES:
+        _err(f"--cfd-mode must be one of {', '.join(CFD_MODES)}, got {cfd_mode}", code=2)
 
     work = _resolve_work_dir(work_dir)
     baseline = load_baseline_reference()
@@ -365,6 +382,7 @@ def compare(
         tier2=tier2,
         quick_seakeeping=quick_tier2,
         cfd_dry_run=cfd_dry_run,
+        cfd_mode=cfd_mode,
         skip_resistance=skip_resistance,
         tier2_n_jobs=tier2_n_jobs,
     )
@@ -402,6 +420,7 @@ def promote(
     tier2: Annotated[bool, typer.Option("--tier2", help="Run/verify Tier 2 Capytaine & OpenFOAM")] = False,
     quick_tier2: Annotated[bool, typer.Option("--quick-tier2", help="Use quick Capytaine subset (disallowed for --apply)")] = False,
     cfd_dry_run: Annotated[bool, typer.Option("--cfd-dry-run", help="Stage OpenFOAM only (disallowed for --apply)")] = False,
+    cfd_mode: Annotated[str, typer.Option("--cfd-mode", help=CFD_MODE_HELP)] = "paired",
     tier2_n_jobs: Annotated[int, typer.Option("--tier2-n-jobs", help="Capytaine worker threads")] = 12,
     out: Annotated[Path | None, typer.Option("--out", help="Output JSON path")] = None,
     json_out: Annotated[Path | None, typer.Option("--json-out", help="Output JSON path alias")] = None,
@@ -412,6 +431,8 @@ def promote(
         _err("Cannot pass both --dry-run and --apply", code=2)
     if not candidate.is_file():
         _err(f"Candidate file not found: {candidate}", code=2)
+    if cfd_mode not in CFD_MODES:
+        _err(f"--cfd-mode must be one of {', '.join(CFD_MODES)}, got {cfd_mode}", code=2)
 
     eff_dry_run = not apply
     work = _resolve_work_dir(work_dir)
@@ -424,6 +445,7 @@ def promote(
             tier2=tier2,
             quick_seakeeping=quick_tier2,
             cfd_dry_run=cfd_dry_run,
+            cfd_mode=cfd_mode,
             tier2_n_jobs=tier2_n_jobs,
         )
     except Exception as exc:  # noqa: BLE001

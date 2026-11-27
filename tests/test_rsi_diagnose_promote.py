@@ -449,3 +449,87 @@ def test_augment_metrics_dict_and_evaluate_subdir_tier2_cache_lookup(
     assert found_seak.baja_265 is not None
     assert found_seak.baja_265["roll_period_s"] == pytest.approx(ref.capytaine.roll_period_s_265_baja)
     assert found_cfd is not None and found_cfd.valid is True
+
+
+def _paired_cfd(delta_55: float, delta_62: float) -> CfdMetrics:
+    def sp(v: float, d: float) -> dict[str, float]:
+        return {
+            "speed_kn": v,
+            "drag_delta_N": d,
+            "drag_delta_pressure_N": d - 0.05,
+            "drag_delta_viscous_N": 0.05,
+            "drag_delta_drift_N": 0.0,
+            "baseline_drag_N": 18.0,
+            "drag_total_N": 18.0 + d,
+        }
+
+    return CfdMetrics(
+        valid=True,
+        error=None,
+        dry_run=False,
+        elapsed_s=1.0,
+        bashrc=str(resolve_openfoam_bashrc()),
+        bashrc_exists=True,
+        staging_dir="",
+        speeds={"5.5kn": sp(5.5, delta_55), "6.2kn": sp(6.2, delta_62)},
+        mode="paired_warm_start",
+    )
+
+
+def test_cached_cfd_of_one_kind_never_stands_in_for_the_other(baseline_eval: tuple, tmp_path: Path) -> None:
+    from rsi.promote import _lookup_verified_tier2_cache
+
+    ref, _ = baseline_eval
+    d_hash = ref.hull.design_hash()
+    cand_dir = tmp_path / "evaluate" / d_hash.split(":")[-1][:16]
+    (cand_dir / "cfd").mkdir(parents=True)
+    (cand_dir / "candidate.hull.json").write_text(ref.hull.model_dump_json(indent=2) + "\n")
+    paired = _paired_cfd(+0.20, +0.20)
+    cfd_file = cand_dir / "cfd" / "openfoam_cfd_metrics.json"
+    cfd_file.write_text(
+        json.dumps({"mode": paired.mode, "posed": {}, "mesh_info": {"reference": "cfdref_old"}, "speeds": paired.speeds})
+    )
+
+    def lookup(mode: str | None, reference: str | None = None) -> CfdMetrics | None:
+        return _lookup_verified_tier2_cache(
+            tmp_path,
+            d_hash,
+            require_full_seakeeping=True,
+            require_executed_cfd=True,
+            cfd_result_mode=mode,
+            paired_reference=reference,
+        )[1]
+
+    # a paired difference counts only against the reference it was taken on
+    assert lookup("paired_warm_start", "cfdref_old") is not None
+    assert lookup("paired_warm_start", "cfdref_new") is None
+
+    found = lookup("paired_warm_start")
+    assert found is not None and found.mode == "paired_warm_start", "a paired file must come back as paired"
+    assert lookup("cold_start") is None, "a paired result must not answer a request for a cold-start one"
+    assert lookup(None).mode == "paired_warm_start"
+
+    # the same through pareto.json, and a file written before modes existed counts as cold start
+    cfd_file.unlink()
+    (tmp_path / "pareto.json").write_text(json.dumps({"tier2_verified": {d_hash: {"cfd": paired.to_dict()}}}))
+    assert lookup("paired_warm_start") is not None and lookup("cold_start") is None
+    (tmp_path / "pareto.json").unlink()
+    cfd_file.write_text(json.dumps({"posed": {}, "mesh_info": {}, "speeds": paired.speeds}))
+    assert lookup("cold_start") is not None and lookup("paired_warm_start") is None
+
+
+def test_a_paired_result_is_reported_by_its_own_differences(baseline_eval: tuple) -> None:
+    from rsi.promote import _compute_deltas
+
+    ref, metrics = baseline_eval
+    # The candidate is 0.30 N worse than the baseline on the same mesh. Its absolute drag, 18.3 N at
+    # step 4900, is 2.2 N below the published 500-step baseline; that must not be reported as a gain.
+    deltas = _compute_deltas(metrics, ref, None, _paired_cfd(+0.30, -0.10))["cfd"]
+    assert deltas["5.5kn"]["drag_total_N"] == pytest.approx(0.30)
+    assert deltas["5.5kn"]["drag_pressure_N"] == pytest.approx(0.25)
+    assert deltas["5.5kn"]["drag_viscous_N"] == pytest.approx(0.05)
+    assert deltas["5.5kn"]["effective_power_W"] == pytest.approx(0.30 * 5.5 * 0.514444, abs=1e-3)
+    assert deltas["6.2kn"]["drag_total_N"] == pytest.approx(-0.10)
+
+    report = evaluate_gates(metrics, ref, cfd=_paired_cfd(+0.30, -0.10))
+    assert [v.gate for v in report.violations if v.gate.startswith("cfd_")] == ["cfd_drag_delta_5.5kn"]

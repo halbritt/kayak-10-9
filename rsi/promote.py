@@ -17,12 +17,17 @@ from rsi.evaluator import CandidateMetrics, evaluate_tier0_tier1
 from rsi.fidelity import (
     CfdMetrics,
     SeakeepingMetrics,
-    evaluate_tier2_cfd,
     evaluate_tier2_seakeeping,
     resolve_openfoam_bashrc,
 )
 from rsi.gates import GateReport, evaluate_gates
 from rsi.genome import DesignSpace, hull_to_vector
+from rsi.paired_cfd import (
+    PAIRED_MODE,
+    current_reference_key,
+    evaluate_tier2_cfd_mode,
+    expected_result_mode,
+)
 
 
 def _finite_or_none(val: Any) -> float | None:
@@ -290,7 +295,21 @@ def _compute_deltas(
         }
         for sp_key, base_sp in base_map.items():
             cand_sp = cfd.speeds.get(sp_key)
-            if isinstance(cand_sp, dict):
+            if isinstance(cand_sp, dict) and cfd.mode == PAIRED_MODE:
+                # A paired result carries its own differences, taken against the baseline on the
+                # same mesh from the same state. Its absolute drag is at another step count than
+                # the published 500-step baseline and must not be subtracted from it.
+                d_total = cand_sp.get("drag_delta_N")
+                u_mps = float(cand_sp.get("speed_kn", 0.0)) * 0.514444
+                cfd_delta[sp_key] = {
+                    "drag_total_N": _delta(d_total, 0.0, 4),
+                    "effective_power_W": _delta(d_total * u_mps, 0.0, 3)
+                    if isinstance(d_total, (int, float))
+                    else None,
+                    "drag_pressure_N": _delta(cand_sp.get("drag_delta_pressure_N"), 0.0, 4),
+                    "drag_viscous_N": _delta(cand_sp.get("drag_delta_viscous_N"), 0.0, 4),
+                }
+            elif isinstance(cand_sp, dict):
                 cfd_delta[sp_key] = {
                     "drag_total_N": _delta(cand_sp.get("drag_total_N"), base_sp.drag_total_N, 4),
                     "effective_power_W": _delta(
@@ -380,6 +399,7 @@ def _cfd_from_dict(raw: dict[str, Any]) -> CfdMetrics:
         mesh_info=raw.get("mesh_info"),
         speeds=raw.get("speeds"),
         output_json_path=str(raw.get("output_json_path", "")),
+        mode=str(raw.get("mode") or "cold_start"),
     )
 
 
@@ -389,8 +409,24 @@ def _lookup_verified_tier2_cache(
     *,
     require_full_seakeeping: bool,
     require_executed_cfd: bool,
+    cfd_result_mode: str | None = None,
+    paired_reference: str | None = None,
 ) -> tuple[SeakeepingMetrics | None, CfdMetrics | None]:
-    """Safely look up cached Tier 2 artifacts matching exact design_hash."""
+    """Safely look up cached Tier 2 artifacts matching exact design_hash.
+
+    ``cfd_result_mode`` restricts the CFD result to one kind (cold start or paired): the two are
+    judged by different gates, so one must never stand in for the other. A paired result is a
+    difference against one reference; with ``paired_reference`` given, a result taken against any
+    other reference is not accepted.
+    """
+
+    def _usable(c: CfdMetrics) -> bool:
+        if cfd_result_mode is not None and c.mode != cfd_result_mode:
+            return False
+        if c.mode == PAIRED_MODE and paired_reference is not None:
+            return (c.mesh_info or {}).get("reference") == paired_reference
+        return True
+
     seak_found: SeakeepingMetrics | None = None
     cfd_found: CfdMetrics | None = None
 
@@ -409,6 +445,7 @@ def _lookup_verified_tier2_cache(
                     if (
                         c.valid
                         and (not require_executed_cfd or not c.dry_run)
+                        and _usable(c)
                         and isinstance(c.speeds, dict)
                         and "5.5kn" in c.speeds
                         and "6.2kn" in c.speeds
@@ -472,8 +509,9 @@ def _lookup_verified_tier2_cache(
             if cfd_found is None and of_path.is_file():
                 of_raw = json.loads(of_path.read_text())
                 speeds = of_raw.get("speeds")
+                of_mode = str(of_raw.get("mode") or "cold_start")
                 if isinstance(speeds, dict) and "5.5kn" in speeds and "6.2kn" in speeds:
-                    cfd_found = CfdMetrics(
+                    found = CfdMetrics(
                         valid=True,
                         error=None,
                         dry_run=False,
@@ -485,7 +523,10 @@ def _lookup_verified_tier2_cache(
                         mesh_info=of_raw.get("mesh_info"),
                         speeds=speeds,
                         output_json_path=str(of_path),
+                        mode=of_mode,
                     )
+                    if _usable(found):
+                        cfd_found = found
         except Exception:  # noqa: BLE001
             continue
 
@@ -617,6 +658,7 @@ def compare_candidate(
     tier2: bool = False,
     quick_seakeeping: bool = False,
     cfd_dry_run: bool = False,
+    cfd_mode: str = "paired",
     skip_resistance: bool = False,
     mesh_resolution: tuple[int, int] = (441, 129),
     tier2_n_jobs: int = 6,
@@ -654,6 +696,8 @@ def compare_candidate(
             d_hash,
             require_full_seakeeping=not quick_seakeeping,
             require_executed_cfd=not cfd_dry_run,
+            cfd_result_mode=expected_result_mode(cfd_mode, cfd_dry_run),
+            paired_reference=current_reference_key(baseline),
         )
         if eff_seak is None:
             eff_seak = (
@@ -671,10 +715,11 @@ def compare_candidate(
             eff_cfd = (
                 cached_cfd
                 if cached_cfd is not None
-                else evaluate_tier2_cfd(
+                else evaluate_tier2_cfd_mode(
                     candidate_hull,
                     cand_work / "cfd",
                     baseline,
+                    mode=cfd_mode,
                     dry_run=cfd_dry_run,
                 )
             )
@@ -776,6 +821,7 @@ def promote_candidate(
     tier2: bool = False,
     quick_seakeeping: bool = False,
     cfd_dry_run: bool = False,
+    cfd_mode: str = "paired",
     tier2_n_jobs: int = 6,
     metrics: CandidateMetrics | None = None,
     seakeeping: SeakeepingMetrics | None = None,
@@ -801,6 +847,8 @@ def promote_candidate(
             cand_hull.design_hash(),
             require_full_seakeeping=True,
             require_executed_cfd=True,
+            cfd_result_mode=expected_result_mode(cfd_mode, False),
+            paired_reference=current_reference_key(baseline),
         )
         if eff_seak is None:
             eff_seak = cached_seak
@@ -815,6 +863,7 @@ def promote_candidate(
         tier2=tier2,
         quick_seakeeping=quick_seakeeping,
         cfd_dry_run=cfd_dry_run,
+        cfd_mode=cfd_mode,
         tier2_n_jobs=tier2_n_jobs,
         metrics=metrics,
         seakeeping=eff_seak,

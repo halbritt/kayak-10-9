@@ -1067,7 +1067,9 @@ def diagnose_candidate(
                 "sec_side_fwd",
             )
             code = "speed_or_drag_regression"
-            if g_id in ("cfd_valid", "cfd_dry_run", "cfd_speeds_malformed") or g_id.startswith("cfd_missing_"):
+            if g_id in ("cfd_valid", "cfd_dry_run", "cfd_speeds_malformed") or g_id.startswith(
+                ("cfd_missing_", "cfd_settled_")
+            ):
                 code = g_id if g_id in ("cfd_valid", "cfd_dry_run") else "cfd_metrics_incomplete"
             items.append(
                 DiagnosticItem(

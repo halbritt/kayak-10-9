@@ -181,6 +181,10 @@ class CfdMetrics:
     mesh_info: dict[str, Any] | None = None
     speeds: dict[str, dict[str, Any]] | None = None
     output_json_path: str = ""
+    # "cold_start": each hull on its own mesh, from rest; speeds hold absolute drag.
+    # "paired_warm_start" (rsi.paired_cfd): speeds also hold drag_delta_N against the baseline on
+    # the same mesh from the same flow state, which is what the gate then reads.
+    mode: str = "cold_start"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -638,22 +642,20 @@ def evaluate_tier2_seakeeping(
         )
 
 
-def stage_openfoam_case(
+def stage_posed_hull_stl(
     hull: Hull,
     work_dir: Path,
     *,
-    speeds_kn: tuple[float, ...] = (5.5, 6.2),
-    end_steps: int = 500,
-    np_ranks: int = 6,
-    bashrc: Path | None = None,
     hull_name: str = "candidate",
     mesh_resolution: tuple[int, int] = (441, 129),
 ) -> dict[str, Any]:
-    """Stage OpenFOAM-v2606 STL, mesh dicts, and interFoam case directories on SSD3."""
+    """Write ``<hull_name>.hull.json`` and the closed shell floated at 225 lb as ``<hull_name>.stl``.
+
+    Two hulls of the same parametric surface staged at the same resolution give STL files with the
+    same triangles in the same order, which the paired comparison relies on.
+    """
     _ensure_cad_on_path()
     from deck_geometry import SculptedKayakSurface
-    from hydro import KN
-    from openfoam_dicts import write_interfoam_case_files, write_mesh_dicts
     from run_openfoam_cfd import pose_for_cfd
 
     work = Path(work_dir)
@@ -671,12 +673,32 @@ def stage_openfoam_case(
     if not closed.is_watertight or not closed.is_volume:
         raise ValueError("Closed outer shell must be watertight and a valid volume for CFD")
 
-    posed = pose_for_cfd(
+    return pose_for_cfd(
         hull_name,
         np.asarray(closed.vertices, dtype=float),
         np.asarray(closed.faces, dtype=int),
         work,
     )
+
+
+def stage_openfoam_case(
+    hull: Hull,
+    work_dir: Path,
+    *,
+    speeds_kn: tuple[float, ...] = (5.5, 6.2),
+    end_steps: int = 500,
+    np_ranks: int = 6,
+    bashrc: Path | None = None,
+    hull_name: str = "candidate",
+    mesh_resolution: tuple[int, int] = (441, 129),
+) -> dict[str, Any]:
+    """Stage OpenFOAM-v2606 STL, mesh dicts, and interFoam case directories on SSD3."""
+    _ensure_cad_on_path()
+    from hydro import KN
+    from openfoam_dicts import write_interfoam_case_files, write_mesh_dicts
+
+    work = Path(work_dir)
+    posed = stage_posed_hull_stl(hull, work, hull_name=hull_name, mesh_resolution=mesh_resolution)
 
     mesh_dir = work / f"mesh_{hull_name}"
     if mesh_dir.exists():

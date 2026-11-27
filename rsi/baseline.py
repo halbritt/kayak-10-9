@@ -23,6 +23,9 @@ FAIRNESS_FOREBODY_DK_DS_MAX_PER_M2 = 210.0
 # is the dataset released with v0.2.3. It was computed without that removal (its 4.5 kn bow-quarter
 # seat accelerations are 8 to 17 % too high) and stays as released until the owner replaces it.
 SEAKEEPING_REFERENCE_FILE = "rsi-seakeeping-reference.json"
+# The baseline's own local-friction ratios (rsi.evaluator.local_friction_ratio) per load and speed.
+# Candidates are charged friction relative to these, so the baseline keeps its published speeds.
+FRICTION_REFERENCE_FILE = "rsi-friction-reference.json"
 
 TARGET_CAPYTAINE_SPEEDS_KN = (4.5, 5.7)
 TARGET_CAPYTAINE_HEADINGS = ("head", "bow_quarter")
@@ -224,6 +227,10 @@ class BaselineReference:
     kn_225_exact: dict[int, float] | None = None
     kn_265: dict[int, float] | None = None
     kn_265_exact: dict[int, float] | None = None
+    # Per load (lb): local-friction ratio of the baseline at each resistance speed. None switches
+    # the local-friction charge off, which is how the reference file itself is produced.
+    friction_ratio: dict[int, tuple[float, ...]] | None = None
+    friction_speeds_kn: tuple[float, ...] | None = None
     shell_area_m2: float = 5.80659
     aft_coaming_above_225wl_cm: float = 15.541
     rear_deck_above_225wl_cm: float = 14.783
@@ -311,8 +318,14 @@ def _parse_openfoam_speed(raw: dict[str, Any]) -> OpenFoamSpeedBaseline:
     )
 
 
-def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
-    """Load immutable baseline v0.2.3 hull and reference metrics from repo JSON files."""
+def load_baseline_reference(
+    repo_root: Path | None = None, *, with_friction_reference: bool = True
+) -> BaselineReference:
+    """Load immutable baseline v0.2.3 hull and reference metrics from repo JSON files.
+
+    ``with_friction_reference=False`` leaves the local-friction reference out; only the script that
+    writes that file needs it.
+    """
     root = DEFAULT_REPO_ROOT if repo_root is None else Path(repo_root).resolve()
 
     hull = Hull.model_validate_json((root / "hull" / "kayak-10-9.hull.json").read_text())
@@ -320,6 +333,21 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
     controls = json.loads((root / "docs" / "surface-fairing" / "controls.json").read_text())["candidate"]
     fairness_raw = json.loads((root / "docs" / "surface-fairing" / "fairness.json").read_text())["v0.2.2"]
     capytaine_raw = json.loads((root / "data" / SEAKEEPING_REFERENCE_FILE).read_text())
+    friction_ratio: dict[int, tuple[float, ...]] | None = None
+    friction_speeds_kn: tuple[float, ...] | None = None
+    if with_friction_reference:
+        friction_raw = json.loads((root / "data" / FRICTION_REFERENCE_FILE).read_text())
+        if friction_raw.get("design_hash") != hull.design_hash():
+            raise ValueError(
+                f"data/{FRICTION_REFERENCE_FILE} was made for another hull; regenerate it with "
+                "scripts/build_rsi_friction_reference.py"
+            )
+        friction_speeds_kn = tuple(float(v) for v in friction_raw["speeds_kn"])
+        friction_ratio = {
+            int(lb): tuple(float(x) for x in vals) for lb, vals in friction_raw["ratio"].items()
+        }
+        if any(len(vals) != len(friction_speeds_kn) for vals in friction_ratio.values()):
+            raise ValueError(f"data/{FRICTION_REFERENCE_FILE} has a ratio list that does not match its speeds")
     openfoam_raw = json.loads((root / "data" / "openfoam-cfd-metrics.json").read_text())
 
     hydro_3 = specs["hydro_3load"]
@@ -478,5 +506,7 @@ def load_baseline_reference(repo_root: Path | None = None) -> BaselineReference:
         kn_225_exact=kn_225_exact,
         kn_265=kn_265,
         kn_265_exact=kn_265_exact,
+        friction_ratio=friction_ratio,
+        friction_speeds_kn=friction_speeds_kn,
         shell_area_m2=float(hydro_3.get("shell_area_m2", 5.80659)),
     )

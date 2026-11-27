@@ -121,6 +121,9 @@ class CandidateMetrics:
     kn_225_exact: dict[int, float] | None = None
     kn_265: dict[int, float] | None = None
     kn_265_exact: dict[int, float] | None = None
+    # Per load: this hull's local-friction ratio at each speed of RESISTANCE_SPEEDS_KN (see
+    # local_friction_ratio). Diagnostic; the speed tables already include it.
+    friction_ratio: dict[int, tuple[float, ...]] | None = None
     shell_area_m2: float | None = None
     aft_coaming_above_225wl_cm: float | None = None
     rear_deck_above_225wl_cm: float | None = None
@@ -138,6 +141,43 @@ class CandidateMetrics:
         if self.kn_265_exact is not None:
             d["kn_265_exact"] = {str(k): v for k, v in self.kn_265_exact.items()}
         return d
+
+
+# Skin closer to the bow than this local Reynolds number (about 4 cm at 5.5 kn) is charged the
+# line's own mean value there, which is what that first strip carries in total. The line has no
+# meaning at a leading edge, and its local form turns negative under Re = 740.
+FRICTION_RE_MIN = 1.0e5
+
+
+def local_friction_ratio(
+    tris: np.ndarray, u_mps: float, nu: float, x_fwd: float, length_m: float
+) -> float:
+    """Friction with the ITTC-57 line applied along the hull, over the line applied all at once.
+
+    ``hydro.ittc57`` multiplies one coefficient, taken at the Reynolds number of the whole
+    waterline, by the whole wetted area. That charges a patch of skin the same wherever it is. A
+    turbulent boundary layer is thin at the bow and thick aft, so skin near the bow carries about
+    1.4 times the mean friction and skin near the stern about 0.83 times. Here every immersed
+    triangle is charged the local coefficient of the same line at its distance from the forward
+    end of the waterline, ``d(x Cf(Re_x))/dx``. For a plate of constant width the result is the
+    plain ITTC-57 value, so the ratio is 1; a hull with more of its area forward is above 1.
+
+    Why: on 2026-11-26 a search finalist had 0.34 % more wetted area than v0.2.3, all of it in the
+    first metre (keel 9.5 mm deeper at the bow) with less area amidships. One coefficient charged it
+    0.34 % more friction; this ratio charges 0.56 %; a paired RANS run measured 0.59 %.
+
+    The bow is at -x in the SculptedKayakSurface frame, so distance runs from ``x_fwd`` to +x.
+    """
+    area = 0.5 * np.linalg.norm(
+        np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0]), axis=1
+    )
+    dist = tris[:, :, 0].mean(axis=1) - x_fwd
+    re_x = u_mps * dist / nu
+    lg = np.log10(np.maximum(re_x, FRICTION_RE_MIN)) - 2.0
+    cf_line = 0.075 / lg**2
+    cf_local = np.where(re_x < FRICTION_RE_MIN, cf_line, cf_line * (1.0 - (2.0 / math.log(10.0)) / lg))
+    cf_mean = 0.075 / (math.log10(u_mps * length_m / nu) - 2.0) ** 2
+    return float((area * cf_local).sum() / (area.sum() * cf_mean))
 
 
 def _michell_fast_curve(
@@ -539,10 +579,11 @@ def evaluate_tier0_tier1(
     kn_225_exact: dict[int, float] | None = None
     kn_265: dict[int, float] | None = None
     kn_265_exact: dict[int, float] | None = None
+    friction_ratio: dict[int, tuple[float, ...]] = {}
     aft_coaming_above_225wl_cm: float | None = None
     rear_deck_above_225wl_cm: float | None = None
 
-    def _speed_tables(r_up: dict[str, Any]) -> tuple[dict[int, float], dict[int, float]]:
+    def _speed_tables(r_up: dict[str, Any], lb: int) -> tuple[dict[int, float], dict[int, float]]:
         lwl_m = float(np.ptp(r_up["wl_x"]))
         xs, zs, Y = half_breadth_grid(r_up["tris"], 401, 81)
         u_arr = RESISTANCE_SPEEDS_KN * KN
@@ -550,6 +591,21 @@ def evaluate_tier0_tier1(
             [ittc57(float(u), lwl_m, r_up["wet"], RHO_SEAWATER, NU_SEAWATER)[0] for u in u_arr],
             dtype=float,
         )
+        # Charge friction where the area is, relative to the baseline's own distribution: the
+        # baseline keeps its published speeds, and a candidate pays for moving area forward.
+        x_fwd = float(min(r_up["wl_x"]))
+        ratio = np.array(
+            [local_friction_ratio(r_up["tris"], float(u), NU_SEAWATER, x_fwd, lwl_m) for u in u_arr]
+        )
+        friction_ratio[lb] = tuple(float(x) for x in ratio)
+        if baseline.friction_ratio is not None:
+            base_ratio = baseline.friction_ratio.get(lb)
+            if base_ratio is None:
+                raise ValueError(f"baseline friction reference has no {lb} lb load")
+            speeds = baseline.friction_speeds_kn
+            if speeds is None or not np.array_equal(np.asarray(speeds), RESISTANCE_SPEEDS_KN):
+                raise ValueError("baseline friction reference is not on RESISTANCE_SPEEDS_KN")
+            rf_arr = rf_arr * ratio / np.asarray(base_ratio, dtype=float)
         rw_arr = _michell_fast_curve(xs, zs, Y, u_arr, RHO_SEAWATER, g=G, ntheta=4000)
         pwr_w = (rf_arr + rw_arr) * u_arr
         exact_tbl = {
@@ -607,9 +663,9 @@ def evaluate_tier0_tier1(
                     3,
                 )
                 if not skip_resistance:
-                    kn_225, kn_225_exact = _speed_tables(r_up)
+                    kn_225, kn_225_exact = _speed_tables(r_up, lb)
             elif lb == 265 and not skip_resistance:
-                kn_265, kn_265_exact = _speed_tables(r_up)
+                kn_265, kn_265_exact = _speed_tables(r_up, lb)
     except Exception as exc:  # noqa: BLE001
         return _fail(f"Hydrostatics / stability / resistance failed: {exc}", **tier0_fields)
 
@@ -649,6 +705,7 @@ def evaluate_tier0_tier1(
         kn_225_exact=kn_225_exact,
         kn_265=kn_265,
         kn_265_exact=kn_265_exact,
+        friction_ratio=dict(friction_ratio) or None,
         shell_area_m2=shell_area_m2,
         aft_coaming_above_225wl_cm=aft_coaming_above_225wl_cm,
         rear_deck_above_225wl_cm=rear_deck_above_225wl_cm,

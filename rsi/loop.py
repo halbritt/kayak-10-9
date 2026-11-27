@@ -40,8 +40,14 @@ from rsi.evaluator import (
 from rsi.fidelity import (
     CfdMetrics,
     SeakeepingMetrics,
-    evaluate_tier2_cfd,
     evaluate_tier2_seakeeping,
+)
+from rsi.paired_cfd import (
+    COLD_MODE,
+    PAIRED_MODE,
+    current_reference_key,
+    evaluate_tier2_cfd_mode,
+    expected_result_mode,
 )
 from rsi.gates import (
     CATCH_WIDTH_TOL_MM,
@@ -436,6 +442,9 @@ class CampaignConfig:
     tier2_n_jobs: int = 6
     pre_screen: bool = True
     frozen_groups: tuple[str, ...] = ()
+    # "paired": candidate against the baseline on one mesh from one flow state (rsi.paired_cfd).
+    # "cold": each hull meshed alone and run from rest (the earlier screen).
+    cfd_mode: str = "paired"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -453,6 +462,7 @@ class CampaignConfig:
             "tier2_n_jobs": self.tier2_n_jobs,
             "pre_screen": self.pre_screen,
             "frozen_groups": list(self.frozen_groups),
+            "cfd_mode": self.cfd_mode,
         }
 
 
@@ -1118,6 +1128,7 @@ def run_campaign(
         raise ValueError(f"population must be >= 1, got {config.population}")
     if config.tier2_top < 0:
         raise ValueError(f"tier2_top must be >= 0, got {config.tier2_top}")
+    cfd_result_mode = expected_result_mode(config.cfd_mode, config.cfd_dry_run)
     if config.workers < 1:
         raise ValueError(f"workers must be >= 1, got {config.workers}")
     frozen_groups = tuple(dict.fromkeys(str(g) for g in config.frozen_groups))
@@ -1607,6 +1618,13 @@ def run_campaign(
                     and bool(c_seak.get("quick")) == bool(config.quick_tier2)
                     and c_cfd.get("valid")
                     and bool(c_cfd.get("dry_run")) == bool(config.cfd_dry_run)
+                    and (cfd_fn is not None or (c_cfd.get("mode") or COLD_MODE) == cfd_result_mode)
+                    # a paired difference is only valid against the reference it was taken on
+                    and (
+                        cfd_fn is not None
+                        or c_cfd.get("mode") != PAIRED_MODE
+                        or (c_cfd.get("mesh_info") or {}).get("reference") == current_reference_key(baseline)
+                    )
                 ):
                     entry["tier2_seakeeping"] = c_seak
                     entry["tier2_cfd"] = c_cfd
@@ -1678,15 +1696,19 @@ def run_campaign(
                 t2_ledger["timestamp_utc"] = _utc_now()
                 t2_ledger["provenance"] = {**provenance, "stage": "tier2_verification"}
                 append_jsonl_atomic(ledger_path, t2_ledger)
+                # A resume reads Tier 2 verdicts from pareto.json, and one CFD verdict can take an
+                # hour: write it now, not after the last candidate.
+                _write_pareto_and_best(work, ledger_entries, tier2_verified, provenance, baseline)
                 continue
 
             if cfd_fn is not None:
                 cfd = cfd_fn(cand_hull, t2_dir / "cfd", baseline)
             else:
-                cfd = evaluate_tier2_cfd(
+                cfd = evaluate_tier2_cfd_mode(
                     cand_hull,
                     t2_dir / "cfd",
                     baseline,
+                    mode=config.cfd_mode,
                     dry_run=config.cfd_dry_run,
                 )
 
@@ -1736,6 +1758,7 @@ def run_campaign(
             t2_ledger["timestamp_utc"] = _utc_now()
             t2_ledger["provenance"] = {**provenance, "stage": "tier2_verification"}
             append_jsonl_atomic(ledger_path, t2_ledger)
+            _write_pareto_and_best(work, ledger_entries, tier2_verified, provenance, baseline)
 
         tier2_done = True
 

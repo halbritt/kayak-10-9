@@ -25,7 +25,11 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #      come from a body with irregular-frequency removal
 #   6: Buttocks 0.075 turn change read over v0.2.3's stretch of hull, not from each hull's own cut
 #      ends (the reading jumped 0.06 deg when the cut grew one 2 mm sample; the margin is 0.04 deg)
-GATES_VERSION = "6"
+#   7: friction is charged by where the wetted area is (rsi.evaluator.local_friction_ratio), which
+#      moves every speed objective and speed gate; a paired warm-start CFD result
+#      (rsi.paired_cfd) is judged on its drag difference against the baseline on the same mesh,
+#      and must have settled; cold-start results keep the absolute 0.25 N screen
+GATES_VERSION = "7"
 
 SR_4IN_MIN = 10.875
 SR_4IN_MAX = 10.99
@@ -53,6 +57,16 @@ KN_TOL_KN = 0.005
 CAPYTAINE_QUICK_REL_TOL = 0.05
 CAPYTAINE_GM_T_TOL_CM = 0.05
 CFD_DRAG_TOL_N = 0.25
+# Paired warm-start CFD: candidate minus baseline at matching steps, same mesh, same flow state.
+# The drag may not exceed the baseline's by more than the tolerance, and the difference must have
+# stopped moving (second half of the averaging window against the first half).
+# The tolerance stays the owner's coarse-screen value. Measured on 2026-11-26 at 5.5 kn: 100-step
+# means of the difference scattered between +0.04 and +0.33 N around +0.14 N (standard error of a
+# 600-step mean 0.04 N), on a baseline that itself swings 0.3 N every 300 steps. The mesh has four
+# cells per wave height, so this is a screen for gross regressions, not a measurement of 0.1 N.
+CFD_PAIRED_MODE = "paired_warm_start"
+CFD_PAIRED_DRAG_TOL_N = CFD_DRAG_TOL_N
+CFD_PAIRED_DRIFT_TOL_N = 0.15
 
 
 def _finite_float(val: Any) -> float | None:
@@ -909,8 +923,44 @@ def evaluate_gates(
                 "5.5kn": baseline.openfoam.speed_5_5kn,
                 "6.2kn": baseline.openfoam.speed_6_2kn,
             }
+            paired = cfd.mode == CFD_PAIRED_MODE
             for sp_key, base_sp in base_cfd_by_key.items():
                 sp_data = speeds_map.get(sp_key)
+                if paired:
+                    delta = drift = None
+                    if isinstance(sp_data, Mapping):
+                        delta = _finite_float(sp_data.get("drag_delta_N"))
+                        drift = _finite_float(sp_data.get("drag_delta_drift_N"))
+                    if delta is None or drift is None:
+                        _require(
+                            f"cfd_missing_{sp_key}",
+                            False,
+                            -1.0,
+                            f"Missing paired OpenFOAM drag difference for {sp_key}",
+                            "missing" if sp_data is None else str(sp_data),
+                            sp_key,
+                        )
+                        continue
+                    _require(
+                        f"cfd_drag_delta_{sp_key}",
+                        delta <= CFD_PAIRED_DRAG_TOL_N,
+                        CFD_PAIRED_DRAG_TOL_N - delta,
+                        f"OpenFOAM drag at {sp_key} is {delta:+.3f} N against the baseline on the "
+                        f"same mesh; limit {CFD_PAIRED_DRAG_TOL_N:+.3f} N",
+                        delta,
+                        CFD_PAIRED_DRAG_TOL_N,
+                    )
+                    _require(
+                        f"cfd_settled_{sp_key}",
+                        abs(drift) <= CFD_PAIRED_DRIFT_TOL_N,
+                        CFD_PAIRED_DRIFT_TOL_N - abs(drift),
+                        f"OpenFOAM drag difference at {sp_key} was still moving ({drift:+.3f} N "
+                        f"between the halves of the averaging window); limit "
+                        f"{CFD_PAIRED_DRIFT_TOL_N:.3f} N",
+                        drift,
+                        CFD_PAIRED_DRIFT_TOL_N,
+                    )
+                    continue
                 if not isinstance(sp_data, Mapping) or "drag_total_N" not in sp_data:
                     _require(
                         f"cfd_missing_{sp_key}",
