@@ -42,6 +42,8 @@ def test_write_interfoam_case_files_v2_maxco_damping_and_potential(tmp_path: Pat
     assert "maxAlphaCo 5;" in fv_sol
     assert "potentialFlow" in fv_sol
     assert (tmp_path / "0.orig/p").is_file()
+    assert (tmp_path / "0/U").is_file()
+    assert (tmp_path / "0/alpha.water").is_file()
     assert "type fixedValue; value uniform 0;" in (tmp_path / "0.orig/p_rgh").read_text(encoding="utf-8")
     assert "type inletOutlet; inletValue uniform (2.829400 0 0);" in (tmp_path / "0.orig/U").read_text(encoding="utf-8")
     assert "outlet     { type zeroGradient; }" in (tmp_path / "0.orig/alpha.water").read_text(encoding="utf-8")

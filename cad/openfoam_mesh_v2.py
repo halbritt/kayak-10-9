@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 from openfoam_dicts import CTRL_MESH, SFE_DICT, decompose_dict
 
@@ -227,6 +228,8 @@ def write_interfoam_case_files_v2(
             f'FoamFile {{ version 2.0; format ascii; class volVectorField; object U; }}\ndimensions [0 1 -1 0 0 0 0];\ninternalField uniform (0 0 0);\nboundaryField\n{{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      {{ type uniformFixedValue; uniformValue table ( (0 (0 0 0)) ({ramp_steps} ({u_mps:.6f} 0 0)) ); value uniform (0 0 0); }}\n    outlet     {{ type inletOutlet; inletValue uniform (0 0 0); value uniform (0 0 0); }}\n    atmosphere {{ type pressureInletOutletVelocity; value uniform (0 0 0); }}\n    hull       {{ type movingWallVelocity; value uniform (0 0 0); }}\n}}\n',
             encoding="utf-8",
         )
+    shutil.rmtree(cdir / "0", ignore_errors=True)
+    shutil.copytree(cdir / "0.orig", cdir / "0")
     cmds = [
         "setFields > logs/setFields.log 2>&1",
         "decomposePar > logs/decomposePar.log 2>&1",
