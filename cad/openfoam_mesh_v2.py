@@ -221,8 +221,8 @@ def write_interfoam_case_files_v2(
         )
         (cdir / "system/controlDict").write_text(ctrl, encoding="utf-8")
     if use_pot:
-        (cdir / "0.orig/p").write_text(
-            'FoamFile { version 2.0; format ascii; class volScalarField; object p; }\ndimensions [0 2 -2 0 0 0 0];\ninternalField uniform 0;\nboundaryField\n{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      { type zeroGradient; }\n    outlet     { type fixedValue; value uniform 0; }\n    atmosphere { type fixedValue; value uniform 0; }\n    hull       { type zeroGradient; }\n}\n',
+        (cdir / "0.orig/pPotential").write_text(
+            'FoamFile { version 2.0; format ascii; class volScalarField; object pPotential; }\ndimensions [0 2 -2 0 0 0 0];\ninternalField uniform 0;\nboundaryField\n{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      { type zeroGradient; }\n    outlet     { type fixedValue; value uniform 0; }\n    atmosphere { type zeroGradient; }\n    hull       { type zeroGradient; }\n}\n',
             encoding="utf-8",
         )
     elif calm_start == "ramp":
@@ -248,6 +248,8 @@ def write_interfoam_case_files_v2(
             f'mpirun -np {np_ranks} setExprFields -parallel -time 0 -field URef -create -expression "vector({u_mps:.6f}, 0, 0)" -dimensions "[0 1 -1 0 0 0 0]" > logs/setExpr.log 2>&1'
         )
     if use_pot:
-        cmds.append(f"mpirun -np {np_ranks} potentialFoam -initialiseUBCs -parallel -noFunctionObjects > logs/potentialFoam.log 2>&1")
+        cmds.append(
+            f"mpirun -np {np_ranks} potentialFoam -initialiseUBCs -pName pPotential -parallel -noFunctionObjects > logs/potentialFoam.log 2>&1"
+        )
     cmds.append(f"mpirun -np {np_ranks} interFoam -parallel > logs/interFoam.log 2>&1")
     return cmds
