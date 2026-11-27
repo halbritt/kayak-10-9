@@ -162,9 +162,10 @@ def local_friction_ratio(
     end of the waterline, ``d(x Cf(Re_x))/dx``. For a plate of constant width the result is the
     plain ITTC-57 value, so the ratio is 1; a hull with more of its area forward is above 1.
 
-    Why: on 2026-11-26 a search finalist had 0.34 % more wetted area than v0.2.3, all of it in the
-    first metre (keel 9.5 mm deeper at the bow) with less area amidships. One coefficient charged it
-    0.34 % more friction; this ratio charges 0.56 %; a paired RANS run measured 0.59 %.
+    The speed model normalizes this ratio to the baseline at the same load and speed. Moving
+    wetted area forward can therefore increase a candidate's friction even at fixed total area.
+    The mesh-v1 paired runs gave different signs for the viscous drag change of the same hull
+    under different settling treatments. The magnitude of the correction remains unvalidated.
 
     The bow is at -x in the SculptedKayakSurface frame, so distance runs from ``x_fwd`` to +x.
     """
