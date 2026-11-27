@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cad"))
+from openfoam_bin_forces import parse_force_bin_dat  # noqa: E402
 from openfoam_dicts import BLOCK_MESH_DICT, SNAPPY_DICT  # noqa: E402
 from openfoam_mesh_v2 import write_interfoam_case_files_v2, write_mesh_dicts_v2  # noqa: E402
 
@@ -54,6 +55,10 @@ def test_write_interfoam_case_files_v2_maxco_damping_and_potential(tmp_path: Pat
     joined = " && ".join(cmds)
     assert "setExprFields -parallel -time 0 -field URef" in joined
     assert "potentialFoam -initialiseUBCs -parallel" in joined
+    assert "useNamePrefix false; executeControl timeStep; executeInterval 1;" in ctrl
+    assert "type                    binField;" in ctrl
+    assert "binModel                singleDirectionUniformBin;" in ctrl
+    assert "nBin        22;" in ctrl
 
 
 def test_write_interfoam_case_files_v2_ramp_and_no_damping(tmp_path: Path) -> None:
@@ -76,3 +81,29 @@ def test_write_interfoam_case_files_v2_ramp_and_no_damping(tmp_path: Path) -> No
     assert "maxCo 25;" in (tmp_path / "system/fvSolution").read_text(encoding="utf-8")
     assert all("potentialFoam" not in c for c in cmds)
     assert all("setExprFields" not in c for c in cmds)
+
+
+def test_parse_force_bin_dat_v2606_format(tmp_path: Path) -> None:
+    # Exact header/column structure emitted by OpenFOAM v2606 binField (singleDirectionUniformBin)
+    row = (
+        "10 "
+        "1.0 0.0 0.0 0.0 0.0 0.0 0.9 0.0 0.0 0.1 0.0 0.0 "
+        "2.0 0.0 0.0 0.0 0.0 0.0 0.2 0.0 0.0 1.8 0.0 0.0\n"
+    )
+    sample = (
+        "# bins         : 2\n"
+        "# start        : -2.7500000e+00\n"
+        "# end          : 2.7500000e+00\n"
+        "# delta        : 2.7500000e+00\n"
+        "# direction    : (1.0000000e+00 0.0000000e+00 0.0000000e+00)\n"
+        "# Time\ttotal_0_x total_0_y total_0_z\tinternal_0_x ...\n"
+        + row
+    )
+    p = tmp_path / "forceBin.dat"
+    p.write_text(sample, encoding="utf-8")
+    out = parse_force_bin_dat(p, full_hull=True)
+    assert out["steps"].tolist() == [10]
+    assert out["bin_edges_x"].tolist() == [-2.75, 0.0, 2.75]
+    assert out["total_x"].tolist() == [[2.0, 4.0]]
+    assert out["normal_x"].tolist() == [[1.8, 0.4]]
+    assert out["tangential_x"].tolist() == [[0.2, 3.6]]

@@ -181,8 +181,10 @@ def write_interfoam_case_files_v2(
     sponge_w: float = 20.0,
     calm_start: str = "potential",
     ramp_steps: int = 300,
+    binned_forces: bool = True,
 ) -> list[str]:
     """Write a Mesh v2 interFoam case reusing baseline fields without modifying cad/openfoam_dicts.py."""
+    from openfoam_bin_forces import enable_binned_hull_forces
     from openfoam_dicts import write_interfoam_case_files
 
     if calm_start not in ("none", "potential", "ramp"):
@@ -226,6 +228,12 @@ def write_interfoam_case_files_v2(
     elif calm_start == "ramp":
         (cdir / "0.orig/U").write_text(
             f'FoamFile {{ version 2.0; format ascii; class volVectorField; object U; }}\ndimensions [0 1 -1 0 0 0 0];\ninternalField uniform (0 0 0);\nboundaryField\n{{\n    #includeEtc "caseDicts/setConstraintTypes"\n    inlet      {{ type uniformFixedValue; uniformValue table ( (0 (0 0 0)) ({ramp_steps} ({u_mps:.6f} 0 0)) ); value uniform (0 0 0); }}\n    outlet     {{ type inletOutlet; inletValue uniform (0 0 0); value uniform (0 0 0); }}\n    atmosphere {{ type pressureInletOutletVelocity; value uniform (0 0 0); }}\n    hull       {{ type movingWallVelocity; value uniform (0 0 0); }}\n}}\n',
+            encoding="utf-8",
+        )
+    if binned_forces:
+        ctrl_path = cdir / "system/controlDict"
+        ctrl_path.write_text(
+            enable_binned_hull_forces(ctrl_path.read_text(encoding="utf-8"), cofr=cg),
             encoding="utf-8",
         )
     shutil.rmtree(cdir / "0", ignore_errors=True)
