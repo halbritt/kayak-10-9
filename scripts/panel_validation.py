@@ -152,6 +152,9 @@ def wigley_free(_: argparse.Namespace) -> dict[str, Any]:
             rows.append({"froude": fn, "rejected": str(exc)})
             print(f"Fn {fn:.2f} rejected: {exc}", flush=True)
             continue
+        if not r.pose_converged:
+            rows.append({"froude": fn, "rejected": f"free pose did not converge in {r.pose_iterations} iterations"})
+            continue
         d = _row(r, RHO_FRESH)
         d["sinkage_coefficient"] = 2.0 * ps.G * r.sinkage_m / u**2  # 2 g s / U^2, s over L = 1
         d["trim_percent_L"] = 100.0 * math.tan(r.trim_change_rad)  # (dA - dF) / L x 100, bow up +
@@ -227,6 +230,7 @@ KAYAK_CASES: list[dict[str, Any]] = [
     dict(fs_raise=1.0),
     dict(fs_shift=0.25),
     dict(linearisation="kelvin"),
+    dict(first_row=0.375, waterline_eta="extrapolated"),
 ]
 
 
@@ -336,8 +340,7 @@ ENSEMBLE_NX = (40, 45, 50, 55, 60, 65, 70)
 def ensemble(args: argparse.Namespace) -> dict[str, Any]:
     """Fixed-pose differences of every finalist on a family of grids: mean and scatter.
 
-    The grid-to-grid scatter of a difference is its numerical resolution: nothing else in the
-    calculation varies from run to run.
+    The sample spread describes this station and row family at a fixed pose.
     """
     speeds = np.array(REPORT_SPEEDS_KN) * ps.KN
     tris = {"baseline": _kayak_tris(BASELINE)[1]}

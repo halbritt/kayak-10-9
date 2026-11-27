@@ -210,6 +210,23 @@ def test_free_hull_balances_weight_buoyancy_and_dynamic_force() -> None:
     assert r.rw_N != pytest.approx(fixed.rw_N, rel=1e-4)  # the pose moved, and the flow with it
 
 
+def test_unconverged_free_pose_keeps_the_last_solved_pose(monkeypatch: pytest.MonkeyPatch) -> None:
+    from rsi.panel_hull import evaluate_mesh
+
+    v, f = ps.wigley_mesh(nx=80, nz=22)
+    volume = ps.hydrostatics(ps.pose_triangles(v, f, 0.0))["vol"]
+    cfg = ps.PanelConfig(nx_hull=12, ny_fs=5, nz_hull=3)
+    speed = 0.35 * math.sqrt(ps.G)
+    r = ps.solve_free(v, f, speed, cfg, volume_m3=volume, vcg_m=0.0, max_iterations=1)
+
+    assert r.pose_converged is False
+    assert r.sinkage_m == pytest.approx(r.h_m - ps.static_pose(v, f, volume))
+    assert r.trim_change_rad == r.trim_rad == 0.0
+    monkeypatch.setattr(ps, "solve_free", lambda *args, **kwargs: r)
+    with pytest.raises(RuntimeError, match="Free pose did not converge"):
+        evaluate_mesh(v, f, 225.0, np.array([speed]), cfg, free=True)
+
+
 def test_a_hull_with_an_immersed_transom_is_rejected() -> None:
     v, f = ps.wigley_mesh()
     cut = v.copy()

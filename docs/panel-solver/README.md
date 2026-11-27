@@ -5,12 +5,12 @@
 - Tier 1 wave drag is Michell's thin-ship integral (`rsi.evaluator._michell_fast_curve`). It assumes a hull so thin that its boundary condition can be applied on the centreplane.
 - Tier 2 is paired OpenFOAM CFD (`rsi/paired_cfd.py`). It has the full physics, but its reading of one hull pair moved by 0.35 N with the way the run was settled.
 
-The panel solver applies the hull condition on the real hull surface, so it does not share Michell's assumption, and it has no time stepping and no random element: the same mesh and settings give the same number. What it has instead is discretisation error, which this document measures.
+The panel solver applies the hull condition on the real hull surface, so it does not share Michell's assumption, and it has no time stepping and no random element: the same mesh and settings give the same number. What it has instead is discretisation error, whose sensitivity to the choice of grid is measured below.
 
 It is a diagnostic. It is not wired into `rsi/gates.py`, the campaign loop or promotion.
 
 ```sh
-kayak109-rsi panel-wave --hull CANDIDATE.hull.json --baseline hull/kayak-10-9.hull.json --speed-kn 5.0 --speed-kn 5.5 --speed-kn 6.2
+kayak109-rsi panel-wave --fixed --hull CANDIDATE.hull.json --baseline hull/kayak-10-9.hull.json --speed-kn 5.0 --speed-kn 5.5 --speed-kn 6.2
 ```
 
 ## Method, and what is linearised
@@ -30,12 +30,12 @@ Linearised or left out: the free-surface condition is linear and applied at `z =
 Verified by the runs below:
 
 - In the thin-hull limit, where Michell's integral is the exact answer, the solver approaches it from below as the grid is refined and is still 5 to 12 % short at 80 stations. Convergence to Michell is the trend, not something these runs reach.
-- On the Wigley hull held fixed it is within 7 % of an independent linear Rankine-panel code at seven Froude numbers from 0.25 to 0.45, and within 1 to 17 % of the tabulated fixed-model experiments at four.
+- On the fixed Wigley hull the solver is within 7 % of an independent linear Rankine-panel calculation at seven Froude numbers. It differs from four measured residuary coefficients by 1 to 17 % and exceeds two wake-survey wave coefficients by 6 and 20 %.
 - Free to sink and trim, sinkage on the Wigley hull is 8 to 12 % below the experiments and **trim is biased bow up by up to 0.4 % of length**. This matters for the kayak; see "Limitations".
-- The kayak baseline's wave resistance at its static pose is known to about ±4 % (grid-to-grid standard deviation over seven grids: 0.09, 0.13 and 0.23 N at 5.0, 5.5 and 6.2 kn).
-- **Paired differences at a fixed pose** are much steadier than that. With the station count fixed they move by 0.002 to 0.003 N when the girth panels, transverse rows or the extent of the free surface change. They move by ±0.006 N (5.0 kn), ±0.009 N (5.5 kn) and ±0.014 N (6.2 kn, one standard deviation) across station counts from 40 to 70. That scatter is the numerical resolution. It is 5 to 12 times smaller than 0.07 N, not "well below" it at 6.2 kn.
+- Across seven grids the baseline kayak's fixed-pose wave resistance has a sample standard deviation of 0.092, 0.132 and 0.233 N at 5.0, 5.5 and 6.2 kn (5.8, 4.4 and 4.1 % of the respective means).
+- For candidate minus baseline, the largest sample standard deviation among the three finalists is 0.006, 0.009 and 0.014 N at those speeds. The seven grids vary both longitudinal stations and transverse rows. Their spread measures sensitivity within this grid family. Halving the near-hull free-surface row width reverses one fixed-pose comparison at 5.5 kn and moves it by 0.0397 N at 6.2 kn. Accuracy against physical kayak resistance remains unmeasured.
 - **Paired differences free to sink and trim are not resolved.** On two grids the same pair read +0.031 and -0.007 N at 5.5 kn, and +0.065 and +0.125 N at 6.2 kn.
-- For all three finalists the fixed-pose panel difference has the sign of the Tier 1 wave gain at 5.5 and 6.2 kn and about a quarter of its size; at 5.0 kn it is not distinguishable from zero. Added to Tier 1's friction penalty the net is zero within the resolution: this tier does not confirm the Tier 1 gain and does not contradict it.
+- Every finalist shows a fixed-pose wave-drag reduction on all seven grids in the station-count study at 5.5 and 6.2 kn. The seven-grid means are 22 to 37 % of the corresponding Michell reductions. Adding Tier 1 friction gives both signs on the seven grids for each finalist at both speeds. At 5.0 kn the same fixed-pose calculation gives a drag increase in all 21 cases. Free-running total drag remains unresolved.
 
 ## Verification against theory: the thin-hull limit
 
@@ -50,7 +50,7 @@ With the uniform stream as base flow (`kelvin`) and a hull thin enough, the pane
 | stations 60, rows 36, end clustering 0.0 | 480, 4320 | 0.850 | 0.897 | 0.917 | 0.930 | 0.943 |
 | stations 60, rows 48, half width 0.8, ahead of the bow 0.8 | 480, 7104 | 0.831 | 0.898 | 0.918 | 0.927 | 0.945 |
 
-The ratio rises with station count (0.71, 0.83, 0.88 at Fn 0.25; 0.92, 0.94, 0.95 at Fn 0.45) and with girth panels, and does not depend on the extent of the free surface or on end clustering. At 80 stations it is 5 to 12 % below Michell, worst at the lowest speed, where the waves are shortest. Read with the Wigley results below, the solver on its reference grids probably under-reads wave resistance by several percent. The Tier 1 Michell routine itself reproduces published Michell values for the standard Wigley hull to three figures (next section), so the two legs of this comparison are independent.
+The ratio rises with station count (0.71, 0.83, 0.88 at Fn 0.25; 0.92, 0.94, 0.95 at Fn 0.45) and with girth panels, and changes less when the free-surface extent or end clustering changes on the grids tested. At 80 stations it is 5 to 12 % below Michell, worst at the lowest speed, where the waves are shortest. Read with the Wigley results below, the solver on its reference grids probably under-reads wave resistance by several percent. The next section checks the Tier 1 Michell routine against two published calculations for the standard Wigley hull.
 
 ## Wigley hull: comparison with published data
 
@@ -61,7 +61,7 @@ Hull: `y = (B/2)(1 - (2x/L)^2)(1 - (z/T)^2)`, `L/B = 10`, `B/T = 1.6`. Coefficie
 Every reference number below was read from the source named, in this session. Nothing is quoted from memory.
 
 - **[S1]** Kajitani, Miyata, Ikehata, Tanaka, Adachi, Namimatsu, Ogiwara (1983), "The Summary of the Cooperative Experiment on Wigley Parabolic Model in Japan", 2nd DTNSRDC Workshop on Ship Wave-Resistance Computations, DTIC AD-P003 037. <https://apps.dtic.mil/sti/pdfs/ADP003037.pdf> (read from the Internet Archive copy of that file). No DOI. Resistance, sinkage and trim are **figures only** (Figs. 1, 2 and 4). The values quoted from it here were read off 250 dpi renders of a poor scan: about ±0.07e-3 in Cw, ±0.004 in sinkage coefficient, ±0.03 % L in trim. Treat them as approximate.
-- **[S2]** Shahshahan and Landweber (1986), "Interactions Between Wavemaking and the Boundary Layer and Wake of a Ship Model", IIHR Report 302, University of Iowa, DTIC ADA170160. <https://apps.dtic.mil/sti/tr/pdf/ADA170160.pdf>. No DOI. **Tabulated**: Table 6 (report p. 122) gives the fixed-model residuary coefficient `Cr = Ct - C(ITTC-57)` and Michell's value at four Froude numbers. L = 3.048 m. The authors note tank blockage above Fn 0.30.
+- **[S2]** Shahshahan and Landweber (1986), “Interactions Between Wavemaking and the Boundary Layer and Wake of a Ship Model”, IIHR Report 302, University of Iowa, DTIC ADA170160. Table 6 (printed p. 122) gives the fixed-model residuary coefficient `Cr = Ct - C(ITTC-57)` and Michell values at four Froude numbers, plus the wake-survey wave coefficient `Cwv` at two. L = 3.048 m. The authors note tank blockage above Fn 0.30. [Report DOI](https://doi.org/10.21236/ada170160)
 - **[S3]** Peri (2026), "SIREN: A nonlinear Rankine-source boundary element solver for the stationary motion of a marine vehicle in calm water", arXiv:2610.14027v1. <https://arxiv.org/abs/2610.14027>. **Tabulated**: Table 3 gives a linearised Rankine-panel `Cw` at fixed attitude on three grids, and Michell values from the author's own script. A recent preprint, not peer reviewed; used here as an independent code of the same class, not as truth.
 
 Looked for and not obtained in tabulated, open form: Chen and Noblesse (1983, J. Ship Research 27, doi:10.5957/jsr.1983.27.4.215, paywalled), McCarthy (1985, DTNSRDC-85/011), Bai and McCarthy (1979), Dawson (1977), Raven's thesis (1996; opened, no Wigley tables found in the parts read). No tabulated experimental sinkage or trim was found anywhere.
@@ -88,9 +88,9 @@ Grid: the solver's defaults with 60 stations, 36 rows and 10 girth panels (600 h
 Reading it:
 
 - Against [S3]'s linear Rankine code: -5.6, +6.5, -0.3, -5.9, -0.4, -0.9 and -2.2 % at Fn 0.250, 0.267, 0.289, 0.316, 0.354, 0.408 and 0.450.
-- Against the tabulated experiments [S2]: +16.5, +8.5, -11.0 and +1.0 % at Fn 0.266, 0.313, 0.350 and 0.400. The experimental Cr contains form drag as well as wave drag, and the two experimental columns differ from each other by up to 11 %.
+- Against the tabulated residuary coefficients `Cr` in [S2], Dawson gives +16.5, +8.5, -11.0 and +1.0 % at Fn 0.266, 0.313, 0.350 and 0.400. Those measurements include form drag. The separate wake-survey wave measurements `Cwv × 10³` are 0.750 at Fn 0.266 and 1.490 at Fn 0.313. Dawson exceeds them by 19.6 and 6.3 % respectively. Table 6 leaves the other two wake-survey entries blank.
 - Michell is 26 to 39 % above the panel result at the humps (Fn 0.289, 0.30, 0.40 to 0.45) and equal to it in the hollow at 0.35. Both panel codes and the experiments agree on that. It is the known thin-ship overshoot for a hull of this fullness, not a defect of either tier.
-- The Tier 1 Michell routine agrees with both published Michell columns to 0.2 %, except 2.9 % at Fn 0.266 where [S2]'s value falls on the steep side of a hollow.
+- The Tier 1 Michell routine agrees with the published Michell columns to within 0.2 % except at two [S2] points. It is 2.9 % lower at Fn 0.266 and 0.35 % higher at Fn 0.313.
 
 ### Other estimates of the same force
 
@@ -103,7 +103,7 @@ Reading it:
 | 0.40 | 2.141 | 2.261 | 2.463 | 2.171 | 1.957 |
 | 0.45 | 3.293 | 3.389 | 3.452 | 3.236 | 3.198 |
 
-- The control-surface (momentum flux) estimate is 1 % below hull pressure at Fn 0.45 and 10 to 17 % below at 0.30 to 0.40. It is a lower bound: the upstream difference damps the waves on their way to the control plane, and the short diverging waves, which matter more at lower speed, are not carried by the grid at all. It did not come out as an independent confirmation to better than that.
+- On the wider grid the control-surface estimate falls below hull pressure by 1 % at Fn 0.45 and by 10 to 17 % at Fn 0.30 to 0.40. Wave damping and limited grid resolution could contribute. The sign of the error against the physical force is unknown.
 - Adding the waterline term moves the result away from both the experiments and the control-surface estimate. The linear momentum balance says hull pressure plus this term equals the wave flux, and the numbers do not bear that out, so the term is reported and left out of `rw_N`. This choice was made on the Wigley hull before any kayak hull was run.
 
 ### Free to sink and trim
@@ -171,14 +171,14 @@ Every change moves the result by less than 2 %, and the station count moves it m
 | collocation shift 0.25 (default 0.5) | 400, 3300 | 2.999 | 5.489 | -0.0248 | -0.0452 |
 | Kelvin linearisation | 400, 3300 | 2.722 | 4.936 | -0.0229 | -0.0639 |
 
-- The baseline value moves by up to 0.1 N (3 %) with the transverse grid and the extent of the free surface, and by up to 0.2 N with the station count. It does not converge monotonically in the station count: this hull's keel rises to the waterline within 2 to 4 % of the length at each end, and how the stations fall across those stems moves the result. Gathering stations at the ends (the `end_cluster` setting) reduced the swing from ±7 % with equal spacing to the ±4 % here; it did not remove it.
-- The dynamic vertical force is -111 to -115 N at 5.5 kn and -148 to -155 N at 6.2 kn on every grid, and the trimming moment within ±3 %.
+- Baseline resistance changes nonmonotonically as stations and transverse rows increase together. The rising keel near each stem may make the result sensitive to station placement. These runs vary several spacings together, so they cannot isolate the cause.
+- Across the Dawson grids here the dynamic vertical force is −115 to −111 N at 5.5 kn and −155 to −148 N at 6.2 kn. The corresponding trimming moments are 84 to 89 N·m and 160 to 169 N·m.
 
 ## Paired differences: what the solver resolves
 
 The same pair as above. With the station count fixed, nine changes of girth panels, rows, half width, upstream and downstream extent and end clustering move the difference between -0.0157 and -0.0190 N at 5.5 kn and between -0.0473 and -0.0533 N at 6.2 kn: a spread of ±0.002 and ±0.003 N. Errors common to the two hulls cancel well.
 
-The station count is what the difference is sensitive to. All three finalists at a fixed pose on seven grids (40, 45, 50, 55, 60, 65 and 70 stations, rows 0.6 times that), candidate minus baseline, newtons:
+The table shows fixed-pose wave resistance differences in newtons, candidate minus baseline, on seven grids with 40, 45, 50, 55, 60, 65 and 70 stations. The number of transverse rows is 0.6 times the station count. Each standard deviation is the sample standard deviation across seven paired differences.
 
 | Hull | 5.0 kn mean | std | range | 5.5 kn mean | std | range | 6.2 kn mean | std | range |
 |---|---|---|---|---|---|---|---|---|---|
@@ -188,7 +188,20 @@ The station count is what the difference is sensitive to. All three finalists at
 
 The baseline itself over the same seven grids: 1.585 ± 0.092, 2.998 ± 0.132 and 5.658 ± 0.233 N.
 
-**Numerical resolution of a fixed-pose difference: one standard deviation of 0.006 N at 5.0 kn, 0.009 N at 5.5 kn and 0.014 N at 6.2 kn; the full range over seven grids is 0.015, 0.027 and 0.030 N.** At 5.5 and 6.2 kn the sign is the same on every grid for every finalist. At 5.0 kn the difference is not distinguishable from zero. The target was to resolve differences well below 0.07 N: one standard deviation is 5 to 12 times below it, the full range 2.3 to 4.7 times. The scatter has the same cause as the baseline's own: station placement over the steep stems.
+**Across the three finalists, the largest seven-grid sample standard deviations are 0.006, 0.009 and 0.014 N at 5.0, 5.5 and 6.2 kn.** The widest ranges for an individual finalist are 0.015, 0.027 and 0.030 N. At 5.5 and 6.2 kn all seven grids in this family predict lower wave resistance for each finalist. At 5.0 kn two finalists change sign with the grid and the third comes within 0.000006 N of zero. The largest standard deviations are 5 to 12 times smaller than the 0.07 N target. The independent near-hull spacing check below measures one effect this family missed.
+
+An independent check varied the near-hull free-surface spacing while holding 50 stations, 8 girth panels, 30 rows and the static pose fixed. The first row controls the distribution of all transverse rows. Both hulls used the same settings. Values are for `iter137_cand004` minus baseline.
+
+| First row (nominal station spacings) | Pressure difference at 5.5 kn (N) | Pressure difference at 6.2 kn (N) |
+|---|---:|---:|
+| 0.750 | −0.01703 | −0.05134 |
+| 0.375 | +0.00194 | −0.09104 |
+
+Changing this spacing reverses the pressure difference at 5.5 kn and shifts it by 0.0397 N at 6.2 kn, more than the entire seven-grid range of 0.0301 N. The narrower-row case also extrapolated the waterline elevation. That option affects only the separately reported waterline force. Including it gives +0.00891 and −0.08128 N on the narrower grid. The `paired` validation study includes this control.
+
+For comparison, changing the shift from 0.50 to 0.25 panel lengths changes the pressure difference by −0.00778 and +0.00614 N at 5.5 and 6.2 kn. Moving the end clustering between 0.7 and 0.9 changes the nominal difference by at most 0.00370 N across those speeds. Refining the input hull shell from 441 × 129 to 661 × 161 with the flow grid held at 40 × 24 and eight girth panels changes the paired pressure result by at most 0.00014 N across all three speeds. This separates the sensitivity to the flow grid from one test of hull tessellation.
+
+The control-surface force integral gives another check on the difference. At 40 stations and 32 rows, with half-width 0.8 L and downstream extent 1.0 L, the 6.2 kn pressure difference is −0.03883 N. Pressure plus the waterline strip gives −0.04880 N and the control-surface integral gives −0.01608 N. All three use the same two computed flows. Agreement of their signs on this grid leaves a 0.03272 N spread in magnitude.
 
 Free to sink and trim the difference is **not** resolved:
 
@@ -200,6 +213,19 @@ Free to sink and trim the difference is **not** resolved:
 | 60 stations, 36 rows | 6.2 | 9.453 | 9.16 | +0.5372 | +0.5417 | +0.1245 |
 
 The computed wave resistance rises by 40 % at 5.5 kn and 68 % at 6.2 kn when the hull is released, almost all of it through trim (about 5 N per degree at 5.5 kn). A difference in trim of 0.003 degrees between two hulls is then worth 0.015 N, and the two grids disagree by 0.04 to 0.06 N on the difference. The pose itself converged on every run (6 or 7 flow solutions, tolerance 1 micrometre).
+
+### Holding both hulls at the baseline’s running pose
+
+On the 50-station, 30-row grid, impose the baseline’s computed sinkage and trim on both hulls relative to each hull’s own level static draft. The resulting wave resistance differences for `iter137_cand004` are candidate minus baseline.
+
+| Speed (kn) | Baseline sinkage (mm) | Baseline trim (degrees bow up) | Both level (N) | Both at common sinkage and trim (N) | Each free (N) |
+|---|---:|---:|---:|---:|---:|
+| 5.5 | 6.7793 | 0.25233 | −0.01703 | +0.02389 | +0.03108 |
+| 6.2 | 9.164 | 0.54579 | −0.05134 | +0.04600 | +0.06529 |
+
+Changing the common pose reverses the predicted wave-drag difference at both speeds, even before either hull is allowed to find a different running trim. In the individually free column each hull carries its longitudinal centre of gravity at its own level centre of buoyancy. At 225 lb that position is x = 39.463 mm on the baseline and 45.347 mm on the finalist, a 5.884 mm shift aft. A comparison with the paddler and ballast kept at fixed stations requires a separate load case. The true running pose has not been measured. The level fixed-pose comparison therefore cannot confirm a 0.07 N drag gain underway.
+
+To reproduce the middle force column, take `sinkage_m`, `trim_rad` and `rw_N` from the corresponding `free[0].baseline` record in `data/paired.json`. At 225 lb compute the candidate’s level height `h0` with `static_pose`. Pass `pose_triangles(v, f, h0 + sinkage_m, trim_rad)` to `solve_fixed` with `PanelConfig()`, seawater density 1025 kg/m³ and the corresponding speed in m/s. Subtract the stored baseline `rw_N`.
 
 ### Single precision
 
@@ -215,13 +241,13 @@ Baseline, 225 lb, newtons. Michell and friction are Tier 1's own (`rsi.panel_hul
 | 5.5 | 0.388 | 4.703 | 2.935 | 0.62 | 4.111 | 6.87 | +0.259 | 23.707 |
 | 6.2 | 0.438 | 8.660 | 5.608 | 0.65 | 9.453 | 9.16 | +0.537 | 29.522 |
 
-- At the pose Tier 1 uses (level, static), the panel solver gives 62 to 81 % of Michell. The Wigley hull shows the same thing at the same Froude numbers (0.78 to 0.79 of Michell at Fn 0.40 to 0.45, confirmed there by an independent code and by experiment), and in the thin-hull limit the two differ by 5 to 12 %, not by 20 to 40 %. So the gap is Michell's thin-ship assumption on a hull that is not thin: this hull is 5.4 times wider than deep at the waterline, where the thin-ship model needs a hull much deeper than wide. It is not tuned away.
+- At the level static pose the kayak's panel resistance is 62 to 81 % of Michell. The fixed Wigley hull gives 78 to 79 % of Michell at Fn 0.40 to 0.45. At these speeds the kayak has waterline beam/draft about 5.4, compared with 1.6 for the Wigley hull. Michell’s thin-ship assumption is one possible contributor to the difference. Neither comparison isolates it from panel discretisation and other modelling choices.
 - The Kelvin linearisation, which keeps Michell's free-surface condition and changes only the hull condition, gives 2.72 and 4.94 N at 5.5 and 6.2 kn, 0.58 and 0.57 of Michell. The double-body base flow accounts for the other 0.3 to 0.7 N.
 - Free to sink and trim the panel value rises to 0.87 to 1.09 of Michell. Tier 1 holds the hull level at its static draft and so leaves this out; see the limitation on trim below before using these free values.
 
 ## Campaign v7 finalists against the baseline
 
-225 lb, newtons, candidate minus baseline. "Fixed pose, 7 grids" is the mean and standard deviation from the table above; the single-grid columns are on 60 stations and 36 rows.
+All forces are in newtons at 225 lb, candidate minus baseline. A negative difference indicates less drag. The seven-grid columns use the mean and sample standard deviation above. Single-grid results use 60 stations and 36 transverse rows. The Tier 1 components are evaluated at each exact speed using the campaign formulas, including 6.2 kn between the campaign’s 0.25 kn grid points.
 
 | Hull | Speed, kn | Michell wave (Tier 1) | Friction by position (Tier 1) | Tier 1 total | Panel wave, fixed pose, 7 grids | Panel wave, fixed, one grid | Panel wave, free, one grid | Panel fixed (7 grids) + friction |
 |---|---|---|---|---|---|---|---|---|
@@ -235,10 +261,10 @@ Baseline, 225 lb, newtons. Michell and friction are Tier 1's own (`rsi.panel_hul
 | iter139_cand002 | 5.5 | -0.096 | +0.031 | -0.065 | -0.030 ± 0.008 | -0.042 | -0.056 | +0.001 |
 | iter139_cand002 | 6.2 | -0.134 | +0.038 | -0.096 | -0.049 ± 0.012 | -0.039 | +0.006 | -0.011 |
 
-- **Sign and size of the wave part.** At 5.5 and 6.2 kn the fixed-pose panel difference has the sign of Tier 1's Michell gain for every finalist on every grid, and 22 to 37 % of its size. At 5.0 kn it is 11 to 18 % of the Michell gain and within one to one and a half standard deviations of zero.
-- **Net of friction.** Tier 1 charges each finalist 0.023 to 0.038 N more friction. Panel wave gain plus that penalty is between -0.011 and +0.018 N: zero within the resolution at 5.5 and 6.2 kn, and a small loss of about 0.02 N at 5.0 kn (three standard deviations). The Tier 1 total gain of 0.07 to 0.09 N at 5.5 kn is therefore not confirmed. Three quarters of it comes from the part of Michell's answer that the panel solver does not reproduce.
+- **Wave resistance.** At 5.5 and 6.2 kn all 42 fixed-pose differences are negative. For each finalist, its mean over seven grids is 22 to 37 % of its Michell reduction at those speeds. At 5.0 kn the corresponding means are 11 to 18 % of the Michell reductions.
+- **Fixed-pose wave resistance plus Tier 1 friction.** The modelled friction penalties of 0.023 to 0.038 N give 5.0 kn drag increases of 0.010 to 0.026 N across all finalists and grids. At 5.5 and 6.2 kn each finalist’s range crosses zero. At 5.5 kn replacing Michell wave drag with the panel mean removes 0.067 to 0.089 N, slightly more than the entire 0.065 to 0.086 N Tier 1 net gain. The calculation supplies no free-running friction measurement.
 - **Free to sink and trim** the single-grid differences range from -0.056 to +0.125 N and are within the unresolved band described above. They are listed for completeness and support no conclusion.
-- The ranking of the three by the panel solver (`iter139_cand002` best at every speed) is the reverse of Tier 1's, but the spread between them (0.003 to 0.012 N) is inside one standard deviation.
+- **Ranking on matched grids.** The lowest mean panel wave resistance belongs to `iter139_cand002` at all three speeds. Including friction gives `iter137_cand004` the lowest mean at 5.0 kn. At 6.2 kn the fixed-pose estimate including friction favors `iter139_cand002` over `iter137_cand004` by 0.0047 to 0.0129 N and over `iter139_cand009` by 0.0058 to 0.0091 N on the same seven grids. The panel results establish this ordering within the sampled grid family only.
 - The hull mass changed from 18 to 13.6 kg at the same 225 lb total while this was being run. Displacement, static draft and waterline are unchanged by that. The height of the centre of gravity enters only the free runs' moment balance; it was left at the evaluator's `KG_M = 0.25 m` above the keel, since no new value was given.
 
 ## Timings and memory
@@ -254,7 +280,7 @@ Kayak baseline, three speeds at one pose (one assembly, three solves), wall time
 | 70 stations, 42 rows | 6860 | double | about 90 s | not run | about 3.1 GiB |
 
 - A hull free to sink and trim needs 6 or 7 flow solutions per speed: 3.5 to 4.5 minutes per speed on the CPU at 60 stations, 10 to 13.5 minutes for the three speeds.
-- The GPU is 11 to 17 times faster than four loaded CPU threads at the sizes that fit. It is worth having: the grid-family average that gives a difference its error bar costs seven solves per hull, and the free runs seven solves per speed.
+- The GPU is 11 to 17 times faster than four loaded CPU threads at the sizes that fit. It is worth having: measuring variation across the seven grids costs seven fixed-pose runs per hull, and the free runs seven solves per speed.
 - GPU memory: about 66 bytes per panel squared in double precision (measured: 408 MiB at 2480 panels), half that in single, plus roughly 0.3 GiB of CUDA context. The card had 0.93 GiB free during this work. A double-precision run at 60 stations needs about 2.1 GiB in all, at 70 stations about 3.4 GiB, and at 100 stations (about 14 000 panels) about 12.5 GiB. The control-surface estimate adds about 100 kB per panel. **No full-size double-precision GPU run has been made.**
 - The CuPy backend gives the same wave resistance as numpy to 1e-9 relative in double precision (`tests/test_panel_solver_gpu.py`, run in a separate environment with CuPy 14.2.0 on CUDA 12.8: 4 passed). CuPy is not installed in the repository's environment, where those tests skip.
 
@@ -262,12 +288,12 @@ Kayak baseline, three speeds at one pose (one assembly, three solves), wall time
 
 - **Trim is biased bow up**, by up to 0.4 % of length on the Wigley hull against experiment. On the kayak the computed trim is 0.19 % L at 5.0 kn, 0.45 % at 5.5 kn and 0.94 % at 6.2 kn, and the computed rise in wave resistance on release (26, 40 and 68 %) comes almost entirely from it. The bias on the Wigley hull is of the same size as the kayak's trim at 5.0 and 5.5 kn. The free-running absolute values for the kayak are therefore not validated, and the Wigley comparison gives a reason to expect them to be too high. Potential flow has no boundary layer to relieve the pressure recovery at the stern, and the towing force is assumed to act through the centre of gravity.
 - **Free-running paired differences are unresolved** (above).
-- **Fixed-pose paired differences** are resolved to 0.006 to 0.014 N (one standard deviation over grids), not "well below" 0.07 N at 6.2 kn.
-- **Absolute wave resistance of the kayak** is grid dependent at ±4 % and does not converge monotonically with station count.
-- **The control-surface estimate** is a lower bound that falls 10 to 17 % short at Fn 0.30 to 0.40; it confirms hull pressure only at Fn 0.45.
-- **The waterline term** is left out of the reported resistance on the evidence of the Wigley hull, against the linear momentum balance. For the kayak it is 0.2 to 0.3 N; its paired difference is under 0.011 N.
+- **Fixed-pose paired differences** have sample standard deviations up to 0.006 to 0.014 N depending on speed in this sweep. The grid family can share discretisation and model bias.
+- **Absolute wave resistance of the baseline kayak** has a grid-to-grid standard deviation of 4.1 to 5.8 % of its mean across the three speeds. Refinement gives a nonmonotonic sequence.
+- **The control-surface estimate** differs from computed Wigley hull pressure by 10 to 17 % at Fn 0.30 to 0.40 and by 1 % at Fn 0.45. Its error relative to the physical force remains unknown.
+- **The waterline term** is omitted from reported resistance on the evidence of the Wigley comparison. On the 60-station grid its candidate-minus-baseline change has magnitude up to 0.0111 N at a fixed pose. In the free-pose comparison it reaches −0.0555 N for `iter137_cand004` at 6.2 kn.
 - **Linear free surface.** At 6.2 kn the computed bow wave beside the hull is about 20 mm against a draft of 89 mm. Nothing here measures what the linearisation costs on this hull. [S3] reports that iterating to the nonlinear condition changed the Wigley `Cw` by 1 to 9 % on its coarse grid.
-- **No kayak experiment exists** to compare with. The only validation with measured data is the Wigley hull, which is deeper than wide; the kayak is the opposite.
+- **Experimental validation** covers the Wigley hull, whose beam is 1.6 times its draft. The kayak’s waterline beam is about 5.4 times its draft. These studies contain no measured kayak resistance.
 - Reference data: the experimental `Cw`, sinkage and trim from [S1] are digitised from figures. Only [S2] Table 6 and [S3] are tabulated.
 - The solver was first written with free-surface panels in the waterplane and collocation at their centres (Dawson's original arrangement). That version changed its answer by up to 10 % with the parity of the number of columns ahead of the bow. It was replaced by raised panels with a half-panel collocation shift; `tests/test_panel_solver.py` guards against the regression.
 
@@ -279,4 +305,4 @@ python -m pytest tests/test_panel_solver.py            # numpy backend
 python -m pytest tests/test_panel_solver_gpu.py        # needs the gpu extra (CuPy) and a CUDA device
 ```
 
-The numbers above are in `docs/panel-solver/data/*.json`, each with the versions and time of its run. The finalist hulls are read from the campaign directory `~/.cache/kayak-10-9/campaigns/k109_rsi_v7_localfriction/` (`--campaign` to change it); they are not in the repository. The runs used Python 3.12.3, NumPy 2.5.5, SciPy 1.18.1 and, for the GPU rows, CuPy 14.2.0 (cuda12x) with CUDA 12.8 on driver 615.71.10.
+The original validation outputs are in `docs/panel-solver/data/*.json`, each with the versions and time of its run. The common-pose control above uses the archived baseline and one additional candidate solve per speed. The finalist hulls are read from the campaign directory `~/.cache/kayak-10-9/campaigns/k109_rsi_v7_localfriction/` (`--campaign` to change it); they are not in the repository. The runs used Python 3.12.3, NumPy 2.5.5, SciPy 1.18.1 and, for the GPU rows, CuPy 14.2.0 (cuda12x) with CUDA 12.8 on driver 615.71.10.

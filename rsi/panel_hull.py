@@ -121,19 +121,24 @@ def evaluate_mesh(
         tris = ps.pose_triangles(vertices, faces, h, 0.0)
         return ps.solve_fixed(tris, u, cfg, rho=RHO_SEAWATER, backend=backend, h=h)
     vcg = float(np.asarray(vertices)[:, 2].min()) + KG_M
-    return [
-        ps.solve_free(
+    results = []
+    for speed in u:
+        res = ps.solve_free(
             vertices,
             faces,
-            float(x),
+            float(speed),
             cfg,
             volume_m3=volume,
             vcg_m=vcg,
             rho=RHO_SEAWATER,
             backend=backend,
         )
-        for x in u
-    ]
+        if not res.pose_converged:
+            raise RuntimeError(
+                f"Free pose did not converge at {speed / ps.KN:g} kn after {res.pose_iterations} iterations"
+            )
+        results.append(res)
+    return results
 
 
 def evaluate_hull(

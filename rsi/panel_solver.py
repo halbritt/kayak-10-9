@@ -47,7 +47,8 @@ Method
   - ``rw_farfield_N`` (``farfield=True``), the momentum flux through a transverse plane behind
     the hull, a plane ahead of it and a longitudinal plane beside it, from the velocities and
     wave elevation there. It needs a free surface reaching well behind the hull and loses the
-    short diverging waves the grid cannot carry, so it is a lower bound.
+    short diverging waves the grid cannot carry. Its error also depends on the chosen control
+    planes and quadrature.
 * Sinkage and trim: the hull pose is iterated until weight, buoyancy and the dynamic vertical
   force balance, and their moments about the centre of gravity balance, at fixed displacement
   and longitudinal centre of gravity. The hull is re-panelled at each pose. The towing force is
@@ -1056,6 +1057,8 @@ def solve_free(
     the flow is then solved again, until the pose moves less than ``tol_m`` (sinkage, and trim
     times half the waterline length).
     """
+    if max_iterations < 1:
+        raise ValueError("max_iterations must be positive")
     h0 = static_pose(vertices, faces, volume_m3, 0.0)
     hs0 = hydrostatics(pose_triangles(vertices, faces, h0, 0.0))
     lcg = float(hs0["xb"]) if lcg_m is None else float(lcg_m)
@@ -1130,8 +1133,8 @@ def solve_free(
             pose = np.where(ok, p2 - d2 * d2 / np.where(ok, den, 1.0), p2)
             history = []
     assert res is not None
-    res.sinkage_m = float(pose[0] - pose_static[0])
-    res.trim_change_rad = float(pose[1] - pose_static[1])
+    res.sinkage_m = float(res.h_m - pose_static[0])
+    res.trim_change_rad = float(res.trim_rad - pose_static[1])
     res.pose_iterations = it
     res.pose_converged = converged
     return res
