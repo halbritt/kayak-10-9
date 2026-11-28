@@ -413,7 +413,7 @@ Kayak baseline, three speeds at one pose (one assembly, three solves), wall time
 - A hull free to sink and trim needs 6 or 7 flow solutions per speed: 3.5 to 4.5 minutes per speed on the CPU at 60 stations, 10 to 13.5 minutes for the three speeds.
 - The GPU is 11 to 17 times faster than four loaded CPU threads at the sizes that fit. It is worth having: measuring variation across the seven grids costs seven fixed-pose runs per hull, and the free runs seven solves per speed.
 - GPU memory: about 66 bytes per panel squared in double precision (measured: 408 MiB at 2480 panels), half that in single, plus roughly 0.3 GiB of CUDA context. The card had 0.93 GiB free during this work. A double-precision run at 60 stations needs about 2.1 GiB in all, at 70 stations about 3.4 GiB, and at 100 stations (about 14 000 panels) about 12.5 GiB. The control-surface estimate adds about 100 kB per panel. The full-size double-precision runs made later measured about 73 bytes per panel squared; see "Fine grids on the whole GPU".
-- The CuPy backend gives the same wave resistance as numpy to 1e-9 relative in double precision (`tests/test_panel_solver_gpu.py`, run in a separate environment with CuPy 14.2.0 on CUDA 12.8: 4 passed). CuPy is not installed in the repository's environment, where those tests skip.
+- The CuPy backend matched NumPy's double-precision wave resistance to 1e-9 relative in the Wigley tests. All four tests in `tests/test_panel_solver_gpu.py` passed in the original CuPy 14.2.0 environment with CUDA 12.8. The tests require the project's `gpu` extra and enough free GPU memory to initialize CUDA.
 
 ## Limitations and failed checks
 
