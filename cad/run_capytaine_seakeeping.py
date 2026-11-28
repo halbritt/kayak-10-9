@@ -208,7 +208,76 @@ def _interp_complex(w: np.ndarray, w0: np.ndarray, arr: np.ndarray) -> np.ndarra
     return out.reshape((len(w),) + arr.shape[1:])
 
 
+# Irregular-frequency points that the lid did not remove. The lid in build_bem_body removes most of
+# them, but not reliably: Capytaine sizes the lid from the hull mesh, two near-identical hulls got
+# 290 and 164 lid panels, and the second read a heave excitation of 14,700 N/m at T = 1.20 s, 5.7 kn
+# head seas (about 400 N/m on its neighbours), with negative heave added mass and damping. A finer
+# lid moved that point to T = 1.05 s instead of removing it. One such point raised the seat
+# acceleration in that condition from 1.7 to 7.7 m/s^2. Clean solutions of this hull family and of
+# the Epic 18X have none of the signatures below in any case (40 cases checked, 2026-11-28).
+IRREGULAR_DOFS = (2, 4)  # heave, pitch: the motions the gated rows are built from
+IRREGULAR_DAMPING_DOFS = (2, 3, 4)
+IRREGULAR_JUMP = 4.0
+IRREGULAR_NEG_DAMPING_REL = 0.02
+IRREGULAR_MAX_POINTS = 3
+
+
+def find_irregular_points(case: dict) -> list[int]:
+    """Indices of frequency points in one BEM case that carry an irregular-frequency signature.
+
+    A point is flagged when heave or pitch added mass is negative, when heave, roll or pitch
+    radiation damping is negative by more than IRREGULAR_NEG_DAMPING_REL of the largest value in the
+    case, or when heave or pitch excitation is more than IRREGULAR_JUMP times the points beside it
+    (both neighbours inside the range, the two nearest points at either end).
+    """
+    A, B, Fa = np.asarray(case["A"]).real, np.asarray(case["B"]).real, np.abs(np.asarray(case["F"]))
+    n = len(case["omega"])
+    bad: list[int] = []
+    for i in range(n):
+        hit = any(A[i, d, d] < 0.0 for d in IRREGULAR_DOFS)
+        hit = hit or any(B[i, d, d] < -IRREGULAR_NEG_DAMPING_REL * max(float(np.abs(B[:, d, d]).max()), 1e-12) for d in IRREGULAR_DAMPING_DOFS)
+        if not hit and n >= 3:
+            nb = [i - 1, i + 1] if 0 < i < n - 1 else ([1, 2] if i == 0 else [n - 2, n - 3])
+            hit = any(Fa[i, d] > IRREGULAR_JUMP * max(max(float(Fa[j, d]) for j in nb), 1e-9) for d in IRREGULAR_DOFS)
+        if hit:
+            bad.append(i)
+    return bad
+
+
+def repair_irregular_points(case: dict) -> tuple[dict, list[int]]:
+    """Replace irregular-frequency points of one BEM case by interpolation from the clean points.
+
+    Returns the repaired case (the input is not changed) and the flagged indices. Raises ValueError
+    when more than IRREGULAR_MAX_POINTS points are flagged or two flagged points are adjacent: a
+    narrow artefact can be bridged, a contaminated range cannot, and the case is then not usable.
+    """
+    bad = find_irregular_points(case)
+    if not bad:
+        return case, bad
+    if len(bad) > IRREGULAR_MAX_POINTS or any(b - a == 1 for a, b in zip(bad, bad[1:])):
+        periods = [round(float(2.0 * np.pi / case["omega"][i]), 2) for i in bad]
+        raise ValueError(f"Irregular-frequency contamination too wide to repair at periods {periods} s")
+    w0 = np.asarray(case["omega"], dtype=float)
+    keep = np.array([i for i in range(len(w0)) if i not in bad])
+    out = dict(case)
+    for key in ("A", "B", "F"):
+        arr = np.asarray(case[key])
+        out[key] = _interp_complex(w0, w0[keep], arr[keep]).astype(arr.dtype if np.iscomplexobj(arr) else complex)
+        if not np.iscomplexobj(arr):
+            out[key] = out[key].real
+    return out, bad
+
+
 def evaluate_spectra(bem_out: dict, zeta_roll: float = 0.10) -> dict:
+    repaired_points: list[dict] = []
+    cases: dict = {}
+    for (u_kn, label), c in bem_out["cases"].items():
+        cases[(u_kn, label)], bad = repair_irregular_points(c)
+        repaired_points.extend(
+            {"speed_kn": float(u_kn), "heading": label, "period_s": round(float(2.0 * np.pi / c["omega"][i]), 3), "encounter_omega": round(float(abs(c["omega_e"][i])), 2)}
+            for i in bad
+        )
+    bem_out = {**bem_out, "cases": cases, "info": {**bem_out["info"], "irregular_points_repaired": repaired_points}}
     inf = bem_out["info"]
     L = inf["L_m"]
     c_beam = bem_out["cases"][(0.0, "beam")]

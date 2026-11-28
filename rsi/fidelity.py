@@ -129,7 +129,9 @@ def _seakeeping_cache_key(hull: Hull, *, quick: bool) -> tuple[str, dict[str, An
         "solver": "capytaine_seakeeping",
         # 3: build_bem_body adds a lid mesh (irregular-frequency removal). Rows cached under 1 and 2
         # came from a body without one and are wrong at 4.5 kn bow-quarter.
-        "schema_version": 3,
+        # 4: evaluate_spectra repairs irregular-frequency points the lid left (or refuses the case).
+        # Rows cached under 3 can carry one, which failed near-identical hulls at 5.7 kn head seas.
+        "schema_version": 4,
         "design_hash": hull.design_hash(),
         "quick": bool(quick),
         "loads": ["225"] if quick else ["225", "265_baja"],
