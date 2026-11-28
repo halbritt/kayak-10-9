@@ -306,6 +306,11 @@ def run(
         _err(str(exc), code=1)
 
     payload = {"command": "run", **result.to_dict()}
+    ws = result.wave_summary or {}
+    wave_note = (
+        f" gpu_fallbacks={ws.get('gpu_fallback_count', 0)} "
+        f"panel_refused={ws.get('panel_wave_refused_count', 0)}"
+    )
     _emit_output(
         payload,
         out=out,
@@ -314,7 +319,7 @@ def run(
         human_summary=(
             f"run completed: iters={result.completed_iterations}/{result.target_iterations} "
             f"evals={result.total_evaluations} feasible={result.feasible_count} "
-            f"pareto={result.pareto_count} best={result.best_candidate_id}"
+            f"pareto={result.pareto_count} best={result.best_candidate_id}{wave_note}"
         ),
     )
 
@@ -333,6 +338,11 @@ def status(
     except ResumeStateError as exc:
         _err(str(exc), code=1)
 
+    ws = payload.get("wave_summary") or {}
+    wave_note = (
+        f" gpu_fallbacks={ws.get('gpu_fallback_count', 0)} "
+        f"panel_refused={ws.get('panel_wave_refused_count', 0)}"
+    )
     _emit_output(
         payload,
         out=out,
@@ -342,7 +352,7 @@ def status(
             f"status={payload['status']} iter={payload['completed_iterations']}/"
             f"{payload['target_iterations']} evals={payload['total_evaluations']} "
             f"feasible={payload['feasible_count']} pareto={payload['pareto_count']} "
-            f"best={payload['best_candidate_id']}"
+            f"best={payload['best_candidate_id']}{wave_note}"
         ),
     )
 

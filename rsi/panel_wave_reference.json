@@ -1,6 +1,31 @@
 {
  "version": 1,
  "design_hash": "distribution_v2_v2:a753b604c5348cf250a98ebcfba2b0c193ed5f166afdf34b4ecac75e0d039f2d",
+ "panel_solver_git_sha": "a46c79f129462e3268504aa5e07ff08a3e214ed8",
+ "panel_solver_sha256": "cfb1314d984bde63487202e5acfdee0c5bd4b3e2f69c405c649bf37eb53cdc47",
+ "panel_config_defaults": {
+  "downstream": 0.5,
+  "end_cluster": 0.8,
+  "end_growth": 1.15,
+  "farfield": false,
+  "ff_ahead_bow": 0.3,
+  "ff_behind_stern": 0.5,
+  "ff_depth_wavelengths": 2.0,
+  "ff_ny": 64,
+  "ff_nz": 20,
+  "ff_side": 0.75,
+  "first_row": 0.75,
+  "fs_raise": 0.8,
+  "fs_shift": 0.5,
+  "half_width": 0.6,
+  "pair_budget": 250000,
+  "upstream": 0.5,
+  "waterline_eta": "row0"
+ },
+ "mesh_resolution": [
+  441,
+  129
+ ],
  "grid_family": [
   [
    45,

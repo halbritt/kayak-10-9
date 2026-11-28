@@ -22,7 +22,13 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from rsi.baseline import PANEL_WAVE_REFERENCE_FILE, PanelWaveReference, load_baseline_reference  # noqa: E402
+from rsi.baseline import (  # noqa: E402
+    PANEL_WAVE_REFERENCE_FILE,
+    PanelWaveReference,
+    load_baseline_reference,
+    panel_config_defaults,
+    panel_solver_sha256,
+)
 from rsi.evaluator import (  # noqa: E402
     PANEL_WAVE_GRID_FAMILY,
     PANEL_WAVE_LINEARISATION,
@@ -91,9 +97,15 @@ def main() -> None:
         full = complete_deferred_panel_wave(partial, V, F, rf_by_load, replace(uncal, panel_wave=pw_ref), panel_backend=args.backend)
 
     assert full.valid and full.kn_225 and full.kn_225_exact and full.kn_265 and full.kn_265_exact and full.kn_230 and full.kn_230_exact
+    from rsi.loop import _panel_solver_sha  # noqa: E402
+
     payload = {
         "version": VERSION,
         "design_hash": uncal.design_hash,
+        "panel_solver_git_sha": _panel_solver_sha(ROOT),
+        "panel_solver_sha256": panel_solver_sha256(),
+        "panel_config_defaults": panel_config_defaults(),
+        "mesh_resolution": [441, 129],
         "grid_family": [list(g) for g in PANEL_WAVE_GRID_FAMILY],
         "precision": PANEL_WAVE_PRECISION,
         "linearisation": PANEL_WAVE_LINEARISATION,

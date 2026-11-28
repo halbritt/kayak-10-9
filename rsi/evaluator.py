@@ -67,6 +67,8 @@ PANEL_WAVE_GRID_FAMILY: tuple[tuple[int, int, int], ...] = (
 )
 PANEL_WAVE_PRECISION = "single"
 PANEL_WAVE_LINEARISATION = "dawson"
+PANEL_WAVE_MAX_GRID_REL_SPREAD = 0.50
+PANEL_WAVE_MAX_GRID_ABS_FLOOR_N = 0.25
 
 
 def _ensure_cad_on_path() -> None:
@@ -467,11 +469,23 @@ def solve_panel_wave_curve(
         if res is None:
             raise ValueError(f"panel_wave_failed (lb={int(load_lb)}, nx={nx}): {last_gpu_exc}")
         vals = [float(r.rw_N) for r in res]
-        if not all(math.isfinite(v) for v in vals):
-            raise ValueError(f"panel_wave_refused (lb={int(load_lb)}, nx={nx}): non-finite rw_N")
+        if not all(math.isfinite(v) for v in vals) or any(v <= 0.0 for v in vals):
+            raise ValueError(f"panel_wave_refused (lb={int(load_lb)}, nx={nx}): non-finite or non-positive rw_N")
         rows.append(vals)
 
-    return np.mean(np.asarray(rows, dtype=float), axis=0), used_backends
+    arr = np.asarray(rows, dtype=float)
+    if len(arr) >= 2:
+        mean_vals = np.mean(arr, axis=0)
+        spread = np.ptp(arr, axis=0)
+        bound = np.maximum(PANEL_WAVE_MAX_GRID_ABS_FLOOR_N, PANEL_WAVE_MAX_GRID_REL_SPREAD * mean_vals)
+        bad_idx = np.where(spread > bound)[0]
+        if len(bad_idx):
+            idx = int(bad_idx[0])
+            raise ValueError(
+                f"panel_wave_refused (lb={int(load_lb)}): grid family disagreement "
+                f"{spread[idx]:.4f} N > {bound[idx]:.4f} N at {u_arr[idx] / ps.KN:.2f} kn"
+            )
+    return np.mean(arr, axis=0), used_backends
 
 
 def _speed_tables_from_waves(

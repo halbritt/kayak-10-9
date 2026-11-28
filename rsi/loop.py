@@ -23,7 +23,12 @@ from scipy.optimize import linprog
 
 from kayakgen.model.hull import Hull
 
-from rsi.baseline import DEFAULT_REPO_ROOT, BaselineReference, load_baseline_reference
+from rsi.baseline import (
+    DEFAULT_REPO_ROOT,
+    BaselineReference,
+    load_baseline_reference,
+    panel_solver_sha256,
+)
 from rsi.diagnose import (
     PARAMETER_GROUPS,
     AdaptationHints,
@@ -211,6 +216,7 @@ def _collect_provenance(repo_root: Path, space: DesignSpace, baseline: BaselineR
         "design_space_hash": space_hash,
         "baseline_design_hash": baseline.design_hash,
         "panel_solver_sha": _panel_solver_sha(repo_root),
+        "panel_solver_sha256": panel_solver_sha256(),
         "panel_grid_family": [list(g) for g in (pw.grid_family if pw else PANEL_WAVE_GRID_FAMILY)],
         "panel_precision": pw.precision if pw else PANEL_WAVE_PRECISION,
         "panel_linearisation": pw.linearisation if pw else PANEL_WAVE_LINEARISATION,
@@ -629,9 +635,36 @@ class CampaignResult:
     tier2_verified: dict[str, Any]
     provenance: dict[str, Any]
     artifacts: dict[str, str]
+    wave_summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def _summarize_wave_runs(eval_entries: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    by_key: dict[str, dict[str, Any]] = {}
+    for entry in eval_entries:
+        key = str(entry.get("design_hash") or entry.get("candidate_id") or "")
+        if key:
+            by_key[key] = entry
+    backends: dict[str, int] = {}
+    fallback_count = 0
+    refused_count = 0
+    for entry in by_key.values():
+        metrics = entry.get("metrics") or {}
+        bk = metrics.get("wave_backend")
+        bk_key = str(bk) if bk else "none"
+        backends[bk_key] = backends.get(bk_key, 0) + 1
+        if bk == "cupy+numpy":
+            fallback_count += 1
+        err = str(metrics.get("error") or "")
+        if not metrics.get("valid") and "panel_wave_refused" in err:
+            refused_count += 1
+    return {
+        "wave_backend_counts": dict(sorted(backends.items())),
+        "gpu_fallback_count": fallback_count,
+        "panel_wave_refused_count": refused_count,
+    }
 
 
 def _propose_candidate_vectors(
@@ -1262,6 +1295,21 @@ def run_campaign(
                 "seed the search with hulls the current gates reject. Start a new campaign in a "
                 "fresh work directory."
             )
+        if evaluator_fn is None and not config.skip_resistance and baseline.panel_wave is not None:
+            for key in (
+                "panel_solver_sha",
+                "panel_grid_family",
+                "panel_precision",
+                "panel_linearisation",
+                "panel_solver_sha256",
+            ):
+                if key == "panel_solver_sha256" and key not in state.provenance:
+                    continue
+                if state.provenance.get(key) != provenance.get(key):
+                    raise ResumeStateError(
+                        f"Checkpoint {key} mismatch ({state.provenance.get(key)!r} != "
+                        f"{provenance.get(key)!r}). Start a new campaign in a fresh work directory."
+                    )
         effective_seed = state.seed
         bit_gen.state = state.rng_state
         rng = np.random.Generator(bit_gen)
@@ -1319,6 +1367,28 @@ def run_campaign(
         # Evaluate baseline anchor first
         base_dir = cand_root / "baseline"
         base_metrics = _eval_one(baseline.hull, base_dir)
+        if evaluator_fn is None and not config.skip_resistance and baseline.panel_wave is not None:
+            if (
+                not base_metrics.valid
+                or base_metrics.panel_rw_225_N is None
+                or base_metrics.kn_225_exact is None
+            ):
+                raise RuntimeError(f"Fresh baseline panel evaluation failed: {base_metrics.error}")
+            ref_rw = np.asarray(baseline.panel_wave.baseline_panel_rw_N[225], dtype=float)
+            got_rw = np.asarray(base_metrics.panel_rw_225_N, dtype=float)
+            max_rw_diff = float(np.max(np.abs(got_rw - ref_rw)))
+            if max_rw_diff > 1e-3:
+                raise RuntimeError(
+                    f"Fresh baseline panel_rw_225_N drifted from rsi/panel_wave_reference.json "
+                    f"by {max_rw_diff:.6g} N (> 1e-3 N)"
+                )
+            ref_kn = baseline.kn_225_exact or baseline.kn_225
+            max_kn_diff = max(abs(float(base_metrics.kn_225_exact[p]) - float(ref_kn[p])) for p in ref_kn)
+            if max_kn_diff > 1e-4:
+                raise RuntimeError(
+                    f"Fresh baseline kn_225_exact drifted from rsi/panel_wave_reference.json "
+                    f"by {max_kn_diff:.6g} kn (> 1e-4 kn)"
+                )
         base_gate = evaluate_gates(base_metrics, baseline)
         base_vec = space.baseline_vector()
         base_diag = diagnose_candidate(base_metrics, base_gate, vector=base_vec, space=space)
@@ -1886,6 +1956,7 @@ def run_campaign(
             "ledger_jsonl": str(work / "ledger.jsonl"),
             "best_candidate_hull_json": str(work / "best_candidate.hull.json"),
         },
+        wave_summary=_summarize_wave_runs(eval_entries),
     )
 
 
@@ -1960,6 +2031,7 @@ def load_campaign_status(
         "best_design_hash": best_hash,
         "best_hull_path": str(work / "best_candidate.hull.json"),
         "tier2_verified": pareto_raw.get("tier2_verified") or {},
+        "wave_summary": _summarize_wave_runs(eval_entries),
         "state": state.to_dict(),
         "adaptation_hints": state.adaptation_hints,
         "artifacts": {

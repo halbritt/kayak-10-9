@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 from kayakgen.model.hull import Hull
+from rsi.panel_solver import PanelConfig
 
 DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,6 +30,28 @@ SEAKEEPING_REFERENCE_FILE = "rsi-seakeeping-reference.json"
 FRICTION_REFERENCE_FILE = "rsi-friction-reference.json"
 # Baseline v0.2.3 panel-solver and Michell wave reference (versioned under rsi/, leaving data/ untouched).
 PANEL_WAVE_REFERENCE_FILE = "panel_wave_reference.json"
+PANEL_WAVE_EXPECTED_GRID_FAMILY: tuple[tuple[int, int, int], ...] = (
+    (45, 27, 8),
+    (50, 30, 8),
+    (55, 33, 8),
+)
+PANEL_WAVE_EXPECTED_PRECISION = "single"
+PANEL_WAVE_EXPECTED_LINEARISATION = "dawson"
+PANEL_WAVE_EXPECTED_MESH_RESOLUTION = (441, 129)
+_PANEL_CONFIG_VARIED_KEYS = ("nx_hull", "ny_fs", "nz_hull", "precision", "linearisation")
+
+
+def panel_solver_sha256() -> str:
+    """SHA-256 of the active rsi/panel_solver.py implementation."""
+    return hashlib.sha256((Path(__file__).resolve().parent / "panel_solver.py").read_bytes()).hexdigest()
+
+
+def panel_config_defaults() -> dict[str, Any]:
+    """Non-grid/solver default fields of PanelConfig stored to detect drift."""
+    cfg = asdict(PanelConfig())
+    for key in _PANEL_CONFIG_VARIED_KEYS:
+        cfg.pop(key, None)
+    return cfg
 
 # Conditions the Tier 2 seakeeping gates read, all at the 225 lb race load. Head and bow-quarter
 # seas have been gated since gates version 5; following and stern-quarter seas were added by the
@@ -215,10 +239,16 @@ class PanelWaveReference:
     baseline_michell_rw_N: dict[int, tuple[float, ...]]
     michell_kn_225: dict[int, float]
     michell_kn_225_exact: dict[int, float]
+    panel_solver_sha256: str = ""
+    panel_config_defaults: dict[str, Any] | None = None
+    mesh_resolution: tuple[int, int] = PANEL_WAVE_EXPECTED_MESH_RESOLUTION
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "version": self.version,
+            "panel_solver_sha256": self.panel_solver_sha256,
+            "panel_config_defaults": None if self.panel_config_defaults is None else dict(self.panel_config_defaults),
+            "mesh_resolution": list(self.mesh_resolution),
             "grid_family": [list(g) for g in self.grid_family],
             "precision": self.precision,
             "linearisation": self.linearisation,
@@ -398,6 +428,34 @@ def load_baseline_reference(
             )
         p_speeds = tuple(float(v) for v in panel_raw["speeds_kn"])
         p_grids = tuple((int(g[0]), int(g[1]), int(g[2])) for g in panel_raw["grid_family"])
+        p_prec = str(panel_raw["precision"])
+        p_lin = str(panel_raw["linearisation"])
+        raw_mesh = panel_raw.get("mesh_resolution")
+        p_mesh = (int(raw_mesh[0]), int(raw_mesh[1])) if isinstance(raw_mesh, list) and len(raw_mesh) == 2 else None
+        p_sha256 = str(panel_raw.get("panel_solver_sha256") or "")
+        p_cfg = panel_raw.get("panel_config_defaults")
+        if p_sha256 != panel_solver_sha256():
+            raise ValueError(
+                f"rsi/{PANEL_WAVE_REFERENCE_FILE} panel_solver_sha256 is stale or missing; "
+                "regenerate it with scripts/build_rsi_panel_wave_reference.py"
+            )
+        if p_cfg != panel_config_defaults():
+            raise ValueError(
+                f"rsi/{PANEL_WAVE_REFERENCE_FILE} panel_config_defaults do not match PanelConfig(); "
+                "regenerate it with scripts/build_rsi_panel_wave_reference.py"
+            )
+        if p_mesh != PANEL_WAVE_EXPECTED_MESH_RESOLUTION:
+            raise ValueError(
+                f"rsi/{PANEL_WAVE_REFERENCE_FILE} mesh_resolution={p_mesh!r} != {PANEL_WAVE_EXPECTED_MESH_RESOLUTION}"
+            )
+        if (
+            p_grids != PANEL_WAVE_EXPECTED_GRID_FAMILY
+            or p_prec != PANEL_WAVE_EXPECTED_PRECISION
+            or p_lin != PANEL_WAVE_EXPECTED_LINEARISATION
+        ):
+            raise ValueError(
+                f"rsi/{PANEL_WAVE_REFERENCE_FILE} solver grid/precision/linearisation mismatch"
+            )
         p_rw = {int(lb): tuple(float(x) for x in vals) for lb, vals in panel_raw["baseline_panel_rw_N"].items()}
         m_rw = {int(lb): tuple(float(x) for x in vals) for lb, vals in panel_raw["baseline_michell_rw_N"].items()}
         if any(len(vals) != len(p_speeds) for vals in p_rw.values()) or any(len(vals) != len(p_speeds) for vals in m_rw.values()):
@@ -405,13 +463,16 @@ def load_baseline_reference(
         panel_wave = PanelWaveReference(
             version=int(panel_raw["version"]),
             grid_family=p_grids,
-            precision=str(panel_raw["precision"]),
-            linearisation=str(panel_raw["linearisation"]),
+            precision=p_prec,
+            linearisation=p_lin,
             speeds_kn=p_speeds,
             baseline_panel_rw_N=p_rw,
             baseline_michell_rw_N=m_rw,
             michell_kn_225={int(k): float(v) for k, v in panel_raw["michell_kn_225"].items()},
             michell_kn_225_exact={int(k): float(v) for k, v in panel_raw["michell_kn_225_exact"].items()},
+            panel_solver_sha256=p_sha256,
+            panel_config_defaults=dict(p_cfg),
+            mesh_resolution=p_mesh,
         )
 
     hydro_3 = specs["hydro_3load"]
