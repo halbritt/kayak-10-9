@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import math
 from typing import Any
 
@@ -42,7 +42,12 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #      panel solver (rsi/panel_wave_reference.json; nx = 45, 50, 55, float32) instead of Michell,
 #      preserving all v9 gates and objectives and refusing Michell-era checkpoints. Michell is
 #      still computed and reported beside it for comparison.
-GATES_VERSION = "10"
+#  11: owner ruling of 2026-11-28. The baseline continuation's settling in a paired CFD result is
+#      reported (GateReport.reported, cfd_baseline_drift_<speed>_N) and no longer gated; this
+#      reverses version 8. CFD is a gross-penalty screen (owner, 2026-11-27), and the v0.2.3
+#      baseline at 6.2 kn does not settle to 0.15 N (it moved 0.87 N between windows), which
+#      blocked promotion of any hull. The candidate's own drag-difference and settling gates stay.
+GATES_VERSION = "11"
 
 # Class limits (owner, 2026-11-27): "it's just an 18ft cap. USCA is 18ft and 8.5% beam at 4 in.
 # I can't think of any reason to go stricter". USCA 2026 Sea Kayak: "Maximum overall length of 18'
@@ -155,10 +160,16 @@ class GateReport:
     violations: tuple[GateViolation, ...]
     margins: dict[str, float]
     objectives: dict[str, float]
+    # Values shown beside the gates that do not decide pass or fail. None means not measured.
+    reported: dict[str, float | None] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "passed": self.passed,
+            "reported": {
+                k: (float(v) if v is not None and math.isfinite(float(v)) else None)
+                for k, v in self.reported.items()
+            },
             "violations": [v.to_dict() for v in self.violations],
             "margins": {
                 k: (float(v) if math.isfinite(float(v)) else -1.0)
@@ -181,6 +192,7 @@ def evaluate_gates(
     """Evaluate hard non-regression constraints and compute multi-objective scores."""
     violations: list[GateViolation] = []
     margins: dict[str, float] = {}
+    reported: dict[str, float | None] = {}
 
     if not metrics.valid:
         violations.append(
@@ -986,25 +998,9 @@ def evaluate_gates(
                         if isinstance(baseline_drifts, Mapping)
                         else None
                     )
-                    if baseline_drift is None:
-                        _require(
-                            f"cfd_baseline_settled_{sp_key}",
-                            False,
-                            -1.0,
-                            f"Missing or non-finite OpenFOAM baseline drag drift for {sp_key}",
-                            None,
-                            CFD_PAIRED_DRIFT_TOL_N,
-                        )
-                    else:
-                        _require(
-                            f"cfd_baseline_settled_{sp_key}",
-                            abs(baseline_drift) <= CFD_PAIRED_DRIFT_TOL_N,
-                            CFD_PAIRED_DRIFT_TOL_N - abs(baseline_drift),
-                            f"OpenFOAM baseline drag at {sp_key} moved {baseline_drift:+.3f} N "
-                            f"between reference windows (limit {CFD_PAIRED_DRIFT_TOL_N:.3f} N)",
-                            baseline_drift,
-                            CFD_PAIRED_DRIFT_TOL_N,
-                        )
+                    # Reported, not gated (gates version 11). See CFD_PAIRED_DRIFT_TOL_N for the
+                    # size the candidate's own difference must settle to.
+                    reported[f"cfd_baseline_drift_{sp_key}_N"] = baseline_drift
                     delta = drift = None
                     if isinstance(sp_data, Mapping):
                         delta = _finite_float(sp_data.get("drag_delta_N"))
@@ -1082,4 +1078,5 @@ def evaluate_gates(
         violations=tuple(violations),
         margins=margins,
         objectives=objectives,
+        reported=reported,
     )

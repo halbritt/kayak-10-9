@@ -427,6 +427,9 @@ def _gate_report_from_dict(raw: dict[str, Any]) -> GateReport:
         violations=violations,
         margins={str(k): float(v) for k, v in (raw.get("margins") or {}).items()},
         objectives={str(k): float(v) for k, v in (raw.get("objectives") or {}).items()},
+        reported={
+            str(k): (None if v is None else float(v)) for k, v in (raw.get("reported") or {}).items()
+        },
     )
 
 

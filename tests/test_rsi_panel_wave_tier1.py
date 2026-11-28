@@ -79,12 +79,12 @@ def test_refused_geometry_raises_panel_wave_refused(tmp_path: Path) -> None:
 
 
 def test_gates_v10_provenance_and_multiworker_panel_campaign(tmp_path: Path) -> None:
-    assert GATES_VERSION == "10"
+    assert GATES_VERSION == "11"
     w2 = tmp_path / "w2"
     res = run_campaign(CampaignConfig(iterations=1, population=2, workers=2, seed=17, work_dir=w2, pre_screen=False))
     assert res.status == "completed"
     prov = res.provenance
-    assert prov["gates_version"] == "10"
+    assert prov["gates_version"] == GATES_VERSION
     assert prov["panel_solver_sha"]
     assert prov["panel_grid_family"] == [list(g) for g in PANEL_WAVE_GRID_FAMILY]
     assert prov["panel_precision"] == "single"
