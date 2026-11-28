@@ -33,9 +33,14 @@ from rsi.diagnose import (
     diagnose_validation_error,
 )
 from rsi.evaluator import (
+    PANEL_WAVE_GRID_FAMILY,
+    PANEL_WAVE_LINEARISATION,
+    PANEL_WAVE_PRECISION,
     CandidateMetrics,
     LoadEvalMetrics,
+    complete_deferred_panel_wave,
     evaluate_tier0_tier1,
+    prepare_tier0_tier1_cpu,
 )
 from rsi.fidelity import (
     CfdMetrics,
@@ -163,12 +168,39 @@ def _git_is_dirty(repo_dir: Path) -> bool | None:
     return None
 
 
+def _panel_solver_sha(repo_dir: Path) -> str:
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo_dir), "log", "-n", "1", "--format=%H", "--", "rsi/panel_solver.py"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            return proc.stdout.strip()
+    except Exception:  # noqa: BLE001
+        pass
+    return _git_head_sha(repo_dir)
+
+
+def _gpu_versions() -> tuple[str | None, int | None]:
+    try:
+        import cupy as cp
+
+        return str(cp.__version__), int(cp.cuda.runtime.runtimeGetVersion())
+    except Exception:  # noqa: BLE001
+        return None, None
+
+
 def _collect_provenance(repo_root: Path, space: DesignSpace, baseline: BaselineReference, seed: int) -> dict[str, Any]:
     import kayakgen
 
     kayak_gen_root = Path(kayakgen.__file__).resolve().parents[1]
     space_json = json.dumps(space.to_dict(), sort_keys=True, allow_nan=False)
     space_hash = hashlib.sha256(space_json.encode("utf-8")).hexdigest()[:16]
+    pw = baseline.panel_wave
+    cupy_ver, cuda_ver = _gpu_versions()
     return {
         "seed": int(seed),
         "kayak_10_9_sha": _git_head_sha(repo_root),
@@ -178,6 +210,12 @@ def _collect_provenance(repo_root: Path, space: DesignSpace, baseline: BaselineR
         "gates_version": GATES_VERSION,
         "design_space_hash": space_hash,
         "baseline_design_hash": baseline.design_hash,
+        "panel_solver_sha": _panel_solver_sha(repo_root),
+        "panel_grid_family": [list(g) for g in (pw.grid_family if pw else PANEL_WAVE_GRID_FAMILY)],
+        "panel_precision": pw.precision if pw else PANEL_WAVE_PRECISION,
+        "panel_linearisation": pw.linearisation if pw else PANEL_WAVE_LINEARISATION,
+        "cupy_version": cupy_ver,
+        "cuda_runtime_version": cuda_ver,
     }
 
 
@@ -287,6 +325,16 @@ def _metrics_from_dict(raw: dict[str, Any]) -> CandidateMetrics:
     kn230_obj = {int(k): float(v) for k, v in kn230_raw.items()} if isinstance(kn230_raw, dict) else None
     kn230_ex_raw = raw.get("kn_230_exact")
     kn230_ex_obj = {int(k): float(v) for k, v in kn230_ex_raw.items()} if isinstance(kn230_ex_raw, dict) else None
+    mk_raw = raw.get("michell_kn_225")
+    mk_obj = {int(k): float(v) for k, v in mk_raw.items()} if isinstance(mk_raw, dict) else None
+    mk_ex_raw = raw.get("michell_kn_225_exact")
+    mk_ex_obj = {int(k): float(v) for k, v in mk_ex_raw.items()} if isinstance(mk_ex_raw, dict) else None
+    fr_raw = raw.get("friction_ratio")
+    fr_obj = (
+        {int(k): tuple(float(x) for x in v) for k, v in fr_raw.items()}
+        if isinstance(fr_raw, dict)
+        else None
+    )
     mesh_res = tuple(int(x) for x in raw.get("mesh_resolution", (441, 129)))
     return CandidateMetrics(
         valid=bool(raw.get("valid", False)),
@@ -344,6 +392,13 @@ def _metrics_from_dict(raw: dict[str, Any]) -> CandidateMetrics:
         kn_265_exact=kn265_ex_obj,
         kn_230=kn230_obj,
         kn_230_exact=kn230_ex_obj,
+        friction_ratio=fr_obj,
+        wave_model=raw.get("wave_model"),
+        wave_backend=raw.get("wave_backend"),
+        panel_rw_225_N=tuple(float(x) for x in raw["panel_rw_225_N"]) if raw.get("panel_rw_225_N") is not None else None,
+        michell_rw_225_N=tuple(float(x) for x in raw["michell_rw_225_N"]) if raw.get("michell_rw_225_N") is not None else None,
+        michell_kn_225=mk_obj,
+        michell_kn_225_exact=mk_ex_obj,
         shell_area_m2=raw.get("shell_area_m2"),
         aft_coaming_above_225wl_cm=raw.get("aft_coaming_above_225wl_cm"),
         rear_deck_above_225wl_cm=raw.get("rear_deck_above_225wl_cm"),
@@ -384,7 +439,8 @@ def _set_blas_env_single_thread() -> None:
 
 
 def _init_eval_worker() -> None:
-    """Pin BLAS/OpenMP threads to 1 per worker process to prevent oversubscription."""
+    """Pin BLAS/OpenMP threads to 1 and hide GPUs so worker processes never open CUDA contexts."""
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
     _set_blas_env_single_thread()
     with contextlib.suppress(Exception):
         maps_text = Path("/proc/self/maps").read_text(encoding="utf-8")
@@ -400,6 +456,32 @@ def _init_eval_worker() -> None:
                 if fn is not None:
                     fn.argtypes = [ctypes.c_int]
                     fn(1)
+
+
+def _prescreen_and_evaluate_cpu(
+    hull_json: str,
+    cand_dir_str: str,
+    repo_root_str: str,
+    skip_resistance: bool,
+    pre_screen: bool,
+) -> tuple[CandidateMetrics, tuple[np.ndarray, np.ndarray, dict[int, np.ndarray]] | None]:
+    """Worker-safe CPU stage: Tier 0/1 geometry, hydrostatics, GZ, local friction, Michell."""
+    hull = Hull.model_validate_json(hull_json)
+    cand_dir = Path(cand_dir_str)
+    cand_dir.mkdir(parents=True, exist_ok=True)
+    baseline = _WORKER_BASELINES.get(repo_root_str)
+    if baseline is None:
+        baseline = load_baseline_reference(Path(repo_root_str))
+        _WORKER_BASELINES[repo_root_str] = baseline
+
+    return prepare_tier0_tier1_cpu(
+        hull,
+        cand_dir,
+        baseline,
+        skip_resistance=skip_resistance,
+        fast_tier0=pre_screen,
+        defer_panel_wave=True,
+    )
 
 
 def _prescreen_and_evaluate(
@@ -1476,7 +1558,7 @@ def run_campaign(
                 if eval_pool is not None:
                     futures = [
                         eval_pool.submit(
-                            _prescreen_and_evaluate,
+                            _prescreen_and_evaluate_cpu,
                             cand_hull.model_dump_json(),
                             str(cand_root / cand_id),
                             str(root),
@@ -1485,7 +1567,12 @@ def run_campaign(
                         )
                         for _, cand_id, _, cand_hull, _ in valid_batch
                     ]
-                    batch_metrics = [f.result() for f in futures]
+                    for f in futures:
+                        m, state = f.result()
+                        if state is not None:
+                            V_arr, F_arr, rf_map = state
+                            m = complete_deferred_panel_wave(m, V_arr, F_arr, rf_map, baseline)
+                        batch_metrics.append(m)
                 else:
                     for _, cand_id, _, cand_hull, _ in valid_batch:
                         c_dir = cand_root / cand_id

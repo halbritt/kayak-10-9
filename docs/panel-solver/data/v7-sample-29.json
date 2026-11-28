@@ -1,0 +1,4390 @@
+{
+ "description": "v0.2.3 plus 28 diverse gate-passing hulls from k109_rsi_v7_localfriction across 7 level-pose panel grids (40..70, single precision) vs Tier-1 Michell",
+ "design_hash_baseline": "distribution_v2_v2:a753b604c5348cf250a98ebcfba2b0c193ed5f166afdf34b4ecac75e0d039f2d",
+ "cal_speeds_kn": [
+  4.25,
+  4.5,
+  4.75,
+  5.0,
+  5.25,
+  5.5,
+  5.75,
+  6.0,
+  6.25,
+  6.5
+ ],
+ "full_speeds_kn": [
+  3.5,
+  3.75,
+  4.0,
+  4.25,
+  4.5,
+  4.75,
+  5.0,
+  5.25,
+  5.5,
+  5.75,
+  6.0,
+  6.25,
+  6.5,
+  6.75,
+  7.0,
+  7.25,
+  7.5,
+  7.75
+ ],
+ "grid_ladder_nx": [
+  40,
+  45,
+  50,
+  55,
+  60,
+  65,
+  70
+ ],
+ "search_grid_nx": [
+  45,
+  50,
+  55
+ ],
+ "speed_table": [
+  {
+   "speed_kn": 4.25,
+   "baseline_michell_N": 1.2390344835284994,
+   "baseline_panel_mean_N": 0.9608496072913154,
+   "baseline_panel_std_N": 0.04350112456843937,
+   "alpha": 0.775482539077545,
+   "beta_origin": 0.45323692825823836,
+   "ols_slope": 0.5623173834722553,
+   "ols_intercept_mN": 5.695139859616958,
+   "pearson_r": 0.9287988750853302,
+   "r2_centered_beta0": 0.7621974170870656,
+   "r2_centered_ols": 0.8626673503597744,
+   "r2_origin": 0.7768700005687259,
+   "rmse_origin_mN": 7.208694192677603,
+   "sd_dm_mN": 24.864837389394804,
+   "sd_dp_mN": 15.053776093325965,
+   "sign_disagreements": 6
+  },
+  {
+   "speed_kn": 4.5,
+   "baseline_michell_N": 1.1142770788116676,
+   "baseline_panel_mean_N": 1.0690650915542292,
+   "baseline_panel_std_N": 0.05795275017155605,
+   "alpha": 0.9594248251919036,
+   "beta_origin": 0.6114188147483247,
+   "ols_slope": 0.7290775427001147,
+   "ols_intercept_mN": 5.166015190278299,
+   "pearson_r": 0.9500963886073207,
+   "r2_centered_beta0": 0.8281942735779823,
+   "r2_centered_ols": 0.9026831476446736,
+   "r2_origin": 0.8437280463628337,
+   "rmse_origin_mN": 6.490557427515289,
+   "sd_dm_mN": 20.780417035918248,
+   "sd_dp_mN": 15.946314048239852,
+   "sign_disagreements": 6
+  },
+  {
+   "speed_kn": 4.75,
+   "baseline_michell_N": 1.3093675105866713,
+   "baseline_panel_mean_N": 1.2233730870943738,
+   "baseline_panel_std_N": 0.05872672799673149,
+   "alpha": 0.9343236923193801,
+   "beta_origin": 0.5780818230062689,
+   "ols_slope": 0.7651329821064022,
+   "ols_intercept_mN": 4.9083790049746865,
+   "pearson_r": 0.7159631091735892,
+   "r2_centered_beta0": 0.46054786386158997,
+   "r2_centered_ols": 0.5126031736975127,
+   "r2_origin": 0.5686342015863703,
+   "rmse_origin_mN": 10.13572860204848,
+   "sd_dm_mN": 13.15010953527426,
+   "sd_dp_mN": 14.05321362907086,
+   "sign_disagreements": 6
+  },
+  {
+   "speed_kn": 5.0,
+   "baseline_michell_N": 2.0510640273112895,
+   "baseline_panel_mean_N": 1.584483837523038,
+   "baseline_panel_std_N": 0.09161527429627662,
+   "alpha": 0.7725179791681662,
+   "beta_origin": 0.27972170090874643,
+   "ols_slope": 0.06133617378066758,
+   "ols_intercept_mN": -8.188076250910443,
+   "pearson_r": 0.10408325537689124,
+   "r2_centered_beta0": -0.23756852128252515,
+   "r2_centered_ols": 0.010833324049851156,
+   "r2_origin": 0.28935365674998914,
+   "rmse_origin_mN": 12.221009772949484,
+   "sd_dm_mN": 18.9838277325294,
+   "sd_dp_mN": 11.187153520595967,
+   "sign_disagreements": 9
+  },
+  {
+   "speed_kn": 5.25,
+   "baseline_michell_N": 3.2529921931674806,
+   "baseline_panel_mean_N": 2.203833990599956,
+   "baseline_panel_std_N": 0.11579142337025634,
+   "alpha": 0.6774790284553541,
+   "beta_origin": 0.22136663179173272,
+   "ols_slope": 0.06496792048280214,
+   "ols_intercept_mN": -9.948416668681269,
+   "pearson_r": 0.219121521539616,
+   "r2_centered_beta0": -0.6010940278543588,
+   "r2_centered_ols": 0.048014241201836505,
+   "r2_origin": 0.3786443718322239,
+   "rmse_origin_mN": 11.809948045170158,
+   "sd_dm_mN": 32.05699214828285,
+   "sd_dp_mN": 9.504662536906102,
+   "sign_disagreements": 6
+  },
+  {
+   "speed_kn": 5.5,
+   "baseline_michell_N": 4.703037619144777,
+   "baseline_panel_mean_N": 2.998455414857531,
+   "baseline_panel_std_N": 0.13237509208942186,
+   "alpha": 0.6375571827560215,
+   "beta_origin": 0.24212282951418077,
+   "ols_slope": 0.12375705312163517,
+   "ols_intercept_mN": -10.41791605069257,
+   "pearson_r": 0.5395389441809693,
+   "r2_centered_beta0": -0.4110451266639732,
+   "r2_centered_ols": 0.2911022722879151,
+   "r2_origin": 0.5598789674780265,
+   "rmse_origin_mN": 11.635747053983064,
+   "sd_dm_mN": 43.48843627912572,
+   "sd_dp_mN": 9.975184881125838,
+   "sign_disagreements": 6
+  },
+  {
+   "speed_kn": 5.75,
+   "baseline_michell_N": 6.203954418897178,
+   "baseline_panel_mean_N": 3.9117461871462287,
+   "baseline_panel_std_N": 0.16463047134590156,
+   "alpha": 0.6305246497671053,
+   "beta_origin": 0.2706085551347689,
+   "ols_slope": 0.16567632828689421,
+   "ols_intercept_mN": -11.147212363046545,
+   "pearson_r": 0.7238504449750258,
+   "r2_centered_beta0": -0.05737042690662464,
+   "r2_centered_ols": 0.5239594666905429,
+   "r2_origin": 0.6743365901706428,
+   "rmse_origin_mN": 12.012432875598513,
+   "sd_dm_mN": 51.976006992506704,
+   "sd_dp_mN": 11.896371767554218,
+   "sign_disagreements": 6
+  },
+  {
+   "speed_kn": 6.0,
+   "baseline_michell_N": 7.62517677566148,
+   "baseline_panel_mean_N": 4.894862692920648,
+   "baseline_panel_std_N": 0.19451868369709382,
+   "alpha": 0.6419343232204635,
+   "beta_origin": 0.27611073397755775,
+   "ols_slope": 0.1796755218449021,
+   "ols_intercept_mN": -11.450335172874679,
+   "pearson_r": 0.7835465876071188,
+   "r2_centered_beta0": 0.11776415786734484,
+   "r2_centered_ols": 0.6139452549507607,
+   "r2_origin": 0.7185904875498805,
+   "rmse_origin_mN": 12.24858572421532,
+   "sd_dm_mN": 57.911743422997276,
+   "sd_dp_mN": 13.279775427587566,
+   "sign_disagreements": 5
+  },
+  {
+   "speed_kn": 6.25,
+   "baseline_michell_N": 8.90204956720267,
+   "baseline_panel_mean_N": 5.837151040640415,
+   "baseline_panel_std_N": 0.2509441378185722,
+   "alpha": 0.6557086653556624,
+   "beta_origin": 0.26967971490833903,
+   "ols_slope": 0.17909912573848005,
+   "ols_intercept_mN": -11.518591092092478,
+   "pearson_r": 0.7928761842590228,
+   "r2_centered_beta0": 0.17769443917009375,
+   "r2_centered_ols": 0.6286526435651476,
+   "r2_origin": 0.7292886764069225,
+   "rmse_origin_mN": 12.47656054532105,
+   "sd_dm_mN": 62.02793250731568,
+   "sd_dp_mN": 14.011202132155937,
+   "sign_disagreements": 3
+  },
+  {
+   "speed_kn": 6.5,
+   "baseline_michell_N": 10.016581177652144,
+   "baseline_panel_mean_N": 6.642642797421185,
+   "baseline_panel_std_N": 0.3302585412670595,
+   "alpha": 0.6631646746138785,
+   "beta_origin": 0.2852087421254713,
+   "ols_slope": 0.19122313125852533,
+   "ols_intercept_mN": -12.505547325877387,
+   "pearson_r": 0.7934211319218768,
+   "r2_centered_beta0": 0.20569842649447456,
+   "r2_centered_ols": 0.6295170925801923,
+   "r2_origin": 0.7333108940856088,
+   "rmse_origin_mN": 13.708735725104514,
+   "sd_dm_mN": 64.99278753451091,
+   "sd_dp_mN": 15.663969412391388,
+   "sign_disagreements": 3
+  }
+ ],
+ "hull_table": [
+  {
+   "candidate_id": "iter137_cand004",
+   "design_hash": "distribution_v2_v2:2d99c37cb238cea68522af7e78b1b4c62a148d7d7ac899eff9b51bdb7b90ab79",
+   "dm_5p0_mN": -55.0775496169662,
+   "dp_5p0_mean_mN": -7.463089626022633,
+   "dp_5p0_std_mN": 5.848682773608933,
+   "dm_5p5_mN": -114.18658979625818,
+   "dp_5p5_mean_mN": -25.33935317052302,
+   "dp_5p5_std_mN": 9.069476241917409,
+   "dp_over_dm_5p5": 0.22191181307486052,
+   "dm_6p25_mN": -159.54223480868455,
+   "dp_6p25_mean_mN": -36.99054519241202,
+   "dp_6p25_std_mN": 14.194915984880502,
+   "dp_over_dm_6p25": 0.2318542499844591,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.89524885
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.8229012584123285
+    },
+    {
+     "param": "wl_a1",
+     "delta_sigma": 0.8140269000000006
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter139_cand009",
+   "design_hash": "distribution_v2_v2:af7d7c426a9946fa99446c9fedcbbe57d2700948eff55683928ba00f76e0b908",
+   "dm_5p0_mN": -49.40835135438437,
+   "dp_5p0_mean_mN": -5.2360555871801155,
+   "dp_5p0_std_mN": 5.66268578892611,
+   "dm_5p5_mN": -103.60545156879209,
+   "dp_5p5_mean_mN": -23.740036427124586,
+   "dp_5p5_std_mN": 8.607957457319497,
+   "dp_over_dm_5p5": 0.22913887317369244,
+   "dm_6p25_mN": -145.73000870566943,
+   "dp_6p25_mean_mN": -37.708683601244225,
+   "dp_6p25_std_mN": 13.447101466548654,
+   "dp_over_dm_6p25": 0.25875716289432443,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.8140726614123284
+    },
+    {
+     "param": "wl_a3",
+     "delta_sigma": -0.7691280166666666
+    },
+    {
+     "param": "bilge_fwd_xi",
+     "delta_sigma": -0.76007167625
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter139_cand002",
+   "design_hash": "distribution_v2_v2:59d5b47ea28a4de1f86fedc62384e023bc4cfd55351d679ef2c281806dd099ce",
+   "dm_5p0_mN": -46.44432158817935,
+   "dp_5p0_mean_mN": -8.29437485014425,
+   "dp_5p0_std_mN": 5.456143727406008,
+   "dm_5p5_mN": -96.28672015652296,
+   "dp_5p5_mean_mN": -29.52787903964411,
+   "dp_5p5_std_mN": 8.11669362730489,
+   "dp_over_dm_5p5": 0.30666616322213297,
+   "dm_6p25_mN": -135.85017773649355,
+   "dp_6p25_mean_mN": -49.97690688908664,
+   "dp_6p25_std_mN": 12.132129967399278,
+   "dp_over_dm_6p25": 0.3678825285457194,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.7438416434123285
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.73192290375
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.652811575
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter003_cand007",
+   "design_hash": "distribution_v2_v2:2ac97e4260bc7dd4f46b464a736ec412660b7b4f37fbd62a44ebe91cb7d58439",
+   "dm_5p0_mN": 2.325688127844394,
+   "dp_5p0_mean_mN": 3.2335152413578743,
+   "dp_5p0_std_mN": 0.4694774555114654,
+   "dm_5p5_mN": 0.5400678578189044,
+   "dp_5p5_mean_mN": 1.6712876707426336,
+   "dp_5p5_std_mN": 0.3954222510576181,
+   "dp_over_dm_5p5": 3.0945882939455545,
+   "dm_6p25_mN": -0.5620717611840576,
+   "dp_6p25_mean_mN": -0.4547893264879984,
+   "dp_6p25_std_mN": 0.7913436953879214,
+   "dp_over_dm_6p25": 0.8091303600272348,
+   "top_changes": [
+    {
+     "param": "rocker_bow_end_m",
+     "delta_sigma": 0.11403504999999997
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": -0.07692722500000004
+    },
+    {
+     "param": "wl_a1",
+     "delta_sigma": -0.057085939999999835
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter015_cand010",
+   "design_hash": "distribution_v2_v2:c3b0c6be0191b2a02cb8a0f9a0af7371309da99d6f4ef14277b39ebe81be589f",
+   "dm_5p0_mN": -7.02749934305924,
+   "dp_5p0_mean_mN": -6.553938543576475,
+   "dp_5p0_std_mN": 2.7630795432254756,
+   "dm_5p5_mN": -8.569090262827928,
+   "dp_5p5_mean_mN": -8.825526656440605,
+   "dp_5p5_std_mN": 3.7782806961338045,
+   "dp_over_dm_5p5": 1.0299257430774278,
+   "dm_6p25_mN": -11.82882470242319,
+   "dp_6p25_mean_mN": -13.103092746944434,
+   "dp_6p25_std_mN": 4.021821325357449,
+   "dp_over_dm_6p25": 1.107725668151985,
+   "top_changes": [
+    {
+     "param": "bilge_aft_m",
+     "delta_sigma": 0.5134484
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.3721541749999999
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.29713096625
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter010_cand005",
+   "design_hash": "distribution_v2_v2:2235e7fd256058ef4f23e96669d693b72cc2d19306d9ba581c0713cdea45349c",
+   "dm_5p0_mN": 2.317778509094648,
+   "dp_5p0_mean_mN": -5.8398988421477185,
+   "dp_5p0_std_mN": 2.5806318576499656,
+   "dm_5p5_mN": 10.127059187009735,
+   "dp_5p5_mean_mN": -6.984276118139819,
+   "dp_5p5_std_mN": 3.926633004127906,
+   "dp_over_dm_5p5": -0.6896647870981881,
+   "dm_6p25_mN": 14.946331165107907,
+   "dp_6p25_mean_mN": -12.166231966114946,
+   "dp_6p25_std_mN": 7.925518004614199,
+   "dp_over_dm_6p25": -0.8139945403134731,
+   "top_changes": [
+    {
+     "param": "wl_a2",
+     "delta_sigma": 0.4573990666666694
+    },
+    {
+     "param": "bilge_fwd_xi",
+     "delta_sigma": 0.40670087375000025
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.36407567500000004
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter007_cand003",
+   "design_hash": "distribution_v2_v2:f60f30e32f4a3504d9e2ff539b51fd8846f40e3bd5a9ba0dbfaf6904d05f8bca",
+   "dm_5p0_mN": -32.149337371880634,
+   "dp_5p0_mean_mN": 2.8802014424723157,
+   "dp_5p0_std_mN": 3.7525152379828923,
+   "dm_5p5_mN": -76.06232858177187,
+   "dp_5p5_mean_mN": -11.234332950742942,
+   "dp_5p5_std_mN": 5.596745296542684,
+   "dp_over_dm_5p5": 0.14769904051340363,
+   "dm_6p25_mN": -107.25124463780134,
+   "dp_6p25_mean_mN": -22.02154819920832,
+   "dp_6p25_std_mN": 7.3136104227992025,
+   "dp_over_dm_6p25": 0.20532673791877556,
+   "top_changes": [
+    {
+     "param": "bilge_fwd_m",
+     "delta_sigma": -0.3580501800000006
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.35471093941232823
+    },
+    {
+     "param": "rocker_bow_end_m",
+     "delta_sigma": -0.35000000000000003
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter032_cand006",
+   "design_hash": "distribution_v2_v2:49c5c2cc8054449cc21ee31c0bd56062bc496674243c3bbf32d40d3ff79e84af",
+   "dm_5p0_mN": 6.391305514751977,
+   "dp_5p0_mean_mN": -26.18660976862592,
+   "dp_5p0_std_mN": 3.0386917461787633,
+   "dm_5p5_mN": 51.63343890138705,
+   "dp_5p5_mean_mN": -11.76704618029272,
+   "dp_5p5_std_mN": 4.937651334680547,
+   "dp_over_dm_5p5": -0.22789584483741634,
+   "dm_6p25_mN": 76.49200636869757,
+   "dp_6p25_mean_mN": -4.173598331159616,
+   "dp_6p25_std_mN": 6.421947341315446,
+   "dp_over_dm_6p25": -0.05456254227458147,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.40812770441232826
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.4023938499999999
+    },
+    {
+     "param": "sec_side_aft",
+     "delta_sigma": -0.2933960291575788
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter085_cand009",
+   "design_hash": "distribution_v2_v2:98929245bb28ed4c7054fc353dac4dd3e3983de3f0ca6b3e81ac5abaa778e637",
+   "dm_5p0_mN": -23.36607137527391,
+   "dp_5p0_mean_mN": -31.275408391056594,
+   "dp_5p0_std_mN": 2.7152886949783968,
+   "dm_5p5_mN": -9.750153847575938,
+   "dp_5p5_mean_mN": -28.216676298943025,
+   "dp_5p5_std_mN": 5.226403600470188,
+   "dp_over_dm_5p5": 2.893972417261723,
+   "dm_6p25_mN": -8.147458850837452,
+   "dp_6p25_mean_mN": -27.700242708289302,
+   "dp_6p25_std_mN": 4.998541389605642,
+   "dp_over_dm_6p25": 3.39986285483873,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.859487725
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.7813203714123285
+    },
+    {
+     "param": "bilge_fwd_xi",
+     "delta_sigma": -0.6886680312499998
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter003_cand006",
+   "design_hash": "distribution_v2_v2:3868ac9d6f3b9db43bb61f6ddc64827db76034521027199f4b65126dcd47d188",
+   "dm_5p0_mN": 4.922772294478683,
+   "dp_5p0_mean_mN": -11.238162484764677,
+   "dp_5p0_std_mN": 1.154259859589466,
+   "dm_5p5_mN": 26.01690954955327,
+   "dp_5p5_mean_mN": -3.9727346307854337,
+   "dp_5p5_std_mN": 1.2629533511610944,
+   "dp_over_dm_5p5": -0.15269817590051346,
+   "dm_6p25_mN": 39.58089391992381,
+   "dp_6p25_mean_mN": 1.1900768160901163,
+   "dp_6p25_std_mN": 1.774601424520177,
+   "dp_over_dm_6p25": 0.030066951456370925,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.3555307
+    },
+    {
+     "param": "bilge_aft_m",
+     "delta_sigma": 0.31568609999999997
+    },
+    {
+     "param": "wl_a1",
+     "delta_sigma": -0.057085939999999835
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter005_cand001",
+   "design_hash": "distribution_v2_v2:8789adc2cdf507f720c213b51b6698b736b854d07242c815d61aba9ad55ef266",
+   "dm_5p0_mN": -19.08349932350717,
+   "dp_5p0_mean_mN": 4.262105871474083,
+   "dp_5p0_std_mN": 2.2183628478685677,
+   "dm_5p5_mN": -49.78573010322229,
+   "dp_5p5_mean_mN": -6.667356259271236,
+   "dp_5p5_std_mN": 3.3881380718034944,
+   "dp_over_dm_5p5": 0.1339210300913053,
+   "dm_6p25_mN": -70.55772237216829,
+   "dp_6p25_mean_mN": -15.23693898928004,
+   "dp_6p25_std_mN": 4.878623458062314,
+   "dp_over_dm_6p25": 0.21594998360222434,
+   "top_changes": [
+    {
+     "param": "bilge_fwd_m",
+     "delta_sigma": -0.15805018000000043
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.15471093941232805
+    },
+    {
+     "param": "draft_a2",
+     "delta_sigma": 0.1503780333333334
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter008_cand005",
+   "design_hash": "distribution_v2_v2:6c6cc0bff307fbc516c3f0cedfa19fe4d71cf7214e1e55ad65ea8076ee5892a0",
+   "dm_5p0_mN": -1.0761104243361963,
+   "dp_5p0_mean_mN": 14.130964151001203,
+   "dp_5p0_std_mN": 3.073825124367344,
+   "dm_5p5_mN": -20.59998674631558,
+   "dp_5p5_mean_mN": 5.691782577383072,
+   "dp_5p5_std_mN": 5.144801015675854,
+   "dp_over_dm_5p5": -0.2763003028825287,
+   "dm_6p25_mN": -31.910656299899642,
+   "dp_6p25_mean_mN": -1.4857387537383002,
+   "dp_6p25_std_mN": 8.80299415129698,
+   "dp_over_dm_6p25": 0.046559329265282855,
+   "top_changes": [
+    {
+     "param": "wl_a2",
+     "delta_sigma": 0.46456281666666654
+    },
+    {
+     "param": "bilge_fwd_xi",
+     "delta_sigma": 0.3651759212500001
+    },
+    {
+     "param": "wl_a1",
+     "delta_sigma": -0.07518115999999991
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter004_cand002",
+   "design_hash": "distribution_v2_v2:face4cca8d222f7e42f9e218b4e0bd8cb12c65c9052bb6dcb7418811e8f56eae",
+   "dm_5p0_mN": -3.539272919125036,
+   "dp_5p0_mean_mN": 3.832848849806249,
+   "dp_5p0_std_mN": 1.6577128876408824,
+   "dm_5p5_mN": -16.610201373356226,
+   "dp_5p5_mean_mN": -3.1236154376471172,
+   "dp_5p5_std_mN": 2.562295528187297,
+   "dp_over_dm_5p5": 0.18805403784312855,
+   "dm_6p25_mN": -25.640023470408835,
+   "dp_6p25_mean_mN": -10.725502665534085,
+   "dp_6p25_std_mN": 3.9863184770416016,
+   "dp_over_dm_6p25": 0.4183109534947343,
+   "top_changes": [
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": 0.3046112887499999
+    },
+    {
+     "param": "wl_a3",
+     "delta_sigma": 0.2951035
+    },
+    {
+     "param": "rocker_bow_end_m",
+     "delta_sigma": -0.13300097499999988
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter055_cand010",
+   "design_hash": "distribution_v2_v2:0057a08c6e63f91f4f574fbd4e04860cde8c334be295d41306e5fef75f34dd43",
+   "dm_5p0_mN": -28.73502452354737,
+   "dp_5p0_mean_mN": -24.067010700630856,
+   "dp_5p0_std_mN": 2.5923055794611267,
+   "dm_5p5_mN": -28.970114714920392,
+   "dp_5p5_mean_mN": -25.658256110762462,
+   "dp_5p5_std_mN": 4.417719520001471,
+   "dp_over_dm_5p5": 0.8856801694867907,
+   "dm_6p25_mN": -34.873290840801374,
+   "dp_6p25_mean_mN": -29.85508198077775,
+   "dp_6p25_std_mN": 4.7918421087825696,
+   "dp_over_dm_6p25": 0.8561016543310455,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.7215187064123285
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.704318825
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.6250021375
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter067_cand010",
+   "design_hash": "distribution_v2_v2:d0014038c61d8aef9f0732817052a9e0ef060c9ed420039bf5df23b02af0740b",
+   "dm_5p0_mN": -30.49120542845607,
+   "dp_5p0_mean_mN": -19.156724646960924,
+   "dp_5p0_std_mN": 3.8548787284592962,
+   "dm_5p5_mN": -39.157508233437,
+   "dp_5p5_mean_mN": -22.268579388200354,
+   "dp_5p5_std_mN": 6.0990810445357635,
+   "dp_over_dm_5p5": 0.5686924524269138,
+   "dm_6p25_mN": -50.77337099828938,
+   "dp_6p25_mean_mN": -25.30539065074779,
+   "dp_6p25_std_mN": 7.742762946563471,
+   "dp_over_dm_6p25": 0.49839886840683395,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.9799732750000001
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.8047109394123286
+    },
+    {
+     "param": "bilge_fwd_xi",
+     "delta_sigma": -0.7952138737499996
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter092_cand011",
+   "design_hash": "distribution_v2_v2:e862f498c64efe46592bc15354907dde5cbf6a5acbfe9bc5df3d85adfa1d4b66",
+   "dm_5p0_mN": -36.16069552698509,
+   "dp_5p0_mean_mN": -19.472910961334048,
+   "dp_5p0_std_mN": 2.7456957940097717,
+   "dm_5p5_mN": -52.36766134390969,
+   "dp_5p5_mean_mN": -24.16627311347679,
+   "dp_5p5_std_mN": 5.032179121556632,
+   "dp_over_dm_5p5": 0.4614732163571652,
+   "dm_6p25_mN": -69.60185254972373,
+   "dp_6p25_mean_mN": -26.92624863095729,
+   "dp_6p25_std_mN": 6.859769109528838,
+   "dp_over_dm_6p25": 0.3868610912578959,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.7813203714123285
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.7684064500000001
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.70596332375
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter034_cand005",
+   "design_hash": "distribution_v2_v2:a1d41e2b8a17152b8657fb2d45feb69a033523cbf47671126ae9823f4af20369",
+   "dm_5p0_mN": -36.77138129169188,
+   "dp_5p0_mean_mN": -0.27207671985318704,
+   "dp_5p0_std_mN": 4.131509779281925,
+   "dm_5p5_mN": -78.90249142210948,
+   "dp_5p5_mean_mN": -12.767082130446385,
+   "dp_5p5_std_mN": 6.619664371398982,
+   "dp_over_dm_5p5": 0.1618083523135606,
+   "dm_6p25_mN": -111.44101401702855,
+   "dp_6p25_mean_mN": -21.648720905186355,
+   "dp_6p25_std_mN": 9.72347906997615,
+   "dp_over_dm_6p25": 0.19426170065069903,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.6475594224123282
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.5874674499999999
+    },
+    {
+     "param": "draft_a1",
+     "delta_sigma": 0.4782976
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter024_cand008",
+   "design_hash": "distribution_v2_v2:a2fd399fa629b316d8a3ee46045cd9da99ccd8119c99b7364affa74960f6edab",
+   "dm_5p0_mN": -40.96885939724704,
+   "dp_5p0_mean_mN": -6.3836857298902,
+   "dp_5p0_std_mN": 3.7217234298779607,
+   "dm_5p5_mN": -80.32531029488688,
+   "dp_5p5_mean_mN": -16.56482795518859,
+   "dp_5p5_std_mN": 5.68877694163233,
+   "dp_over_dm_5p5": 0.20622177361502242,
+   "dm_6p25_mN": -110.89997255145612,
+   "dp_6p25_mean_mN": -22.121389001976052,
+   "dp_6p25_std_mN": 8.464627644702366,
+   "dp_over_dm_6p25": 0.19947154623245755,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.7287324999999999
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.6475594224123282
+    },
+    {
+     "param": "wl_a3",
+     "delta_sigma": -0.5927067833333329
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter015_cand007",
+   "design_hash": "distribution_v2_v2:2439dbe79906ef9c8b0c6467e7fb3898f30869b9ab8c33832e2c559c21a4e1ed",
+   "dm_5p0_mN": -7.264285369285695,
+   "dp_5p0_mean_mN": -10.258009581974711,
+   "dp_5p0_std_mN": 2.1767137820504323,
+   "dm_5p5_mN": 0.3577825200915541,
+   "dp_5p5_mean_mN": -7.135625741303934,
+   "dp_5p5_std_mN": 3.4920891430884127,
+   "dp_over_dm_5p5": -19.944031193804484,
+   "dm_6p25_mN": 2.8982204067311557,
+   "dp_6p25_mean_mN": -4.805151504794024,
+   "dp_6p25_std_mN": 5.086731415128003,
+   "dp_over_dm_6p25": -1.6579662104490036,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.37054107499999994
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.34104430441232847
+    },
+    {
+     "param": "bilge_fwd_m",
+     "delta_sigma": -0.33877319333333417
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter051_cand004",
+   "design_hash": "distribution_v2_v2:2e98ee5860fc411e55743d3a63450e6c842ef9cbf856ba5cea0aa98f497288f3",
+   "dm_5p0_mN": -23.931214818299296,
+   "dp_5p0_mean_mN": -24.34358825565806,
+   "dp_5p0_std_mN": 2.8070122878161414,
+   "dm_5p5_mN": -13.200856225978441,
+   "dp_5p5_mean_mN": -17.59889400813584,
+   "dp_5p5_std_mN": 4.960136224226815,
+   "dp_over_dm_5p5": 1.3331630696425845,
+   "dm_6p25_mN": -12.23040721861679,
+   "dp_6p25_mean_mN": -10.034687687736188,
+   "dp_6p25_std_mN": 5.470389867626058,
+   "dp_over_dm_6p25": 0.8204704478246367,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.8047109394123286
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.7877346249999999
+    },
+    {
+     "param": "bilge_fwd_xi",
+     "delta_sigma": -0.73851547875
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter084_cand001",
+   "design_hash": "distribution_v2_v2:c3e1afb5be89b150fca13a1ce9006e3f876a677909ad20a5e758d93d0b3710ca",
+   "dm_5p0_mN": -38.366824081110366,
+   "dp_5p0_mean_mN": -17.26012663009399,
+   "dp_5p0_std_mN": 5.2537782919103595,
+   "dm_5p5_mN": -65.28450850051826,
+   "dp_5p5_mean_mN": -30.016343966476327,
+   "dp_5p5_std_mN": 7.681789416260034,
+   "dp_over_dm_5p5": 0.4597774365757543,
+   "dm_6p25_mN": -90.21876905644888,
+   "dp_6p25_mean_mN": -43.65102732911793,
+   "dp_6p25_std_mN": 10.84273661329844,
+   "dp_over_dm_6p25": 0.48383532368753523,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.788140075
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.7813203714123285
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.72374849625
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter114_cand007",
+   "design_hash": "distribution_v2_v2:df91abbafa5a519d2156170152640ff316b0b6582c3217f5aaaf9acef31fc43e",
+   "dm_5p0_mN": -34.06656070642589,
+   "dp_5p0_mean_mN": -11.736567419727427,
+   "dp_5p0_std_mN": 3.129128432703944,
+   "dm_5p5_mN": -59.40259936406722,
+   "dp_5p5_mean_mN": -21.683271855411032,
+   "dp_5p5_std_mN": 5.316193740236278,
+   "dp_over_dm_5p5": 0.36502227322609887,
+   "dm_6p25_mN": -82.04112249313056,
+   "dp_6p25_mean_mN": -29.816860017038568,
+   "dp_6p25_std_mN": 7.421876815411749,
+   "dp_over_dm_6p25": 0.36343798220868057,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.7897318744123283
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.72374849625
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.6962907749999999
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter005_cand011",
+   "design_hash": "distribution_v2_v2:2b9fb21a2f00bd02aa0363e1fd4c81e5dd9c57f42cb49f77777531b370d6560c",
+   "dm_5p0_mN": -1.805529905785086,
+   "dp_5p0_mean_mN": 0.9427892742238494,
+   "dp_5p0_std_mN": 2.49725940751861,
+   "dm_5p5_mN": -10.364892799283432,
+   "dp_5p5_mean_mN": -6.082537033615181,
+   "dp_5p5_std_mN": 3.5605659010397255,
+   "dp_over_dm_5p5": 0.5868403225584439,
+   "dm_6p25_mN": -17.13973984452366,
+   "dp_6p25_mean_mN": -16.036158296049003,
+   "dp_6p25_std_mN": 5.7660344456092,
+   "dp_over_dm_6p25": 0.9356127013312128,
+   "top_changes": [
+    {
+     "param": "wl_a2",
+     "delta_sigma": 0.17457258333333317
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.14326165
+    },
+    {
+     "param": "sec_side_fwd_xi",
+     "delta_sigma": 0.14038433671659412
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter022_cand007",
+   "design_hash": "distribution_v2_v2:4702bbefa4270a86baa53c3f3ccd458c641e85decbe951020d2effc42f569ce7",
+   "dm_5p0_mN": -27.516307106525417,
+   "dp_5p0_mean_mN": -5.16813245088042,
+   "dp_5p0_std_mN": 2.9458937680609045,
+   "dm_5p5_mN": -55.59319779565275,
+   "dp_5p5_mean_mN": -15.664965334756825,
+   "dp_5p5_std_mN": 4.35251192448354,
+   "dp_over_dm_5p5": 0.28177845412558344,
+   "dm_6p25_mN": -76.73490738898181,
+   "dp_6p25_mean_mN": -25.744729833979843,
+   "dp_6p25_std_mN": 5.557661430281223,
+   "dp_over_dm_6p25": 0.33550219463321423,
+   "top_changes": [
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.3609473224123283
+    },
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.3254676000000001
+    },
+    {
+     "param": "bilge_fwd_m",
+     "delta_sigma": -0.3211549933333335
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter002_cand009",
+   "design_hash": "distribution_v2_v2:925d830795693ce34c864f74285a13a5ce709a62ea1568cdc315a6360eb6da9d",
+   "dm_5p0_mN": -2.0341929408846937,
+   "dp_5p0_mean_mN": -1.1059489549519583,
+   "dp_5p0_std_mN": 0.47165903325804115,
+   "dm_5p5_mN": -4.424866604390232,
+   "dp_5p5_mean_mN": -3.1748471720738993,
+   "dp_5p5_std_mN": 0.6787628745226165,
+   "dp_over_dm_5p5": 0.7175012166296499,
+   "dm_6p25_mN": -6.298516712162083,
+   "dp_6p25_mean_mN": -5.9296911867471485,
+   "dp_6p25_std_mN": 1.1906670573425298,
+   "dp_over_dm_6p25": 0.941442478877169,
+   "top_changes": [
+    {
+     "param": "bilge_aft_m",
+     "delta_sigma": 0.31568609999999997
+    },
+    {
+     "param": "wl_a1",
+     "delta_sigma": -0.057085939999999835
+    },
+    {
+     "param": "sec_side_aft",
+     "delta_sigma": -0.052419472157578806
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter083_cand006",
+   "design_hash": "distribution_v2_v2:6a4f0bb5a6aea35ec1f90ddf70b55865354094c8fc4db11c5491ba564757032b",
+   "dm_5p0_mN": -24.407315416989483,
+   "dp_5p0_mean_mN": -21.15330852336734,
+   "dp_5p0_std_mN": 3.453902351316228,
+   "dm_5p5_mN": -25.2401971651528,
+   "dp_5p5_mean_mN": -24.70605933324935,
+   "dp_5p5_std_mN": 5.746207093233212,
+   "dp_over_dm_5p5": 0.978837810639574,
+   "dm_6p25_mN": -32.63132529498414,
+   "dp_6p25_mean_mN": -30.53318934654062,
+   "dp_6p25_std_mN": 7.237508015477805,
+   "dp_over_dm_6p25": 0.9357017856468727,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.81496
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.7813203714123285
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.72374849625
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter033_cand011",
+   "design_hash": "distribution_v2_v2:1abfb7a899b81244f76fb64550b5f025f6ed517a8925e9ac07d205ab6d358056",
+   "dm_5p0_mN": -35.47107835748831,
+   "dp_5p0_mean_mN": -7.587495247897845,
+   "dp_5p0_std_mN": 3.544438797974166,
+   "dm_5p5_mN": -66.1312537736487,
+   "dp_5p5_mean_mN": -18.673935213365706,
+   "dp_5p5_std_mN": 5.296418315636622,
+   "dp_over_dm_5p5": 0.2823768513036525,
+   "dm_6p25_mN": -91.1559734098919,
+   "dp_6p25_mean_mN": -29.10688587032644,
+   "dp_6p25_std_mN": 7.328403710282846,
+   "dp_over_dm_6p25": 0.3193085958222884,
+   "top_changes": [
+    {
+     "param": "wl_a3",
+     "delta_sigma": -0.6536323333333331
+    },
+    {
+     "param": "sec_side_aft_xi",
+     "delta_sigma": 0.6475594224123282
+    },
+    {
+     "param": "bilge_aft_xi",
+     "delta_sigma": -0.62980171375
+    }
+   ]
+  },
+  {
+   "candidate_id": "iter005_cand005",
+   "design_hash": "distribution_v2_v2:0600fbbe4afa4026dcd3a655e29047dd013f1dd1595f1bd2febc05a7bed6702e",
+   "dm_5p0_mN": 8.791694118052362,
+   "dp_5p0_mean_mN": -24.095763882579963,
+   "dp_5p0_std_mN": 3.0875012565334328,
+   "dm_5p5_mN": 51.51063333416328,
+   "dp_5p5_mean_mN": -9.172162883034574,
+   "dp_5p5_std_mN": 4.133659229418031,
+   "dp_over_dm_5p5": -0.17806348494168758,
+   "dm_6p25_mN": 79.50481506614793,
+   "dp_6p25_mean_mN": 2.157273406624733,
+   "dp_6p25_std_mN": 5.07080514927455,
+   "dp_over_dm_6p25": 0.02713387113509897,
+   "top_changes": [
+    {
+     "param": "rocker_stern_end_m",
+     "delta_sigma": 0.48099802499999994
+    },
+    {
+     "param": "draft_a1",
+     "delta_sigma": -0.19216326666666664
+    },
+    {
+     "param": "draft_a2",
+     "delta_sigma": -0.1595343833333332
+    }
+   ]
+  }
+ ],
+ "param_correlations_5p5": [
+  {
+   "param": "target_beam_m",
+   "corr_discrep_5p5": 0.5243666120721396,
+   "corr_d_michell_5p5": -0.5058532913858116,
+   "corr_d_panel_5p5": -0.016144557413194788
+  },
+  {
+   "param": "rocker_stern_end_m",
+   "corr_discrep_5p5": -0.467973512793174,
+   "corr_d_michell_5p5": -0.41688284006469006,
+   "corr_d_panel_5p5": -0.9021823357821479
+  },
+  {
+   "param": "sec_side_aft",
+   "corr_discrep_5p5": 0.4499825930697987,
+   "corr_d_michell_5p5": 0.43362530274228894,
+   "corr_d_panel_5p5": 0.9020889023819665
+  },
+  {
+   "param": "wl_a0",
+   "corr_discrep_5p5": 0.405914077939718,
+   "corr_d_michell_5p5": -0.20631938618050186,
+   "corr_d_panel_5p5": 0.18306168796832528
+  },
+  {
+   "param": "rocker_bow_end_m",
+   "corr_discrep_5p5": -0.2949876100368796,
+   "corr_d_michell_5p5": 0.7596641517599393,
+   "corr_d_panel_5p5": 0.5105762799334047
+  },
+  {
+   "param": "bilge_fwd_xi",
+   "corr_discrep_5p5": 0.2736091051279968,
+   "corr_d_michell_5p5": 0.5824033262028899,
+   "corr_d_panel_5p5": 0.8849632762261617
+  },
+  {
+   "param": "sec_side_aft_xi",
+   "corr_discrep_5p5": -0.2733441759010437,
+   "corr_d_michell_5p5": -0.611814254889783,
+   "corr_d_panel_5p5": -0.9157470582173809
+  },
+  {
+   "param": "sec_side_fwd",
+   "corr_discrep_5p5": -0.26169414811987224,
+   "corr_d_michell_5p5": 0.7758483853554359,
+   "corr_d_panel_5p5": 0.5605377885010655
+  },
+  {
+   "param": "draft_a1",
+   "corr_discrep_5p5": 0.255984856339698,
+   "corr_d_michell_5p5": -0.8085816847733974,
+   "corr_d_panel_5p5": -0.6007282220509002
+  },
+  {
+   "param": "bilge_aft_xi",
+   "corr_discrep_5p5": 0.2443521987171494,
+   "corr_d_michell_5p5": 0.6209964330637494,
+   "corr_d_panel_5p5": 0.8968094567688383
+  },
+  {
+   "param": "draft_a2",
+   "corr_discrep_5p5": 0.1559509721047147,
+   "corr_d_michell_5p5": -0.8968004311802873,
+   "corr_d_panel_5p5": -0.7926347663513382
+  },
+  {
+   "param": "wl_a1",
+   "corr_discrep_5p5": -0.057842917342097566,
+   "corr_d_michell_5p5": -0.7187848552651082,
+   "corr_d_panel_5p5": -0.8158512789726886
+  },
+  {
+   "param": "bilge_fwd_m",
+   "corr_discrep_5p5": -0.04926555305119699,
+   "corr_d_michell_5p5": 0.7259567620382877,
+   "corr_d_panel_5p5": 0.7176503300653323
+  },
+  {
+   "param": "bilge_aft_m",
+   "corr_discrep_5p5": -0.03702422700273616,
+   "corr_d_michell_5p5": 0.24275149263934107,
+   "corr_d_panel_5p5": 0.21968005159763143
+  },
+  {
+   "param": "sec_side_fwd_xi",
+   "corr_discrep_5p5": -0.03444480123779093,
+   "corr_d_michell_5p5": 0.506317986054714,
+   "corr_d_panel_5p5": 0.5004411481598658
+  },
+  {
+   "param": "wl_a2",
+   "corr_discrep_5p5": -0.006731700895118318,
+   "corr_d_michell_5p5": -0.3294669559098333,
+   "corr_d_panel_5p5": -0.354424336322425
+  },
+  {
+   "param": "wl_a3",
+   "corr_discrep_5p5": -0.0021002136393170217,
+   "corr_d_michell_5p5": 0.7020966283120326,
+   "corr_d_panel_5p5": 0.7390407694858085
+  }
+ ],
+ "three_grid_vs_seven_grid": [
+  {
+   "speed_kn": 5.0,
+   "base_3grid_N": 1.577461748679685,
+   "base_7grid_N": 1.584483837523038,
+   "spearman_r": 0.9956212370005473,
+   "pearson_r": 0.9972210020043397,
+   "rmse_mN": 1.2702990437435306,
+   "max_abs_diff_mN": 1.9767624614657198,
+   "worst_candidate_id": "iter084_cand001"
+  },
+  {
+   "speed_kn": 5.5,
+   "base_3grid_N": 3.0026891030948324,
+   "base_7grid_N": 2.998455414857531,
+   "spearman_r": 0.9999999999999998,
+   "pearson_r": 0.9997960338824401,
+   "rmse_mN": 0.7425091247637056,
+   "max_abs_diff_mN": 1.3121573207302006,
+   "worst_candidate_id": "iter137_cand004"
+  },
+  {
+   "speed_kn": 5.75,
+   "base_3grid_N": 3.8756736431544083,
+   "base_7grid_N": 3.9117461871462287,
+   "spearman_r": 0.9939792008757526,
+   "pearson_r": 0.9954975252217639,
+   "rmse_mN": 2.0731638767511735,
+   "max_abs_diff_mN": 3.2959644366012952,
+   "worst_candidate_id": "iter067_cand010"
+  },
+  {
+   "speed_kn": 6.25,
+   "base_3grid_N": 5.789706864087836,
+   "base_7grid_N": 5.837151040640415,
+   "spearman_r": 0.9808429118773946,
+   "pearson_r": 0.9867699540612525,
+   "rmse_mN": 2.590874119124428,
+   "max_abs_diff_mN": 5.251099196994957,
+   "worst_candidate_id": "iter008_cand005"
+  }
+ ],
+ "hulls": [
+  {
+   "candidate_id": "baseline",
+   "design_hash": "distribution_v2_v2:a753b604c5348cf250a98ebcfba2b0c193ed5f166afdf34b4ecac75e0d039f2d",
+   "michell_225_N": [
+    0.5236598426964394,
+    0.732130096132003,
+    1.1740550504351417,
+    1.2390344835284994,
+    1.1142770788116676,
+    1.3093675105866713,
+    2.0510640273112895,
+    3.2529921931674806,
+    4.703037619144777,
+    6.203954418897178,
+    7.62517677566148,
+    8.90204956720267,
+    10.016581177652144,
+    10.978042155851421,
+    11.80820086107687,
+    12.5326068686445,
+    13.175783163000185,
+    13.758947251695416
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9173861545369926,
+     1.052518801964622,
+     1.1714222285732485,
+     1.4553622849616987,
+     2.0936311020937253,
+     3.046885264277082,
+     4.067866070306442,
+     4.934929477555244,
+     5.6219524577946185,
+     6.262449193324969
+    ],
+    "45": [
+     0.9081788435412401,
+     0.9918807730594748,
+     1.2528601074589087,
+     1.635812845677244,
+     2.1078781083579363,
+     2.8198613284997327,
+     3.8553553656872785,
+     5.039743065566004,
+     6.0652547253044995,
+     6.755240065247471
+    ],
+    "50": [
+     0.9919761240720898,
+     1.0414414382134833,
+     1.1407953310717993,
+     1.6065269897090526,
+     2.3210113364250633,
+     3.011663692078433,
+     3.71929492191238,
+     4.658415325867144,
+     5.838341431360682,
+     6.98931243861022
+    ],
+    "55": [
+     0.9348805605815812,
+     1.1161971566254993,
+     1.253322422013511,
+     1.4900454106527585,
+     2.175001602322545,
+     3.1765422887063313,
+     4.0523706418635665,
+     4.714884689446357,
+     5.465524435598326,
+     6.51208612505112
+    ],
+    "60": [
+     0.984792489583805,
+     1.027626068642151,
+     1.3095721178647086,
+     1.6597263997505796,
+     2.0823793740230174,
+     2.9349788864924435,
+     4.121223670720728,
+     5.11285123447681,
+     5.707091294141705,
+     6.241905383918128
+    ],
+    "65": [
+     1.027739608113015,
+     1.0913325209913785,
+     1.1868633298472857,
+     1.7031314391011199,
+     2.2994269621311236,
+     2.867385493995474,
+     3.8080573507346807,
+     5.086702114374233,
+     6.133863053842244,
+     6.6483765484890505
+    ],
+    "70": [
+     0.960993470610483,
+     1.1624588813829946,
+     1.2487760728311552,
+     1.5407814928088108,
+     2.347509448846285,
+     3.1318709499532162,
+     3.758055288798522,
+     4.716512943158746,
+     6.028029886440836,
+     7.0891298273073335
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter137_cand004",
+   "design_hash": "distribution_v2_v2:2d99c37cb238cea68522af7e78b1b4c62a148d7d7ac899eff9b51bdb7b90ab79",
+   "michell_225_N": [
+    0.5605203774245026,
+    0.7293917840188638,
+    1.1598838975668448,
+    1.2368814022087575,
+    1.1119597828716492,
+    1.2861660807386421,
+    1.9959864776943232,
+    3.1657128459610826,
+    4.588851029348519,
+    6.069457216344855,
+    7.47607767301571,
+    8.742507332393986,
+    9.849300187647644,
+    10.80459632923902,
+    11.629400142976518,
+    12.34877433523304,
+    12.986960958482046,
+    13.565012068294436
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9237823541218404,
+     1.06091241681155,
+     1.1752649859041917,
+     1.4456781723965904,
+     2.0721636632776717,
+     3.0239813909114726,
+     4.0491098889211585,
+     4.912753238246048,
+     5.580671888864317,
+     6.189587431711446
+    ],
+    "45": [
+     0.9187928778029695,
+     0.9945640423445391,
+     1.2524627436125748,
+     1.6334510174404298,
+     2.0936145913156192,
+     2.7882639505206903,
+     3.8158993284372524,
+     5.007560762924747,
+     6.044606692362585,
+     6.732863789720149
+    ],
+    "50": [
+     1.004867364815969,
+     1.0530050758270895,
+     1.1371297909801799,
+     1.5929339564257143,
+     2.3086134285062125,
+     2.994792689153653,
+     3.6849770437802465,
+     4.607949905822326,
+     5.78902152866539,
+     6.956892394136337
+    ],
+    "55": [
+     0.9416671175393858,
+     1.1266805320474509,
+     1.2616252689985854,
+     1.4782678246584386,
+     2.1477434500959975,
+     3.1529290820607754,
+     4.033393076705527,
+     4.683029913391353,
+     5.412135233364649,
+     6.450068765264212
+    ],
+    "60": [
+     0.9978078482503244,
+     1.0318614254545393,
+     1.3138883896838363,
+     1.6612421344163784,
+     2.0613726593577986,
+     2.895264820432737,
+     4.087454047788836,
+     5.092741620780181,
+     5.68074308077593,
+     6.190791633263828
+    ],
+    "65": [
+     1.0410257695198404,
+     1.1033341108384112,
+     1.1845275981718157,
+     1.6992316222648434,
+     2.2935769785633107,
+     2.8378289157169365,
+     3.7578201684644785,
+     5.044789085318526,
+     6.113510850804247,
+     6.6292295728554995
+    ],
+    "70": [
+     0.9700519577463873,
+     1.1755561611709038,
+     1.2549277087164947,
+     1.528340507676711,
+     2.3347916344014004,
+     3.118751583012787,
+     3.720902099582931,
+     4.65837443389396,
+     5.98043419329891,
+     7.069618935218355
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter139_cand009",
+   "design_hash": "distribution_v2_v2:af7d7c426a9946fa99446c9fedcbbe57d2700948eff55683928ba00f76e0b908",
+   "michell_225_N": [
+    0.5585169676930652,
+    0.7296775062539355,
+    1.1605969913852892,
+    1.2368608234711085,
+    1.1125157842448175,
+    1.2889288428437398,
+    2.001655675956905,
+    3.174123998978804,
+    4.599432167575985,
+    6.081581705684139,
+    7.4892291057269045,
+    8.756319558497001,
+    9.8635386106791,
+    10.819125740721391,
+    11.644150610194215,
+    12.363716706262096,
+    13.002089188700722,
+    13.580335413275387
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9254525093452693,
+     1.062209296992446,
+     1.176282810484585,
+     1.4472302115672515,
+     2.0746892819157154,
+     3.0266949989448255,
+     4.050292456757256,
+     4.911418671324554,
+     5.577097084777131,
+     6.185232588422163
+    ],
+    "45": [
+     0.9201628451941103,
+     0.996550365056902,
+     1.254742431087595,
+     1.6348644876327971,
+     2.094332551757305,
+     2.7896477788188228,
+     3.818494037613516,
+     5.00994177000621,
+     6.044408508685748,
+     6.729070978037297
+    ],
+    "50": [
+     1.0067896507239857,
+     1.0543544043601016,
+     1.1391539730121494,
+     1.595897035619712,
+     2.3106102806352147,
+     2.994883800014745,
+     3.684525336049952,
+     4.608850168724552,
+     5.791148080765953,
+     6.957958959549929
+    ],
+    "55": [
+     0.9437903842858009,
+     1.129031365311386,
+     1.2632123864256188,
+     1.4801707827043356,
+     2.1509178443913575,
+     3.1555525195974288,
+     4.03321554551797,
+     4.681066210494955,
+     5.411121185199082,
+     6.451519719518613
+    ],
+    "60": [
+     0.9995761587719033,
+     1.0342303843253973,
+     1.316983623813551,
+     1.6631745752236144,
+     2.0628513396203827,
+     2.8980247152911627,
+     4.089945096501423,
+     5.092037681982048,
+     5.676741088901376,
+     6.186876696088544
+    ],
+    "65": [
+     1.0434551866786272,
+     1.105144153530192,
+     1.1870583378359774,
+     1.7023232413639262,
+     2.2950342247350424,
+     2.83852860653026,
+     3.760434813600235,
+     5.047665308050901,
+     6.112649729043273,
+     6.623472871510974
+    ],
+    "70": [
+     0.9723283977384217,
+     1.1783447468269541,
+     1.2568432313530755,
+     1.5310741394393665,
+     2.338080407316093,
+     3.1196752298155963,
+     3.720634677121396,
+     4.660021907899565,
+     5.982930821901638,
+     7.067987648852391
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter139_cand002",
+   "design_hash": "distribution_v2_v2:59d5b47ea28a4de1f86fedc62384e023bc4cfd55351d679ef2c281806dd099ce",
+   "michell_225_N": [
+    0.5551637822177655,
+    0.7262338618021067,
+    1.1566839516156604,
+    1.2328531988093443,
+    1.1099476123955616,
+    1.2889960772278866,
+    2.00461970572311,
+    3.1795832963131687,
+    4.606750898988254,
+    6.090160879089873,
+    7.498611966159524,
+    8.766199389466177,
+    9.873730591182984,
+    10.829528552981348,
+    11.654717964984153,
+    12.37443353646039,
+    13.01295627996344,
+    13.591360615882506
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9230225396005852,
+     1.059655704734199,
+     1.1738488177616047,
+     1.44478906360014,
+     2.0710529666421134,
+     3.0203063423826038,
+     4.040785679609234,
+     4.900060543853977,
+     5.566133375652329,
+     6.176084100654673
+    ],
+    "45": [
+     0.9176205757348442,
+     0.9941592038163732,
+     1.2520754441200759,
+     1.6316264415976913,
+     2.0906379183481856,
+     2.785000856227612,
+     3.8114103768251146,
+     4.998978706603224,
+     6.029871094138376,
+     6.712889663004705
+    ],
+    "50": [
+     1.0043175596736575,
+     1.0517019506052194,
+     1.1367390624821707,
+     1.5929472791797923,
+     2.3062387053237567,
+     2.988933174142168,
+     3.6776022396750707,
+     4.600346201505596,
+     5.7794787976599915,
+     6.942189969199706
+    ],
+    "55": [
+     0.9415073132630007,
+     1.1265660429602824,
+     1.2603509035936076,
+     1.4770816801254676,
+     2.146987680788468,
+     3.1492139262442667,
+     4.024430671976765,
+     4.67091817989544,
+     5.4002936719370025,
+     6.438537808859794
+    ],
+    "60": [
+     0.9970298073071391,
+     1.0317471162245508,
+     1.3142548034155002,
+     1.6596049159708024,
+     2.0588354940553297,
+     2.892887459838409,
+     4.082216665671245,
+     5.081055256176469,
+     5.6639621159838205,
+     6.173878857830508
+    ],
+    "65": [
+     1.0412261264709355,
+     1.1024568874189042,
+     1.1845428283001858,
+     1.6992862949000966,
+     2.2903720923696693,
+     2.8327221698644567,
+     3.7533299769726995,
+     5.037753534290367,
+     6.099134612283494,
+     6.607581380410747
+    ],
+    "70": [
+     0.9697894972705932,
+     1.1759601603655627,
+     1.2538839550652143,
+     1.5279905633362643,
+     2.3339121838615036,
+     3.113428822025688,
+     3.713061492273647,
+     4.651177304504345,
+     5.971345268604291,
+     7.0523072192894425
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter003_cand007",
+   "design_hash": "distribution_v2_v2:2ac97e4260bc7dd4f46b464a736ec412660b7b4f37fbd62a44ebe91cb7d58439",
+   "michell_225_N": [
+    0.5244461916882424,
+    0.7340731876198248,
+    1.1780605440254663,
+    1.2440483501851438,
+    1.1189252698105805,
+    1.312913953035342,
+    2.053389715439134,
+    3.254289646100989,
+    4.703577687002596,
+    6.203975142492734,
+    7.6248509518710925,
+    8.901487495441486,
+    10.015844837748933,
+    10.977159768788503,
+    11.807179026545183,
+    12.531438784720798,
+    13.17445426192148,
+    13.757440425040652
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9206584969185011,
+     1.055994082334111,
+     1.1745868443988714,
+     1.4578663212624114,
+     2.0955068026482904,
+     3.048114186199656,
+     4.068223612440837,
+     4.934298440867424,
+     5.620456038038262,
+     6.260182887754587
+    ],
+    "45": [
+     0.9117173540716591,
+     0.9954479004955767,
+     1.2562103349074745,
+     1.6386357398922216,
+     2.109880890222733,
+     2.821075921060143,
+     3.855968975595969,
+     5.039768858417899,
+     6.064547493689009,
+     6.753487779161795
+    ],
+    "50": [
+     0.9957944391453328,
+     1.0453611856431426,
+     1.1443381394856762,
+     1.609597119699243,
+     2.3235076735925455,
+     3.01317302170685,
+     3.7196582392756294,
+     4.658010847053338,
+     5.837626836764784,
+     6.988378756072825
+    ],
+    "55": [
+     0.9386532338422549,
+     1.120447191782193,
+     1.2573858937413378,
+     1.4933691540698821,
+     2.177635234634161,
+     3.178583222744607,
+     4.053320993294253,
+     4.714645039746004,
+     5.464786691946224,
+     6.511487651764803
+    ],
+    "60": [
+     0.9890301460515778,
+     1.0317427996522295,
+     1.3137562171078059,
+     1.6633926242986898,
+     2.0848650757469422,
+     2.936731128662375,
+     4.122743893674345,
+     5.113524548704236,
+     5.706371803742081,
+     6.240171860711112
+    ],
+    "65": [
+     1.0320401167702504,
+     1.0958281910956953,
+     1.1907692343186638,
+     1.7069731785983233,
+     2.3027792212996863,
+     2.869063522010532,
+     3.8088652954629056,
+     5.087401932000438,
+     6.134156724966566,
+     6.647529383669919
+    ],
+    "70": [
+     0.9650169733050834,
+     1.1673906851648064,
+     1.25330035614039,
+     1.544187331529998,
+     2.35072755454266,
+     3.1341459153137485,
+     3.7589346244913444,
+     4.716837734139493,
+     6.02892817005057,
+     7.089825888410323
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter015_cand010",
+   "design_hash": "distribution_v2_v2:c3b0c6be0191b2a02cb8a0f9a0af7371309da99d6f4ef14277b39ebe81be589f",
+   "michell_225_N": [
+    0.5300152030989405,
+    0.726803432014304,
+    1.1604705069782233,
+    1.2255511329946618,
+    1.1040720521160559,
+    1.301612961893459,
+    2.04403652796823,
+    3.245472478206587,
+    4.694468528881949,
+    6.194207124143694,
+    7.614322185756128,
+    8.890220742500247,
+    10.00391147289746,
+    10.964640960727188,
+    11.794153909393922,
+    12.517980493903986,
+    13.160629393795139,
+    13.743304900633873
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9109717998316207,
+     1.0465066060943038,
+     1.1669857077654329,
+     1.4503892339332616,
+     2.086531399506665,
+     3.038433433312393,
+     4.0592543720598435,
+     4.925476486154137,
+     5.60894748763811,
+     6.24288390973552
+    ],
+    "45": [
+     0.9048046292757894,
+     0.9844192380719697,
+     1.244559487100789,
+     1.6298731424892696,
+     2.1027469556517415,
+     2.8120792608784315,
+     3.8442768126952997,
+     5.027622521288728,
+     6.053979380925165,
+     6.74339022329641
+    ],
+    "50": [
+     0.9894151558190784,
+     1.0384757531874753,
+     1.1331087030964355,
+     1.595696034735503,
+     2.3123738874227717,
+     3.0056259556250353,
+     3.711274532055138,
+     4.645433563238926,
+     5.8221909073098645,
+     6.973996175674414
+    ],
+    "55": [
+     0.9298652998917353,
+     1.1124109731361596,
+     1.2509498285288063,
+     1.482569482896649,
+     2.1620322501173086,
+     3.1648176612762655,
+     4.044734696266091,
+     4.706688833120045,
+     5.451917512881265,
+     6.493250717441535
+    ],
+    "60": [
+     0.9825618607451794,
+     1.0213410993741525,
+     1.3048631135833129,
+     1.6573827299341384,
+     2.074305739532386,
+     2.919863021462866,
+     4.1067713073401215,
+     5.104018212995801,
+     5.699172196690283,
+     6.227780271910214
+    ],
+    "65": [
+     1.0256853433023374,
+     1.0887556072521183,
+     1.1797179058195288,
+     1.6976074305121436,
+     2.2968153759243757,
+     2.85820120872793,
+     3.7905052229945375,
+     5.0696215620447616,
+     6.124028116598678,
+     6.64170513596222
+    ],
+    "70": [
+     0.9567927482710616,
+     1.1603216185283058,
+     1.245598408971578,
+     1.5319912383552639,
+     2.340969983888972,
+     3.1283886761247075,
+     3.7471046718084566,
+     4.6961924391469,
+     6.008100033210934,
+     7.077740009445723
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter010_cand005",
+   "design_hash": "distribution_v2_v2:2235e7fd256058ef4f23e96669d693b72cc2d19306d9ba581c0713cdea45349c",
+   "michell_225_N": [
+    0.5219670181613177,
+    0.7242705396832744,
+    1.1608984103513524,
+    1.2256853412741258,
+    1.105059738765354,
+    1.3060349418745714,
+    2.053381805820384,
+    3.2598387734419343,
+    4.713164678331787,
+    6.216331020158395,
+    7.639070887752156,
+    8.916995898367778,
+    10.032310830958641,
+    10.994422533668622,
+    11.825180478153294,
+    12.550183605093608,
+    13.193981841530185,
+    13.777801557143272
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.910009738872009,
+     1.0470250044475413,
+     1.1658058738078165,
+     1.4474831095129472,
+     2.08465598455864,
+     3.039349213892431,
+     4.061834512650325,
+     4.927459356052735,
+     5.6102583487233035,
+     6.246734740408717
+    ],
+    "45": [
+     0.8992837614027281,
+     0.9837789465109846,
+     1.2487196278378538,
+     1.6332012651450023,
+     2.101054424091846,
+     2.8075784082227786,
+     3.8420366764679748,
+     5.029846533036136,
+     6.0582078133594806,
+     6.745894275387053
+    ],
+    "50": [
+     0.9838369081394712,
+     1.0330602335119792,
+     1.1325111877531444,
+     1.6021267060830156,
+     2.3199080519592474,
+     3.006286807896328,
+     3.7047470551709982,
+     4.638761279305292,
+     5.821952863309774,
+     6.980296541851926
+    ],
+    "55": [
+     0.9250020716250114,
+     1.1085577428869229,
+     1.2469497711366488,
+     1.4820259515379197,
+     2.1691819202486524,
+     3.175367698948629,
+     4.048100170095553,
+     4.698825974590991,
+     5.439898719503755,
+     6.487384086475708
+    ],
+    "60": [
+     0.9762791729988167,
+     1.0175156170909716,
+     1.3035848961137035,
+     1.655403215395827,
+     2.0736189238039313,
+     2.9264532742390297,
+     4.118945293994999,
+     5.110138224363725,
+     5.691149786215339,
+     6.211060378869516
+    ],
+    "65": [
+     1.0194286449184922,
+     1.0832610103697926,
+     1.177417800175334,
+     1.698984608535532,
+     2.2963672184613255,
+     2.8568235599672307,
+     3.7958404903469507,
+     5.082382841974826,
+     6.132012362934336,
+     6.632942287894117
+    ],
+    "70": [
+     0.9504810408524229,
+     1.1553044425383627,
+     1.2412408554887104,
+     1.5312827145559864,
+     2.344259028809894,
+     3.1284390080093076,
+     3.744048237979535,
+     4.699789724857316,
+     6.021413766674118,
+     7.088019315062391
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter007_cand003",
+   "design_hash": "distribution_v2_v2:f60f30e32f4a3504d9e2ff539b51fd8846f40e3bd5a9ba0dbfaf6904d05f8bca",
+   "michell_225_N": [
+    0.5475475977510944,
+    0.7360953797976005,
+    1.1789916769083726,
+    1.2542309286857,
+    1.1262532390533075,
+    1.3026379500164258,
+    2.018914689939409,
+    3.1965183450066874,
+    4.6269752905630055,
+    6.113568967193163,
+    7.524818573618017,
+    8.79479832256487,
+    9.904390582863336,
+    10.862020057454535,
+    11.68889111822959,
+    12.410200424183492,
+    13.050270506395947,
+    13.630205538827925
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9288922228648837,
+     1.0659457599635667,
+     1.182155394346828,
+     1.4568902814956026,
+     2.085569735084025,
+     3.034671662289595,
+     4.055760701201176,
+     4.920759787118749,
+     5.598680543902721,
+     6.223488159178584
+    ],
+    "45": [
+     0.9232684848881951,
+     1.0022896076723604,
+     1.2600972462509292,
+     1.6408523747813533,
+     2.1053385222000287,
+     2.8057558327668928,
+     3.833795914318736,
+     5.019116564538497,
+     6.0494676857681515,
+     6.739296246563426
+    ],
+    "50": [
+     1.0086417760484159,
+     1.0583085444794131,
+     1.1473758375748817,
+     1.6044473818127891,
+     2.31771573615402,
+     3.005521440839753,
+     3.702962215799244,
+     4.6311275188553624,
+     5.808400430502695,
+     6.966020492909016
+    ],
+    "55": [
+     0.9478362488838843,
+     1.1320963814611105,
+     1.2679035442919728,
+     1.4910766041542731,
+     2.16354101426883,
+     3.164508744110284,
+     4.042901371074688,
+     4.699289624196576,
+     5.437620995007021,
+     6.476598120592297
+    ],
+    "60": [
+     1.0020644352414125,
+     1.0401294600215287,
+     1.3212090492529274,
+     1.6689143137415858,
+     2.076750096309489,
+     2.9149738430925733,
+     4.101347421221782,
+     5.100587976857851,
+     5.693309876498911,
+     6.215314048547538
+    ],
+    "65": [
+     1.0451507697660007,
+     1.1089967342951674,
+     1.1948510423194627,
+     1.7081107937659772,
+     2.30256569640985,
+     2.8558116681757633,
+     3.7813529535386317,
+     5.0610462559186375,
+     6.1197168795470045,
+     6.637403683486545
+    ],
+    "70": [
+     0.9759990297743139,
+     1.18083033308701,
+     1.2626428375168788,
+     1.5412565230069892,
+     2.3453761039915246,
+     3.1293043820726507,
+     3.741730185105291,
+     4.685363775687051,
+     5.99871003586195,
+     7.07465397455434
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter032_cand006",
+   "design_hash": "distribution_v2_v2:49c5c2cc8054449cc21ee31c0bd56062bc496674243c3bbf32d40d3ff79e84af",
+   "michell_225_N": [
+    0.5110436995233812,
+    0.70566870956328,
+    1.1198921314489003,
+    1.1723625962954625,
+    1.0607572225744215,
+    1.284538912742669,
+    2.0574553328260414,
+    3.285600114568642,
+    4.754671058046164,
+    6.268129224006839,
+    7.697083951710782,
+    8.978541573571368,
+    10.095813560460826,
+    11.059073495114749,
+    11.890668396245985,
+    12.61649367574253,
+    13.261261282900149,
+    13.846278560600483
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.8833352857068192,
+     1.0152099979236886,
+     1.1400902585134618,
+     1.4355597010408911,
+     2.0835657427915093,
+     3.0405721801738554,
+     4.061220527514901,
+     4.928093963238647,
+     5.61737578722673,
+     6.261145569363332
+    ],
+    "45": [
+     0.8749222991128665,
+     0.9561245261729465,
+     1.2185330903492335,
+     1.6081066489226585,
+     2.091999146321048,
+     2.8156662883149255,
+     3.8562803158995282,
+     5.0383169979695035,
+     6.058808763629506,
+     6.746132647336604
+    ],
+    "50": [
+     0.9572584534048973,
+     1.0045623829201529,
+     1.108697412472734,
+     1.5792861764918227,
+     2.298579499523768,
+     2.9980373940986214,
+     3.7170456171013933,
+     4.6632643464960335,
+     5.841810551621754,
+     6.984936393268051
+    ],
+    "55": [
+     0.9008044332283026,
+     1.0781513178448439,
+     1.2188031467994331,
+     1.4648160989195103,
+     2.1562621547789793,
+     3.15982259489015,
+     4.039868527587358,
+     4.7115576780070025,
+     5.470839100390947,
+     6.518346818164089
+    ],
+    "60": [
+     0.9499201839921685,
+     0.990731365774156,
+     1.2745617044101,
+     1.631135473438153,
+     2.064338724082298,
+     2.9232525723770397,
+     4.108782979429371,
+     5.100474218301697,
+     5.701139384597101,
+     6.244771517871619
+    ],
+    "65": [
+     0.9929590674310081,
+     1.0533739429192448,
+     1.153727736288526,
+     1.6748315409499954,
+     2.2773478901083366,
+     2.8549048583734966,
+     3.801178759513232,
+     5.077282820659108,
+     6.1210963397088225,
+     6.639384042786152
+    ],
+    "70": [
+     0.9266286527766473,
+     1.1240245610854924,
+     1.2138455062191418,
+     1.5143449545178518,
+     2.325647492195558,
+     3.114562692512575,
+     3.7492763536282294,
+     4.7125963376785895,
+     6.019772168989933,
+     7.074396964811988
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter085_cand009",
+   "design_hash": "distribution_v2_v2:98929245bb28ed4c7054fc353dac4dd3e3983de3f0ca6b3e81ac5abaa778e637",
+   "michell_225_N": [
+    0.5236811606984018,
+    0.7034442033914436,
+    1.1169031823220275,
+    1.1760008518038214,
+    1.0621430867760806,
+    1.2728104402217244,
+    2.0276979559360155,
+    3.2384099442150887,
+    4.693287465297201,
+    6.196226603527693,
+    7.617724530002469,
+    8.893902108351833,
+    10.00727859651186,
+    10.967423378091228,
+    11.796283355774605,
+    12.51949856973652,
+    13.161634982745149,
+    13.7439139210257
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.8879774796146837,
+     1.0204673132251978,
+     1.141369912157457,
+     1.4286512732649677,
+     2.07049547627528,
+     3.0273232071379383,
+     4.050097322541637,
+     4.91419561289354,
+     5.591629507146688,
+     6.216719680026154
+    ],
+    "45": [
+     0.8806221691659009,
+     0.9588569564205583,
+     1.2194816779644706,
+     1.6058661070914872,
+     2.081249949758586,
+     2.7951703448495935,
+     3.8326644588894223,
+     5.019703014409335,
+     6.046141738853855,
+     6.731044374224157
+    ],
+    "50": [
+     0.9642537095783089,
+     1.0105025659739917,
+     1.1070680781986395,
+     1.572814401980803,
+     2.2911093652536203,
+     2.985269006972692,
+     3.6933054784714745,
+     4.631693931304068,
+     5.812769453458197,
+     6.966347675817556
+    ],
+    "55": [
+     0.9047005292229072,
+     1.0843514045159233,
+     1.222297759872876,
+     1.4571878476751097,
+     2.1413407226700483,
+     3.1462970651644713,
+     4.025803283996269,
+     4.688096219257417,
+     5.435888400907903,
+     6.480830338045718
+    ],
+    "60": [
+     0.9557612308292487,
+     0.9932255052423301,
+     1.277196026760194,
+     1.6298672952805355,
+     2.049826266939117,
+     2.9000720229103174,
+     4.089402029218627,
+     5.086156769640644,
+     5.6802933607265285,
+     6.209841292100064
+    ],
+    "65": [
+     0.9994047858423811,
+     1.0585467153540642,
+     1.1519399329740663,
+     1.6719105024466439,
+     2.270691897682481,
+     2.834245858707875,
+     3.771192335650407,
+     5.053109305113239,
+     6.106833437116858,
+     6.622250115556362
+    ],
+    "70": [
+     0.9307512644257041,
+     1.1304672451162652,
+     1.2148614270334888,
+     1.506161576184321,
+     2.317488665353975,
+     3.103293664167224,
+     3.723087028537816,
+     4.677094928432064,
+     5.992599687314857,
+     7.0617100066057
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter003_cand006",
+   "design_hash": "distribution_v2_v2:3868ac9d6f3b9db43bb61f6ddc64827db76034521027199f4b65126dcd47d188",
+   "michell_225_N": [
+    0.5115612485723335,
+    0.7215909827418316,
+    1.1569863102693725,
+    1.2163670004437028,
+    1.0950787487431852,
+    1.3010586599068377,
+    2.055986799605768,
+    3.26983227423671,
+    4.729054528694331,
+    6.236412089773984,
+    7.661928370056038,
+    8.941630461122594,
+    10.058096156558266,
+    11.021008534041336,
+    11.852405634957753,
+    12.578002057712956,
+    13.222413747265318,
+    13.80690215054582
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9017999969360979,
+     1.0361436950147247,
+     1.1575777412902069,
+     1.446191357482142,
+     2.088677392651078,
+     3.0443060537196907,
+     4.066626272236386,
+     4.935379768879405,
+     5.6252924946007425,
+     6.269239291483143
+    ],
+    "45": [
+     0.8924550296632251,
+     0.976048545023433,
+     1.2383748303377116,
+     1.6244734055897203,
+     2.1012569327294046,
+     2.8177853621562505,
+     3.855672122307164,
+     5.040312497838967,
+     6.065615395695567,
+     6.756439388451402
+    ],
+    "50": [
+     0.9751898301166699,
+     1.024572493407491,
+     1.126769429357624,
+     1.5955448708202522,
+     2.312936314702663,
+     3.00725272631752,
+     3.7189387175428608,
+     4.660651665602992,
+     5.840778192379258,
+     6.990467689896943
+    ],
+    "55": [
+     0.9182343828017916,
+     1.0987142293671373,
+     1.238295885279033,
+     1.4795629567212971,
+     2.1679526016965873,
+     3.1712832784544425,
+     4.049145241805135,
+     4.714783347697005,
+     5.468723573486177,
+     6.516346194955529
+    ],
+    "60": [
+     0.96794179263334,
+     1.0103634164690247,
+     1.2937712159410633,
+     1.647773372822467,
+     2.0752952981938186,
+     2.9311274524711894,
+     4.1185048756951215,
+     5.111051348164554,
+     5.70713300484747,
+     6.244354148059655
+    ],
+    "65": [
+     1.0102701219098527,
+     1.073758156341091,
+     1.1715170606152487,
+     1.6907282511157744,
+     2.291040030865825,
+     2.863180065023098,
+     3.8064747422580703,
+     5.085660736860814,
+     6.13270656477298,
+     6.648324512772234
+    ],
+    "70": [
+     0.9435417384574355,
+     1.1443056164225132,
+     1.2331922670355921,
+     1.5284455107162584,
+     2.3383518695327257,
+     3.126443823445024,
+     3.7562553751006056,
+     4.716798440896799,
+     6.028138596413347,
+     7.088345455588784
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter005_cand001",
+   "design_hash": "distribution_v2_v2:8789adc2cdf507f720c213b51b6698b736b854d07242c815d61aba9ad55ef266",
+   "michell_225_N": [
+    0.5371503204458854,
+    0.7362383912507694,
+    1.1830290787120636,
+    1.255975728249512,
+    1.1279015051232035,
+    1.3087243414335237,
+    2.0319805279877823,
+    3.216743197213604,
+    4.653251889041555,
+    6.144464937498023,
+    7.559076072612605,
+    8.831491844830502,
+    9.942912242998894,
+    10.90201073798874,
+    11.73016057924357,
+    12.452666272816321,
+    13.093912469966739,
+    13.675040031067141
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9278729603522413,
+     1.064700338920297,
+     1.1810193581414103,
+     1.4578997391705568,
+     2.089392061817392,
+     3.0397541527113288,
+     4.060194363969845,
+     4.924932811205726,
+     5.605186006940328,
+     6.235387139024091
+    ],
+    "45": [
+     0.9202029344096808,
+     1.0019504969514381,
+     1.2612814332642421,
+     1.641675597624535,
+     2.1069028572241537,
+     2.810190501681052,
+     3.8408741587908106,
+     5.026149237851775,
+     6.054506855589657,
+     6.743241579602139
+    ],
+    "50": [
+     1.0053152980743383,
+     1.0548682563235101,
+     1.1478935951406557,
+     1.6086490083724643,
+     2.3214160272927047,
+     3.007919847684759,
+     3.7071330730266205,
+     4.639008798312388,
+     5.818257302488941,
+     6.974294713921533
+    ],
+    "55": [
+     0.9458438291303086,
+     1.129578810599202,
+     1.265083866381036,
+     1.4927522488766571,
+     2.1703025859125074,
+     3.1711422088692234,
+     4.046154733681867,
+     4.702006666663227,
+     5.444021988532038,
+     6.487069870801086
+    ],
+    "60": [
+     0.9981198988540497,
+     1.0387647037392942,
+     1.3203342520549686,
+     1.6673648280987898,
+     2.0794147781321555,
+     2.9235400552054513,
+     4.110503084032496,
+     5.105183651995194,
+     5.695279762880224,
+     6.22034666955694
+    ],
+    "65": [
+     1.0413401374192632,
+     1.1052820840031607,
+     1.1950018294968343,
+     1.709272439234505,
+     2.3024389415070936,
+     2.8596983882513456,
+     3.7916691436934005,
+     5.0720612958262,
+     6.1251525323710885,
+     6.638238756672761
+    ],
+    "70": [
+     0.973088435076571,
+     1.177241982503662,
+     1.2600564767113889,
+     1.5436077423840748,
+     2.348329112417028,
+     3.130271255784654,
+     3.7462836757155884,
+     4.696594537628644,
+     6.010994262755675,
+     7.0802426438966455
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter008_cand005",
+   "design_hash": "distribution_v2_v2:6c6cc0bff307fbc516c3f0cedfa19fe4d71cf7214e1e55ad65ea8076ee5892a0",
+   "michell_225_N": [
+    0.5340561317097002,
+    0.7415906736047084,
+    1.1926218846566934,
+    1.2645396609936965,
+    1.1366090242245384,
+    1.3210220739766565,
+    2.0499879168869533,
+    3.240738499565708,
+    4.682437632398462,
+    6.177729672301697,
+    7.595411938394615,
+    8.87013891090277,
+    9.983355783078155,
+    10.943934959366244,
+    11.773383866183572,
+    12.497094869814028,
+    13.13950389733032,
+    13.721785561853808
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9340059775345585,
+     1.0721107245242083,
+     1.1879217569701976,
+     1.4644918748959639,
+     2.0971958525284538,
+     3.049587244630096,
+     4.071443123070973,
+     4.936735332461326,
+     5.618242363761148,
+     6.25216671886657
+    ],
+    "45": [
+     0.9239227287650678,
+     1.0091127296072055,
+     1.2718874809049783,
+     1.6523894603927995,
+     2.115478016799983,
+     2.8180950554960162,
+     3.850621439960791,
+     5.03867902160698,
+     6.068391817553786,
+     6.756954658794685
+    ],
+    "50": [
+     1.0093726689368285,
+     1.059530993763964,
+     1.1559152859401614,
+     1.6216247293784252,
+     2.335994853955784,
+     3.0193632166031033,
+     3.714990451339471,
+     4.647189964081871,
+     5.830308766682657,
+     6.990024760874715
+    ],
+    "55": [
+     0.9505847220095444,
+     1.1358311957414142,
+     1.2717508216756341,
+     1.501831446727211,
+     2.1849309585102152,
+     3.1888548379248434,
+     4.060427037173017,
+     4.710355432679011,
+     5.450209494174869,
+     6.4972633466717085
+    ],
+    "60": [
+     1.0022688920233576,
+     1.0447965939708284,
+     1.3288739453492133,
+     1.676366223532705,
+     2.0897753321944923,
+     2.9392330352961764,
+     4.130598204916505,
+     5.122303781786113,
+     5.704227518809122,
+     6.224299966395262
+    ],
+    "65": [
+     1.046012019450086,
+     1.1107263208750717,
+     1.2025900850933398,
+     1.7204195382279703,
+     2.313443007906214,
+     2.8702889810039163,
+     3.807218017474489,
+     5.0936440153230595,
+     6.14482179006405,
+     6.648036481737163
+    ],
+    "70": [
+     0.9771554316288824,
+     1.1835323874553243,
+     1.2669165807611718,
+     1.5531803385631977,
+     2.3624864382275077,
+     3.143608011090243,
+     3.7571058020207437,
+     4.711579616142051,
+     6.033455362161111,
+     7.101776007524
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter004_cand002",
+   "design_hash": "distribution_v2_v2:face4cca8d222f7e42f9e218b4e0bd8cb12c65c9052bb6dcb7418811e8f56eae",
+   "michell_225_N": [
+    0.5316969749316524,
+    0.7361260437076208,
+    1.1799337078107417,
+    1.2489933633528987,
+    1.1237471786016962,
+    1.3133987211188953,
+    2.0475247543921644,
+    3.24219562332844,
+    4.686427417771421,
+    6.183138639807407,
+    7.601481519449627,
+    8.876409543732262,
+    9.989583397518214,
+    10.950012098904065,
+    11.779288502094522,
+    12.502851703273855,
+    13.1451610823956,
+    13.727397465290338
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9242840129896939,
+     1.0606208683226857,
+     1.1777823880728948,
+     1.4570482794902602,
+     2.090973519633638,
+     3.0423147052450696,
+     4.062746052585403,
+     4.928135547995042,
+     5.6110210532644835,
+     6.245979263523304
+    ],
+    "45": [
+     0.9155430131897289,
+     0.9987240789667479,
+     1.2595071455753972,
+     1.6409127219229729,
+     2.107929272729628,
+     2.813588918888065,
+     3.8454452361149647,
+     5.030088190031437,
+     6.057158723575116,
+     6.746277955408003
+    ],
+    "50": [
+     1.0002517395945465,
+     1.0499240024280123,
+     1.1460914300823382,
+     1.6097520090512822,
+     2.323374336139045,
+     3.0102728185105705,
+     3.710836626142954,
+     4.644103810272572,
+     5.823353988366823,
+     6.977813921138241
+    ],
+    "55": [
+     0.941825504700325,
+     1.1249918230077462,
+     1.2613752076584388,
+     1.492879074093949,
+     2.173975118815513,
+     3.175299171759364,
+     4.0493340624231084,
+     4.70537012915774,
+     5.448856440513466,
+     6.492687080566597
+    ],
+    "60": [
+     0.993225592086949,
+     1.0349035697662008,
+     1.3172772268437964,
+     1.6658737158562682,
+     2.0819227299656196,
+     2.9295350423950604,
+     4.1164702332041,
+     5.108738731220692,
+     5.697690888391098,
+     6.224071976571903
+    ],
+    "65": [
+     1.0362486466136382,
+     1.1004574351323975,
+     1.1925706200575472,
+     1.708379814711284,
+     2.30299655427673,
+     2.863676338599371,
+     3.7988814583087707,
+     5.079124558182841,
+     6.128846975252489,
+     6.639392715405622
+    ],
+    "70": [
+     0.968319939640505,
+     1.172156980372708,
+     1.2566575751975935,
+     1.5433711894838913,
+     2.349748549722916,
+     3.1326356005416827,
+     3.751430872903496,
+     4.704358541322439,
+     6.018050696460698,
+     7.083419824683029
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter055_cand010",
+   "design_hash": "distribution_v2_v2:0057a08c6e63f91f4f574fbd4e04860cde8c334be295d41306e5fef75f34dd43",
+   "michell_225_N": [
+    0.5290190954818332,
+    0.7087034395778736,
+    1.1286184518614883,
+    1.1917196759296946,
+    1.0745192975058007,
+    1.2768432271203412,
+    2.022329002787742,
+    3.2250306482511166,
+    4.674067504429857,
+    6.173169457341059,
+    7.592334743929254,
+    8.86717627636187,
+    9.979809400841011,
+    10.939527347121247,
+    11.768097065167174,
+    12.49105424422843,
+    13.132909461437892,
+    13.714860122088215
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.8964281222637243,
+     1.0302684903632124,
+     1.150089205181867,
+     1.4340516269586874,
+     2.0725437919828265,
+     3.0273700163876733,
+     4.049149793468555,
+     4.912106605054122,
+     5.588356180485043,
+     6.213033149627088
+    ],
+    "45": [
+     0.8893042383537377,
+     0.967689762517042,
+     1.2282717554597702,
+     1.6135004152546397,
+     2.0856571850866783,
+     2.795651900976811,
+     3.8305927831512268,
+     5.016864059861034,
+     6.043164897439933,
+     6.727347628480042
+    ],
+    "50": [
+     0.9735649780241314,
+     1.0204494873802417,
+     1.1152632455041849,
+     1.5796148537692785,
+     2.296916072630385,
+     2.988562521307531,
+     3.6927089332220544,
+     4.628100162800728,
+     5.80855385805255,
+     6.963070968383705
+    ],
+    "55": [
+     0.9136085614792991,
+     1.0945282733268697,
+     1.23195080004387,
+     1.4639695119131586,
+     2.145753302920542,
+     3.1498684049346797,
+     4.028158255918247,
+     4.68712729976251,
+     5.431814456138423,
+     6.476209145270038
+    ],
+    "60": [
+     0.9655327320259899,
+     1.0029583366519248,
+     1.2867540456258966,
+     1.638358725294468,
+     2.0549170267202914,
+     2.902344301515444,
+     4.091324886771481,
+     5.087439306766544,
+     5.678818143269774,
+     6.204971449486857
+    ],
+    "65": [
+     1.009196322734232,
+     1.0692991371332425,
+     1.160826133955,
+     1.6798165207776856,
+     2.2773795516334028,
+     2.8375912871277196,
+     3.771850907510293,
+     5.0538701587167925,
+     6.107813214656338,
+     6.621022939901443
+    ],
+    "70": [
+     0.9401871499040094,
+     1.1413703472440648,
+     1.225327375306236,
+     1.5136061337889304,
+     2.3235920499248093,
+     3.1081916789775175,
+     3.725050997889295,
+     4.676622556863477,
+     5.9925509605754055,
+     7.06242116140219
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter067_cand010",
+   "design_hash": "distribution_v2_v2:d0014038c61d8aef9f0732817052a9e0ef060c9ed420039bf5df23b02af0740b",
+   "michell_225_N": [
+    0.5362506081994164,
+    0.7147274161950431,
+    1.1356411928983607,
+    1.2003061010143878,
+    1.0818675860134357,
+    1.2801700570692731,
+    2.0205728218828334,
+    3.218560341053758,
+    4.66388011091134,
+    6.1603158408787495,
+    7.577662646378355,
+    8.851276196204381,
+    9.963048904971467,
+    10.922110777212158,
+    11.75011948546782,
+    12.472543987649455,
+    13.113858051315747,
+    13.695238253676076
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.901990835149481,
+     1.036412881260869,
+     1.1560786424266922,
+     1.4382545981296535,
+     2.0750169678199013,
+     3.0301791535021185,
+     4.053972647930878,
+     4.918202653228377,
+     5.5927003967500095,
+     6.212208062461847
+    ],
+    "45": [
+     0.8966445576818914,
+     0.9733207910625025,
+     1.2329351806874036,
+     1.6187284366571848,
+     2.0902629849620062,
+     2.7980477404777626,
+     3.8319239897164015,
+     5.020214963439369,
+     6.050228385728278,
+     6.736493864702092
+    ],
+    "50": [
+     0.9813010201560497,
+     1.028977735318504,
+     1.1205448714395185,
+     1.5822870775043414,
+     2.300739473788356,
+     2.9937336000255583,
+     3.6963905600457876,
+     4.629080824082896,
+     5.809588954319177,
+     6.968005813947647
+    ],
+    "55": [
+     0.9201458665467865,
+     1.1023556178344693,
+     1.2405682471513724,
+     1.4684662374756596,
+     2.146349050963497,
+     3.152029929511415,
+     4.034188965235662,
+     4.6934528012893315,
+     5.434412007687262,
+     6.476043281422685
+    ],
+    "60": [
+     0.9739712534359963,
+     1.0095734837342365,
+     1.2935724226865486,
+     1.6462050379498272,
+     2.0589304242292825,
+     2.9019651704748597,
+     4.092614753139149,
+     5.094381207715371,
+     5.688039987108088,
+     6.210751583582063
+    ],
+    "65": [
+     1.0172080339274214,
+     1.0783717727872597,
+     1.1666267643672021,
+     1.6855574435404639,
+     2.2850041038398055,
+     2.841470364876815,
+     3.7705075305475884,
+     5.054203120986708,
+     6.115499549407754,
+     6.633172445872344
+    ],
+    "70": [
+     0.9474285920072765,
+     1.1500898233329846,
+     1.2339617002460548,
+     1.5177909588754073,
+     2.3283601015157904,
+     3.115881889416781,
+     3.7290124785993863,
+     4.674761350355118,
+     5.992450268927108,
+     7.071429844876022
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter092_cand011",
+   "design_hash": "distribution_v2_v2:e862f498c64efe46592bc15354907dde5cbf6a5acbfe9bc5df3d85adfa1d4b66",
+   "michell_225_N": [
+    0.5391027093678428,
+    0.7164408694713539,
+    1.137627150003678,
+    1.2033632740210383,
+    1.0839094195170336,
+    1.2788601008651388,
+    2.0149033317843044,
+    3.208731945914039,
+    4.650669957800868,
+    6.144587017966126,
+    7.560131037067096,
+    8.832447714652947,
+    9.943244119994533,
+    10.901504497346307,
+    11.728792699627137,
+    12.450515824892774,
+    13.091110715390304,
+    13.671733676113483
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.904813648903659,
+     1.0386076084845843,
+     1.1566762579681962,
+     1.4377417091053037,
+     2.0741939721728526,
+     3.029239610063159,
+     4.05273666738498,
+     4.916698549820324,
+     5.591016529390343,
+     6.210831763616869
+    ],
+    "45": [
+     0.8981465752770992,
+     0.9758000823212567,
+     1.234932442799491,
+     1.6186127507426082,
+     2.0885110200410546,
+     2.7961899088203865,
+     3.8306303058245756,
+     5.019281837743751,
+     6.049251653610013,
+     6.735489466959794
+    ],
+    "50": [
+     0.9824980281613829,
+     1.0294151479803901,
+     1.1217657755313142,
+     1.5836397811350533,
+     2.300062069475428,
+     2.991221662838242,
+     3.693841106476423,
+     4.627777112659847,
+     5.8090588197298265,
+     6.967237620000031
+    ],
+    "55": [
+     0.9222773062168741,
+     1.103266204760876,
+     1.2395719985861702,
+     1.4684403197846247,
+     2.1473111233954802,
+     3.1512478299392304,
+     4.031017271542737,
+     4.690174675475606,
+     5.4330110175539374,
+     6.47623914502825
+    ],
+    "60": [
+     0.9746757113281034,
+     1.0116437597814214,
+     1.2938025668485853,
+     1.643584008130897,
+     2.057367694041909,
+     2.902539658486277,
+     4.092145556580233,
+     5.091288197128641,
+     5.684636979472142,
+     6.209744725817895
+    ],
+    "65": [
+     1.0181027239709597,
+     1.0783341226842356,
+     1.1679748533906495,
+     1.6846427131141803,
+     2.280862972205633,
+     2.8390361644792375,
+     3.7711215972540417,
+     5.053680869026853,
+     6.11170641945911,
+     6.628911687995717
+    ],
+    "70": [
+     0.9493892737224693,
+     1.1502586093043978,
+     1.2329134488083258,
+     1.5184152039192584,
+     2.3261517917442927,
+     3.110549157581843,
+     3.7267615749962304,
+     4.6764924557289875,
+     5.992892124850838,
+     7.067111797676554
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter034_cand005",
+   "design_hash": "distribution_v2_v2:a1d41e2b8a17152b8657fb2d45feb69a033523cbf47671126ae9823f4af20369",
+   "michell_225_N": [
+    0.5547690398839911,
+    0.733688005094569,
+    1.1669745896066708,
+    1.2402632272934058,
+    1.1152062920837482,
+    1.2953277871248952,
+    2.0142926460195976,
+    3.193277033645665,
+    4.624135127722668,
+    6.110534639590511,
+    7.521276965058367,
+    8.790608553185642,
+    9.899508375234873,
+    10.856447975527345,
+    11.682656089366318,
+    12.403339070952738,
+    13.042822528648285,
+    13.622208936752418
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9264271015270003,
+     1.0629684241891175,
+     1.1792984315675348,
+     1.4537843774435364,
+     2.0823130317037424,
+     3.0324699259402874,
+     4.055686797848884,
+     4.922366440205859,
+     5.599738615752191,
+     6.220986733890953
+    ],
+    "45": [
+     0.92100293618594,
+     0.9986491184909284,
+     1.2566344628098038,
+     1.6386886361602644,
+     2.1037544395236716,
+     2.8034156986613534,
+     3.830875899878745,
+     5.0172689650029705,
+     6.050527762198675,
+     6.742702376164744
+    ],
+    "50": [
+     1.0063262272351445,
+     1.0552478948623376,
+     1.1435711110323246,
+     1.6009430533984925,
+     2.3161546924052674,
+     3.005649031868687,
+     3.7026114603744635,
+     4.628876293162292,
+     5.805212298535817,
+     6.964625618814165
+    ],
+    "55": [
+     0.9453675000869664,
+     1.128653745169801,
+     1.2648121733600246,
+     1.4876594534280032,
+     2.160240477084729,
+     3.1632927633929144,
+     4.04435723448641,
+     4.700791844655385,
+     5.436346833174959,
+     6.472491447644753
+    ],
+    "60": [
+     1.0003445383745644,
+     1.0365174881952004,
+     1.3173805423344942,
+     1.6662516873238125,
+     2.074038901421648,
+     2.91205059350548,
+     4.100444201531664,
+     5.103115747398236,
+     5.697159828610491,
+     6.2162746245443445
+    ],
+    "65": [
+     1.0433130829763024,
+     1.1062613463961504,
+     1.1909284826784634,
+     1.7046165314325394,
+     2.300783565998092,
+     2.853978285992579,
+     3.778630765158217,
+     5.05976620570683,
+     6.122501165530894,
+     6.6426453646595025
+    ],
+    "70": [
+     0.9739811286807389,
+     1.1779739612582114,
+     1.2597274703125638,
+     1.5375385864356435,
+     2.3427116397738414,
+     3.128962029728287,
+     3.740871274798135,
+     4.682562941979086,
+     5.99702973434358,
+     7.07725359224029
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter024_cand008",
+   "design_hash": "distribution_v2_v2:a2fd399fa629b316d8a3ee46045cd9da99ccd8119c99b7364affa74960f6edab",
+   "michell_225_N": [
+    0.5492262311804397,
+    0.7284481428768803,
+    1.1608268430608837,
+    1.2330900209658144,
+    1.1081684776957044,
+    1.2894988401861347,
+    2.0100951679140424,
+    3.190622136903403,
+    4.6227123088498905,
+    6.110009483350246,
+    7.5213786212786475,
+    8.791149594651214,
+    9.900374714487409,
+    10.857579795054196,
+    11.684030314306332,
+    12.404955473504591,
+    13.044694272166815,
+    13.624354359083911
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9197566232582999,
+     1.0556215981142232,
+     1.1725682957330972,
+     1.4492122796334277,
+     2.0803478138991833,
+     3.0322016981922837,
+     4.055700860694287,
+     4.921606119512468,
+     5.597912558061458,
+     6.218760831052618
+    ],
+    "45": [
+     0.9142472349116181,
+     0.9917920435173159,
+     1.2496225918667894,
+     1.6319960246645195,
+     2.0989411804974156,
+     2.801876665459284,
+     3.8323271463702238,
+     5.020030931796373,
+     6.05234044316584,
+     6.742340044130181
+    ],
+    "50": [
+     0.9990849990360957,
+     1.0477749489359647,
+     1.1368684295082383,
+     1.594913569651093,
+     2.310137805815284,
+     3.0006653991194643,
+     3.7002808781901626,
+     4.629919802316363,
+     5.808614380980508,
+     6.968091164197905
+    ],
+    "55": [
+     0.9380678760363349,
+     1.1210272411799262,
+     1.2571670942436353,
+     1.4815609874206002,
+     2.1554573019474104,
+     3.1583412522972094,
+     4.039419903241961,
+     4.698042028213702,
+     5.4374407176359405,
+     6.477062918791985
+    ],
+    "60": [
+     0.9921722207641714,
+     1.0289409045648554,
+     1.3100735987874441,
+     1.6591880124552307,
+     2.0686875052717584,
+     2.9083435278080265,
+     4.096829169296021,
+     5.098903838633024,
+     5.6940224279641205,
+     6.216693161824315
+    ],
+    "65": [
+     1.0352105337917625,
+     1.0977756047047738,
+     1.1840132918778214,
+     1.6982887166808618,
+     2.294422101917096,
+     2.849334856183396,
+     3.775959933897673,
+     5.057332724737973,
+     6.119362299998367,
+     6.640179005107322
+    ],
+    "70": [
+     0.9661970115757688,
+     1.16908733789663,
+     1.2513192816062633,
+     1.5315414720462999,
+     2.3369689354627816,
+     3.1224707092567288,
+     3.7362754977663943,
+     4.680656544688896,
+     5.995514733662844,
+     7.074370780172436
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter015_cand007",
+   "design_hash": "distribution_v2_v2:2439dbe79906ef9c8b0c6467e7fb3898f30869b9ab8c33832e2c559c21a4e1ed",
+   "michell_225_N": [
+    0.5240979131430179,
+    0.7219778838300176,
+    1.1532377727473537,
+    1.2151816382063503,
+    1.0942297985608387,
+    1.295871212766361,
+    2.0437997419420038,
+    3.2503821348202813,
+    4.703395401664869,
+    6.205945071913143,
+    7.627895029406971,
+    8.904947787609402,
+    10.019369448904865,
+    10.9805944393109,
+    11.810494676538022,
+    12.534677779718571,
+    13.177696842763302,
+    13.760778625784594
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9061256304263022,
+     1.0398387508661713,
+     1.1613859747702175,
+     1.4491724840735616,
+     2.089358265043427,
+     3.042366081978994,
+     4.062900874398482,
+     4.930667972617518,
+     5.618484301274438,
+     6.25739247244031
+    ],
+    "45": [
+     0.8991154900843706,
+     0.9796365558765521,
+     1.2390144734629853,
+     1.6246019701665722,
+     2.102174219335768,
+     2.8180959212283136,
+     3.8533845769977733,
+     5.035104579978889,
+     6.05901581372254,
+     6.749537442688773
+    ],
+    "50": [
+     0.982524445332337,
+     1.0311974526981809,
+     1.129263407410764,
+     1.5932290554285404,
+     2.309004274256793,
+     3.0053424730768947,
+     3.7186349796592064,
+     4.658723632160179,
+     5.83517997574167,
+     6.981626079433755
+    ],
+    "55": [
+     0.9245940493286973,
+     1.1047743072156118,
+     1.2430909820916318,
+     1.480330853127405,
+     2.163281397923474,
+     3.164320298071411,
+     4.044899779714619,
+     4.714304314751379,
+     5.467897859565541,
+     6.510986036627656
+    ],
+    "60": [
+     0.974984624669961,
+     1.0158726817035901,
+     1.2977992286346367,
+     1.6501400367255763,
+     2.0741766453760593,
+     2.924650640478822,
+     4.1088075159949,
+     5.104262570069263,
+     5.706047524207059,
+     6.245262855120789
+    ],
+    "65": [
+     1.0182552020278697,
+     1.0800942849847486,
+     1.1752537414380706,
+     1.691954388582746,
+     2.2907556755539336,
+     2.860545432672254,
+     3.798888832329794,
+     5.0745038007404855,
+     6.124405517531615,
+     6.647232179671949
+    ],
+    "70": [
+     0.9511942331667752,
+     1.151161372443472,
+     1.2374845803486874,
+     1.5301520074830397,
+     2.3372178211623997,
+     3.1239176763068954,
+     3.7521996635377923,
+     4.708254967271085,
+     6.0153902319064905,
+     7.078224675449147
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter051_cand004",
+   "design_hash": "distribution_v2_v2:2e98ee5860fc411e55743d3a63450e6c842ef9cbf856ba5cea0aa98f497288f3",
+   "michell_225_N": [
+    0.5262547074728785,
+    0.7092906604714848,
+    1.1259259502703531,
+    1.1845970837056223,
+    1.0677868585234063,
+    1.275019382253459,
+    2.02713281249299,
+    3.236005458845353,
+    4.689836762918799,
+    6.1922793583969735,
+    7.613616862506008,
+    8.889819159984054,
+    10.00330877251671,
+    10.963601697674271,
+    11.792613863083396,
+    12.515971791769703,
+    13.158237414200718,
+    13.740634346813756
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.8924408139453871,
+     1.0253367365417283,
+     1.1470768572405408,
+     1.435155651515828,
+     2.077779490283172,
+     3.035998814975086,
+     4.061382723349001,
+     4.928864871080612,
+     5.609485871849489,
+     6.2365928416067655
+    ],
+    "45": [
+     0.8860892757787749,
+     0.963856426470332,
+     1.224302414386453,
+     1.6122484957913508,
+     2.0899799352800144,
+     2.805637108030798,
+     3.8441928597922335,
+     5.032881527469775,
+     6.062275686561346,
+     6.751035929569111
+    ],
+    "50": [
+     0.9695337391269709,
+     1.0169238869686006,
+     1.1131507109146532,
+     1.5785744947063933,
+     2.2986959725910645,
+     2.996381218360863,
+     3.707247239838835,
+     4.646777456088275,
+     5.828272613477676,
+     6.983544187671498
+    ],
+    "55": [
+     0.9099099525541948,
+     1.0898419246355011,
+     1.229437572800707,
+     1.464797015307882,
+     2.14861014354375,
+     3.15522724307631,
+     4.039375528602175,
+     4.7060302805041365,
+     5.455408857007285,
+     6.500341230134696
+    ],
+    "60": [
+     0.9620232055171439,
+     0.9990427259374066,
+     1.2829872162741083,
+     1.6380906912198336,
+     2.0595510336415765,
+     2.9097271471362935,
+     4.100533016068059,
+     5.101936594843979,
+     5.7013982068508025,
+     6.233442825299154
+    ],
+    "65": [
+     1.0049898962823238,
+     1.0654704174208205,
+     1.1581084021591834,
+     1.678563392397823,
+     2.2809654641527546,
+     2.8467300766703936,
+     3.7832523186351277,
+     5.066293644658129,
+     6.125140504884768,
+     6.647037796249035
+    ],
+    "70": [
+     0.9365769101590702,
+     1.1368075304591951,
+     1.2230197436629342,
+     1.5135520039325472,
+     2.3258299539740324,
+     3.1162940376960178,
+     3.7391347907323835,
+     4.692333672183114,
+     6.007832730037392,
+     7.08159373794129
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter084_cand001",
+   "design_hash": "distribution_v2_v2:c3e1afb5be89b150fca13a1ce9006e3f876a677909ad20a5e758d93d0b3710ca",
+   "michell_225_N": [
+    0.5435707813829251,
+    0.7179048400098396,
+    1.141705750067162,
+    1.2115261008128677,
+    1.0920580309826897,
+    1.2827542258962765,
+    2.012697203230179,
+    3.2006092873419383,
+    4.637753110644259,
+    6.12814819287956,
+    7.541227517672538,
+    8.811830798146222,
+    9.921388537687967,
+    10.878678994801358,
+    11.705123792245944,
+    12.426041086431253,
+    13.065816037350157,
+    13.64557655288245
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9090808330662262,
+     1.0445843924745637,
+     1.1614041997118418,
+     1.4373089786513227,
+     2.0684209255669375,
+     3.0208290058675287,
+     4.0432807089880365,
+     4.904488245707906,
+     5.572970693228362,
+     6.185366638766365
+    ],
+    "45": [
+     0.9041539326438696,
+     0.9799089795519375,
+     1.2389085750850202,
+     1.621933274494163,
+     2.086483920819377,
+     2.7862960813030315,
+     3.8158972728473213,
+     5.004353105598258,
+     6.035238244259925,
+     6.71892092780695
+    ],
+    "50": [
+     0.9901386868373127,
+     1.0374503674198678,
+     1.1247578277679484,
+     1.5834939216496668,
+     2.2998637225331753,
+     2.9873122546059,
+     3.6811780199315494,
+     4.607567027633799,
+     5.787616741392955,
+     6.949448910000302
+    ],
+    "55": [
+     0.9275953928910332,
+     1.1114573004230652,
+     1.2479653134244135,
+     1.4692473826205452,
+     2.1422810754046386,
+     3.146955827737115,
+     4.025648592696838,
+     4.676460694283266,
+     5.409303762626734,
+     6.448841506218722
+    ],
+    "60": [
+     0.9835790822550725,
+     1.0169829200919198,
+     1.3008766052161749,
+     1.65086104443886,
+     2.0551518768984884,
+     2.8922290256469823,
+     4.0829457149002035,
+     5.083833778712272,
+     5.6699881950274,
+     6.182831002496645
+    ],
+    "65": [
+     1.0271464517158047,
+     1.088498931072053,
+     1.1716991096350642,
+     1.6892690641395063,
+     2.285584673935177,
+     2.833000517724489,
+     3.7559800565634616,
+     5.04078771159509,
+     6.103300902705155,
+     6.61425112512614
+    ],
+    "70": [
+     0.9555890022828535,
+     1.1611266992344806,
+     1.2420089527230003,
+     1.5184523102565421,
+     2.3277434633944414,
+     3.1124507833523323,
+     3.716191144258216,
+     4.655934771167211,
+     5.976081553938556,
+     7.057615446138714
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter114_cand007",
+   "design_hash": "distribution_v2_v2:df91abbafa5a519d2156170152640ff316b0b6582c3217f5aaaf9acef31fc43e",
+   "michell_225_N": [
+    0.5433253923042435,
+    0.7219891187283198,
+    1.1492630687681382,
+    1.2186140516737014,
+    1.097364964987696,
+    1.2870267548104997,
+    2.0169974666048636,
+    3.20558748435841,
+    4.64363501978071,
+    6.134914242915708,
+    7.548763601817009,
+    8.82000844470954,
+    9.930100509537327,
+    10.887842883609673,
+    11.714682908767745,
+    12.43595662419722,
+    13.076060491891347,
+    13.65613128050092
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9144451765275823,
+     1.04926577510935,
+     1.1662754137668867,
+     1.444585447508649,
+     2.077783352771625,
+     3.03017554130874,
+     4.052171265954439,
+     4.915254700788046,
+     5.588747941157256,
+     6.207167894605695
+    ],
+    "45": [
+     0.9080717844800055,
+     0.9860798993836518,
+     1.2444349518552134,
+     1.6263450551635341,
+     2.0933308344174315,
+     2.7976274722266328,
+     3.8292814146603096,
+     5.016309868818737,
+     6.045775208918169,
+     6.731949495490703
+    ],
+    "50": [
+     0.9930860908859463,
+     1.0404504851037903,
+     1.131110416735949,
+     1.5909153124652409,
+     2.305642576472081,
+     2.9945776293098447,
+     3.6940622292218874,
+     4.624932971119291,
+     5.80423028511747,
+     6.961919678149143
+    ],
+    "55": [
+     0.9323204568581185,
+     1.1147535529539432,
+     1.2499062084751429,
+     1.4756608454107072,
+     2.151853613820988,
+     3.1543281502326255,
+     4.032504849770541,
+     4.68903664582227,
+     5.428944782711587,
+     6.469895770163321
+    ],
+    "60": [
+     0.985105966215652,
+     1.0224072128009762,
+     1.3044476249935677,
+     1.6522693582319639,
+     2.062155874093843,
+     2.9041512340843005,
+     4.092576773668037,
+     5.091300702753802,
+     5.683062920749602,
+     6.205070183923893
+    ],
+    "65": [
+     1.0289658140441393,
+     1.0895897049166747,
+     1.1776506608222554,
+     1.6933367970206983,
+     2.2872918394301975,
+     2.8415979559057485,
+     3.770607569257577,
+     5.052656189365212,
+     6.110724714437847,
+     6.6266477173613465
+    ],
+    "70": [
+     0.9597495462799467,
+     1.1622787044568448,
+     1.2431836765717557,
+     1.5261180749223788,
+     2.332801528026879,
+     3.114947017946944,
+     3.726879755103073,
+     4.673680324325564,
+     5.989853411271711,
+     7.065346169099387
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter005_cand011",
+   "design_hash": "distribution_v2_v2:2b9fb21a2f00bd02aa0363e1fd4c81e5dd9c57f42cb49f77777531b370d6560c",
+   "michell_225_N": [
+    0.532142353374822,
+    0.7334533015408804,
+    1.173006890609297,
+    1.2412009467436693,
+    1.1183348992083855,
+    1.3116549801551647,
+    2.0492584974055044,
+    3.2466097978594672,
+    4.692672726345494,
+    6.190538987583676,
+    7.609573636429703,
+    8.884909827358147,
+    9.998335531985045,
+    10.95894603649491,
+    11.788383947859755,
+    12.51211863177683,
+    13.154625181706258,
+    13.737092105486095
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9199551263728369,
+     1.0567439069177476,
+     1.1744995828885172,
+     1.4539748188115502,
+     2.088225114293657,
+     3.039963436031015,
+     4.0597279897685326,
+     4.922480376398733,
+     5.6020080713520795,
+     6.234778492088012
+    ],
+    "45": [
+     0.9115871577041503,
+     0.9938819439812575,
+     1.2558375975552594,
+     1.6384415237438856,
+     2.105044619469496,
+     2.809905466785344,
+     3.8420653568417777,
+     5.027528693572675,
+     6.053727073559887,
+     6.738955137429392
+    ],
+    "50": [
+     0.9971457612187826,
+     1.046133312517106,
+     1.1414794399373582,
+     1.6061255307195046,
+     2.321256142031245,
+     3.0073641669611813,
+     3.7058298290101934,
+     4.638569467173914,
+     5.819406467127433,
+     6.975202753858093
+    ],
+    "55": [
+     0.9378616367192378,
+     1.121768692412625,
+     1.2586749214848123,
+     1.4889900018121187,
+     2.1703226055709686,
+     3.1733716187992096,
+     4.046685924222837,
+     4.69935121084776,
+     5.440802014566121,
+     6.486496477229244
+    ],
+    "60": [
+     0.9902138919953795,
+     1.0305574209309003,
+     1.3146444631325709,
+     1.6639966878372896,
+     2.077981033298617,
+     2.9252491301718644,
+     4.114341555630826,
+     5.106462991660117,
+     5.69107237854697,
+     6.213219527555108
+    ],
+    "65": [
+     1.033493595933267,
+     1.0975082969669543,
+     1.1887602824150643,
+     1.7068590963485895,
+     2.3019314322848556,
+     2.85934845328617,
+     3.7936669813361283,
+     5.076374528577092,
+     6.12646375967782,
+     6.631722867562377
+    ],
+    "70": [
+     0.9644729079259617,
+     1.1695986518753867,
+     1.253889477100062,
+     1.539598728307893,
+     2.3486098772466955,
+     3.1314078727326224,
+     3.7457303631115484,
+     4.697255133066844,
+     6.014324411580257,
+     7.080990573935308
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter022_cand007",
+   "design_hash": "distribution_v2_v2:4702bbefa4270a86baa53c3f3ccd458c641e85decbe951020d2effc42f569ce7",
+   "michell_225_N": [
+    0.5387724949744446,
+    0.7280419290621278,
+    1.166342615853015,
+    1.237785086812235,
+    1.1126399697582992,
+    1.2972976232950002,
+    2.023547720204764,
+    3.210109216512263,
+    4.647444421349125,
+    6.138842729237513,
+    7.55326954424166,
+    8.825314659813689,
+    9.936291584833954,
+    10.894936640429362,
+    11.72265898156489,
+    12.444780418092353,
+    13.08569324221987,
+    13.666538385381736
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9189015589711926,
+     1.0550636211893087,
+     1.172222344703147,
+     1.4498012193789724,
+     2.081369333292534,
+     3.0316157168382976,
+     4.05215777410624,
+     4.916583796498532,
+     5.595379191655963,
+     6.222762035774452
+    ],
+    "45": [
+     0.9123374267496661,
+     0.9918429630834017,
+     1.250693510366917,
+     1.6324706107708955,
+     2.099071852289871,
+     2.802419151228536,
+     3.8322581046512623,
+     5.016923710271959,
+     6.0450954246432556,
+     6.733274321505224
+    ],
+    "50": [
+     0.9973533909132984,
+     1.0463573745951884,
+     1.1378969752974182,
+     1.5977129516722999,
+     2.3117642126608873,
+     3.000062879293314,
+     3.699394723159314,
+     4.629636755965059,
+     5.807205661645237,
+     6.962674154347694
+    ],
+    "55": [
+     0.9370762695565773,
+     1.1204085924329408,
+     1.256642122406528,
+     1.4831677855776983,
+     2.1589862835630136,
+     3.1602039201143155,
+     4.0372044014654,
+     4.693816086147529,
+     5.434341134182134,
+     6.475154066907714
+    ],
+    "60": [
+     0.9903074037894583,
+     1.0286308307864458,
+     1.3106354213006515,
+     1.6593557804695453,
+     2.0705151695262662,
+     2.9121484511079236,
+     4.098668889656099,
+     5.0953331984307635,
+     5.686576180343485,
+     6.210076286731456
+    ],
+    "65": [
+     1.0335536673678924,
+     1.0964432626832108,
+     1.1845805028282592,
+     1.6996432460223176,
+     2.2946960121897906,
+     2.850507893593531,
+     3.779391333432788,
+     5.059066103861872,
+     6.114331958043425,
+     6.629150351812269
+    ],
+    "70": [
+     0.9643813569205503,
+     1.1683444478064908,
+     1.2508756039192717,
+     1.533058341613372,
+     2.338995980283213,
+     3.1225751344834975,
+     3.7366172477495714,
+     4.683270291402263,
+     5.996914625131553,
+     7.068698636867738
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter002_cand009",
+   "design_hash": "distribution_v2_v2:925d830795693ce34c864f74285a13a5ce709a62ea1568cdc315a6360eb6da9d",
+   "michell_225_N": [
+    0.5234396383133075,
+    0.7308351791842673,
+    1.173089094719974,
+    1.238979563129344,
+    1.1143482879492117,
+    1.308618971717803,
+    2.0490298343704048,
+    3.2496571702790247,
+    4.698612752540387,
+    6.198700832531997,
+    7.619319276820041,
+    8.895751050490508,
+    10.009946648631937,
+    10.971131041578063,
+    11.801041627897893,
+    12.525207589273863,
+    13.168139757831327,
+    13.751047929027157
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9170779007331412,
+     1.0523933615736014,
+     1.1708174544260852,
+     1.4536813234735668,
+     2.0909711803800675,
+     3.0436376039011677,
+     4.064135827149414,
+     4.930297955327593,
+     5.6159813890811,
+     6.254758039190624
+    ],
+    "45": [
+     0.9079763297226109,
+     0.9915066501408356,
+     1.2524454872536759,
+     1.6349412168275792,
+     2.1055474229839706,
+     2.815864242482651,
+     3.8504267462287296,
+     5.03471846880204,
+     6.0602375287753105,
+     6.749032929729255
+    ],
+    "50": [
+     0.9920086553386155,
+     1.0414211543203997,
+     1.140014965122989,
+     1.605360631933064,
+     2.319471264356573,
+     3.0086541976428163,
+     3.714036690239772,
+     4.6516829296671105,
+     5.831587419547272,
+     6.9832508196398315
+    ],
+    "55": [
+     0.9343962012173789,
+     1.1162353562921292,
+     1.2532280018974973,
+     1.4887320708259935,
+     2.17276330386429,
+     3.1740618611893567,
+     4.0487744525356275,
+     4.7089720689502474,
+     5.45783977775606,
+     6.504183346493137
+    ],
+    "60": [
+     0.9848522045114001,
+     1.02713042222219,
+     1.3093725675570294,
+     1.6592264017243885,
+     2.0800348435319913,
+     2.931298330114993,
+     4.117488043875785,
+     5.108442077896557,
+     5.700373403336892,
+     6.232692643715051
+    ],
+    "65": [
+     1.0278013551306835,
+     1.0914819223556083,
+     1.1860760836211854,
+     1.7025441523639515,
+     2.298215881596719,
+     2.863715863756673,
+     3.802836152309247,
+     5.082106155018136,
+     6.129477493093051,
+     6.641817212890747
+    ],
+    "70": [
+     0.9605006709423355,
+     1.1628289475230171,
+     1.248727042505613,
+     1.539159422828057,
+     2.345932737538736,
+     3.129731874710538,
+     3.753540364970745,
+     4.710739962889043,
+     6.023052434585995,
+     7.084642163684782
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter083_cand006",
+   "design_hash": "distribution_v2_v2:6a4f0bb5a6aea35ec1f90ddf70b55865354094c8fc4db11c5491ba564757032b",
+   "michell_225_N": [
+    0.5330113202878911,
+    0.7118364895620178,
+    1.1301755486628973,
+    1.193572963472419,
+    1.0775972287297761,
+    1.2808614901948054,
+    2.0266567118943,
+    3.229183814464245,
+    4.677797421979625,
+    6.176393127389629,
+    7.595052837458336,
+    8.869418241907686,
+    9.981606981274993,
+    10.940901305226287,
+    11.76905757074108,
+    12.491600707871903,
+    13.13303293380127,
+    13.714544790669478
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.8996986018959989,
+     1.033768780872794,
+     1.1533076051815803,
+     1.4361218225759125,
+     2.073828899012478,
+     3.0290042055103616,
+     4.0513185876739,
+     4.913303645626187,
+     5.5858673196338975,
+     6.20483341724285
+    ],
+    "45": [
+     0.8937217169676536,
+     0.9710151219348918,
+     1.2312751189613345,
+     1.6164938900653485,
+     2.0873852950613387,
+     2.795478873928683,
+     3.8299455659785804,
+     5.01775892260694,
+     6.0456279107603805,
+     6.728890187277589
+    ],
+    "50": [
+     0.978542297453265,
+     1.0254795531347551,
+     1.1182745135314383,
+     1.5813841895261271,
+     2.2991347458392113,
+     2.9903756334138203,
+     3.6921503021869224,
+     4.625490146458502,
+     5.8065899468647615,
+     6.963806097969593
+    ],
+    "55": [
+     0.9176731337838038,
+     1.099632500191958,
+     1.2372871787360193,
+     1.4661996916022695,
+     2.1457641287684597,
+     3.150821964281006,
+     4.029923257215743,
+     4.686890190267268,
+     5.4281065208845485,
+     6.471292687327182
+    ],
+    "60": [
+     0.9709591255359903,
+     1.0069864180563688,
+     1.291599007749146,
+     1.6433681795148347,
+     2.0561548726676384,
+     2.90063206214822,
+     4.09104232472696,
+     5.089771747968475,
+     5.6799951407452,
+     6.201889500733493
+    ],
+    "65": [
+     1.014668313493423,
+     1.0749841028485876,
+     1.1642279300838363,
+     1.6839344853761047,
+     2.2819792313685765,
+     2.83793990856803,
+     3.768533446388511,
+     5.052248335453707,
+     6.110182243965091,
+     6.623154319526618
+    ],
+    "70": [
+     0.9446023825236337,
+     1.1475374101384737,
+     1.2306910079123106,
+     1.5158114443370958,
+     2.3269005704917345,
+     3.111992840819847,
+     3.723789257212433,
+     4.671356338631555,
+     5.989955876203248,
+     7.065146115117588
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter033_cand011",
+   "design_hash": "distribution_v2_v2:1abfb7a899b81244f76fb64550b5f025f6ed517a8925e9ac07d205ab6d358056",
+   "michell_225_N": [
+    0.5448559357055495,
+    0.7244172396507742,
+    1.1550690005080468,
+    1.2261624065653631,
+    1.1033543263540422,
+    1.2894582298540145,
+    2.015592948953801,
+    3.2010432939329423,
+    4.636906365371129,
+    6.126844904340548,
+    7.539970359357901,
+    8.810893593792779,
+    9.920898922374139,
+    10.8786821240253,
+    11.705618090383284,
+    12.42700344509496,
+    13.067214927685072,
+    13.647382611027627
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.9173729905148944,
+     1.0528807045870834,
+     1.1697856020958775,
+     1.4473092599081137,
+     2.07996087143799,
+     3.032059076259497,
+     4.052976991950675,
+     4.914134807843928,
+     5.586325096557148,
+     6.205546698498922
+    ],
+    "45": [
+     0.9115313108778352,
+     0.9894800594042722,
+     1.2481691611221153,
+     1.6300083931149274,
+     2.096011156598271,
+     2.799362131075076,
+     3.8310421416358853,
+     5.018073552767245,
+     6.046294973655532,
+     6.729789804766394
+    ],
+    "50": [
+     0.9972320180947924,
+     1.0449487931134147,
+     1.1348457615825978,
+     1.5945634279365117,
+     2.3091080990344373,
+     2.9967229139427944,
+     3.6947149932245074,
+     4.62573041788738,
+     5.8064796563571885,
+     6.964640128773662
+    ],
+    "55": [
+     0.9360955989299778,
+     1.1195236251626262,
+     1.2550615846621456,
+     1.479661150353205,
+     2.1552926701772535,
+     3.1578157080134326,
+     4.034676629475548,
+     4.689250698071122,
+     5.428786305159462,
+     6.471911195198379
+    ],
+    "60": [
+     0.989891573989178,
+     1.0268442494645962,
+     1.3095582682450506,
+     1.657609611501732,
+     2.0660231498565667,
+     2.9073299642576393,
+     4.095983701894448,
+     5.093060585276479,
+     5.68177567131624,
+     6.202844656343132
+    ],
+    "65": [
+     1.0337854682390706,
+     1.0951222316798603,
+     1.182289838082352,
+     1.698475580642688,
+     2.2925983001510413,
+     2.8453309338664483,
+     3.773848157841612,
+     5.056202884137477,
+     6.113028055167465,
+     6.625317054006798
+    ],
+    "70": [
+     0.964109377707044,
+     1.1679682265540845,
+     1.2490145445780025,
+     1.5306469724688014,
+     2.3378600278692834,
+     3.119849630094265,
+     3.72975138160865,
+     4.676061864317189,
+     5.993619325177591,
+     7.067925689657528
+    ]
+   }
+  },
+  {
+   "candidate_id": "iter005_cand005",
+   "design_hash": "distribution_v2_v2:0600fbbe4afa4026dcd3a655e29047dd013f1dd1595f1bd2febc05a7bed6702e",
+   "michell_225_N": [
+    0.4953368867474329,
+    0.7090012465945378,
+    1.13998789328777,
+    1.1939142484076224,
+    1.0754001864829623,
+    1.2917702655838716,
+    2.059855721429342,
+    3.285828213218268,
+    4.754548252478941,
+    6.268673840026192,
+    7.698775334487403,
+    8.981554382268818,
+    10.100166705899397,
+    11.064717293905302,
+    11.89752478952933,
+    12.624475553024892,
+    13.270282617989837,
+    13.856254181078636
+   ],
+   "panel_by_nx": {
+    "40": [
+     0.8853249068802062,
+     1.0184859066090897,
+     1.1424546134784344,
+     1.436563878957748,
+     2.0840663838564626,
+     3.042056627461932,
+     4.064984459506913,
+     4.935386643420509,
+     5.6291000228382995,
+     6.277929318734403
+    ],
+    "45": [
+     0.8748455074985143,
+     0.9592275021797276,
+     1.2227209303256148,
+     1.611402698281537,
+     2.093593538033488,
+     2.8162683603485084,
+     3.8574862619925416,
+     5.041644915356136,
+     6.065413087207718,
+     6.756852338563061
+    ],
+    "50": [
+     0.9562165437831477,
+     1.005522760309237,
+     1.1118530104591902,
+     1.5839129469371844,
+     2.302912912361285,
+     3.0006589807593285,
+     3.718311371072883,
+     4.664815647980867,
+     5.845384603991044,
+     6.9921110262005355
+    ],
+    "55": [
+     0.9000043779759889,
+     1.078696904608466,
+     1.2199475662553352,
+     1.4675783746034334,
+     2.160703499688199,
+     3.1647851216830185,
+     4.043772745435078,
+     4.714036953722544,
+     5.473153350667452,
+     6.5229486851747485
+    ],
+    "60": [
+     0.9480669534959439,
+     0.9913244548174429,
+     1.2754830381114117,
+     1.6322678581912429,
+     2.066608616064062,
+     2.9274625986864433,
+     4.114701316497211,
+     5.10608391489742,
+     5.705356791835623,
+     6.248866078338605
+    ],
+    "65": [
+     0.9899530358012223,
+     1.0529454431798366,
+     1.154582271181197,
+     1.675751353760242,
+     2.278581764764739,
+     2.8572886074751223,
+     3.805650222296748,
+     5.084093057270301,
+     6.128872649309827,
+     6.646040361619482
+    ],
+    "70": [
+     0.9239078267711962,
+     1.122604768506162,
+     1.2141972687454439,
+     1.5152394047518167,
+     2.326687589614356,
+     3.116462467407118,
+     3.7524182738955627,
+     4.717646549657728,
+     6.027877692479321,
+     7.084967803867743
+    ]
+   }
+  }
+ ],
+ "provenance": {
+  "solver_commit": "bc6d2ca",
+  "precision": "single",
+  "cupy": "14.2.0",
+  "cuda_runtime": "12.8"
+ }
+}

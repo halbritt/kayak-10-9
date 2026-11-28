@@ -38,7 +38,11 @@ from rsi.fidelity import CfdMetrics, SeakeepingMetrics
 #      Tier 2 seakeeping also gates following and stern-quarter seas at 225 lb against the Epic 18X
 #      row: pitch, bow dips and seat acceleration no worse, roll at most 20 % worse. The speed
 #      objective is the mean gain at 60 and 90 W (it was 90 and 120 W); 120 W stays a no-loss gate.
-GATES_VERSION = "9"
+#  10: Tier-1 wave resistance computed directly from the fixed level-pose 3-grid Dawson Rankine
+#      panel solver (rsi/panel_wave_reference.json; nx = 45, 50, 55, float32) instead of Michell,
+#      preserving all v9 gates and objectives and refusing Michell-era checkpoints. Michell is
+#      still computed and reported beside it for comparison.
+GATES_VERSION = "10"
 
 # Class limits (owner, 2026-11-27): "it's just an 18ft cap. USCA is 18ft and 8.5% beam at 4 in.
 # I can't think of any reason to go stricter". USCA 2026 Sea Kayak: "Maximum overall length of 18'

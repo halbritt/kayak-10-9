@@ -44,7 +44,9 @@ def test_tier0_tier1_baseline_exact_match(baseline_eval: tuple) -> None:
     assert metrics.usca_4in_pct == 9.15
     assert metrics.l4_m is not None and metrics.l4_m >= 5.442
 
-    assert metrics.kn_225 == {40: 4.47, 60: 5.08, 90: 5.67, 120: 6.17}
+    assert metrics.kn_225 == ref.kn_225
+    assert metrics.kn_225_exact == pytest.approx(ref.kn_225_exact, abs=5e-5)
+    assert metrics.michell_kn_225 == {40: 4.47, 60: 5.08, 90: 5.67, 120: 6.17}
     assert metrics.transition_dB_per_20cm == ref.transition_dB_per_20cm
     assert metrics.catch_widths_mm is not None and len(metrics.catch_widths_mm) == 6
     assert abs(metrics.catch_widths_mm[0] - ref.catch_widths_mm[0]) < 1e-3

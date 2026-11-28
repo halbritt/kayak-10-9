@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import math
+import os
 from pathlib import Path
 import sys
 import time
@@ -23,6 +24,7 @@ from kayakgen.eval.resistance import resistance_curve
 from kayakgen.model.hull import Hull
 from kayakgen.services.evaluation import solve_target_draft
 
+from rsi import panel_solver as ps
 from rsi.baseline import BaselineReference
 
 # Height of the combined centre of gravity (hull, paddler and kit) above the keel, held the same
@@ -57,6 +59,14 @@ FOREBODY_STATIONS_M = (-2.10, -1.65, -1.35, -0.95)
 BUTTOCK_0075_WINDOW_AFT_M = (0.639, 5.069)
 BUTTOCK_0075_STEP_M = 0.002
 BUTTOCK_0075_SPAN_SAMPLES = 25  # turn change over 50 mm
+# Fixed level-pose Dawson panel solver family used for Tier-1 wave drag when panel_wave is active.
+PANEL_WAVE_GRID_FAMILY: tuple[tuple[int, int, int], ...] = (
+    (45, 27, 8),
+    (50, 30, 8),
+    (55, 33, 8),
+)
+PANEL_WAVE_PRECISION = "single"
+PANEL_WAVE_LINEARISATION = "dawson"
 
 
 def _ensure_cad_on_path() -> None:
@@ -141,6 +151,12 @@ class CandidateMetrics:
     # Per load: this hull's local-friction ratio at each speed of RESISTANCE_SPEEDS_KN (see
     # local_friction_ratio). Diagnostic; the speed tables already include it.
     friction_ratio: dict[int, tuple[float, ...]] | None = None
+    wave_model: str | None = None
+    wave_backend: str | None = None
+    panel_rw_225_N: tuple[float, ...] | None = None
+    michell_rw_225_N: tuple[float, ...] | None = None
+    michell_kn_225: dict[int, float] | None = None
+    michell_kn_225_exact: dict[int, float] | None = None
     shell_area_m2: float | None = None
     aft_coaming_above_225wl_cm: float | None = None
     rear_deck_above_225wl_cm: float | None = None
@@ -149,18 +165,10 @@ class CandidateMetrics:
         d = asdict(self)
         if self.loads is not None:
             d["loads"] = {str(k): v.to_dict() for k, v in self.loads.items()}
-        if self.kn_225 is not None:
-            d["kn_225"] = {str(k): v for k, v in self.kn_225.items()}
-        if self.kn_225_exact is not None:
-            d["kn_225_exact"] = {str(k): v for k, v in self.kn_225_exact.items()}
-        if self.kn_265 is not None:
-            d["kn_265"] = {str(k): v for k, v in self.kn_265.items()}
-        if self.kn_265_exact is not None:
-            d["kn_265_exact"] = {str(k): v for k, v in self.kn_265_exact.items()}
-        if self.kn_230 is not None:
-            d["kn_230"] = {str(k): v for k, v in self.kn_230.items()}
-        if self.kn_230_exact is not None:
-            d["kn_230_exact"] = {str(k): v for k, v in self.kn_230_exact.items()}
+        for kfield in ("kn_225", "kn_225_exact", "kn_265", "kn_265_exact", "kn_230", "kn_230_exact", "michell_kn_225", "michell_kn_225_exact"):
+            val = getattr(self, kfield)
+            if val is not None:
+                d[kfield] = {str(k): v for k, v in val.items()}
         return d
 
 
@@ -369,7 +377,117 @@ def _evaluate_mesh_fairness(
     )
 
 
-def evaluate_tier0_tier1(
+_CUPY_USABLE_CACHE: bool | None = None
+
+
+def _cupy_usable() -> bool:
+    global _CUPY_USABLE_CACHE
+    if os.environ.get("CUDA_VISIBLE_DEVICES") == "":
+        return False
+    if _CUPY_USABLE_CACHE is not None:
+        return _CUPY_USABLE_CACHE
+    try:
+        import cupy as cp
+
+        cp.cuda.Device(0).compute_capability
+        _CUPY_USABLE_CACHE = True
+    except Exception:  # noqa: BLE001
+        _CUPY_USABLE_CACHE = False
+    return _CUPY_USABLE_CACHE
+
+
+def _free_cupy_pool() -> None:
+    try:
+        import cupy as cp
+
+        cp.get_default_memory_pool().free_all_blocks()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def solve_panel_wave_curve(
+    V: np.ndarray,
+    F: np.ndarray,
+    load_lb: float,
+    u_arr: np.ndarray,
+    *,
+    grid_family: tuple[tuple[int, int, int], ...] = PANEL_WAVE_GRID_FAMILY,
+    precision: str = PANEL_WAVE_PRECISION,
+    linearisation: str = PANEL_WAVE_LINEARISATION,
+    backend: str = "auto",
+) -> tuple[np.ndarray, set[str]]:
+    """Level static-pose Dawson panel wave resistance averaged over ``grid_family``."""
+    volume = load_lb * LB_TO_KG / RHO_SEAWATER
+    try:
+        h0 = ps.static_pose(V, F, volume, 0.0)
+        tris = ps.pose_triangles(V, F, h0, 0.0)
+    except (ValueError, RuntimeError) as exc:
+        raise ValueError(f"panel_wave_refused (lb={int(load_lb)}): {exc}") from exc
+
+    if backend not in ("auto", "cupy", "numpy"):
+        raise ValueError(f"Unknown panel wave backend: {backend!r}")
+    if backend == "auto":
+        order = ("cupy", "numpy") if _cupy_usable() else ("numpy",)
+    else:
+        order = (backend,)
+
+    used_backends: set[str] = set()
+    rows: list[list[float]] = []
+    for nx, ny, nz in grid_family:
+        cfg = ps.PanelConfig(
+            nx_hull=int(nx),
+            ny_fs=int(ny),
+            nz_hull=int(nz),
+            precision=precision,
+            linearisation=linearisation,
+        )
+        res = None
+        last_gpu_exc: Exception | None = None
+        for bk in order:
+            if bk == "cupy":
+                _free_cupy_pool()
+            try:
+                res = ps.solve_fixed(tris, u_arr, cfg, rho=RHO_SEAWATER, backend=bk, h=h0, trim=0.0)
+                used_backends.add(bk)
+                break
+            except ValueError as exc:
+                if bk == "cupy":
+                    _free_cupy_pool()
+                raise ValueError(f"panel_wave_refused (lb={int(load_lb)}, nx={nx}): {exc}") from exc
+            except Exception as exc:  # noqa: BLE001 - OOM/CUDA runtime falls back to numpy in auto mode
+                if bk == "cupy":
+                    _free_cupy_pool()
+                    last_gpu_exc = exc
+                    if "numpy" in order:
+                        continue
+                raise ValueError(f"panel_wave_refused (lb={int(load_lb)}, nx={nx}): {exc}") from exc
+            finally:
+                if bk == "cupy":
+                    _free_cupy_pool()
+        if res is None:
+            raise ValueError(f"panel_wave_failed (lb={int(load_lb)}, nx={nx}): {last_gpu_exc}")
+        vals = [float(r.rw_N) for r in res]
+        if not all(math.isfinite(v) for v in vals):
+            raise ValueError(f"panel_wave_refused (lb={int(load_lb)}, nx={nx}): non-finite rw_N")
+        rows.append(vals)
+
+    return np.mean(np.asarray(rows, dtype=float), axis=0), used_backends
+
+
+def _speed_tables_from_waves(
+    rf_arr: np.ndarray, rw_arr: np.ndarray, u_arr: np.ndarray, lb: int
+) -> tuple[dict[int, float], dict[int, float]]:
+    pwr_w = (rf_arr + rw_arr) * u_arr
+    if not np.all(np.diff(pwr_w) > 0.0):
+        raise ValueError(f"Total resistance power curve is not strictly increasing at {lb} lb")
+    exact_tbl = {
+        int(p): float(np.interp(p, pwr_w, RESISTANCE_SPEEDS_KN))
+        for p in POWER_LEVELS_W
+    }
+    return {int(p): round(val, 2) for p, val in exact_tbl.items()}, exact_tbl
+
+
+def prepare_tier0_tier1_cpu(
     hull: Hull,
     work_dir: Path,
     baseline: BaselineReference,
@@ -377,8 +495,15 @@ def evaluate_tier0_tier1(
     skip_resistance: bool = False,
     mesh_resolution: tuple[int, int] = (441, 129),
     fast_tier0: bool = False,
-) -> CandidateMetrics:
-    """Evaluate a candidate Hull using kayakgen (Tier 0) and SculptedKayakSurface (Tier 1)."""
+    defer_panel_wave: bool = False,
+    panel_backend: str = "auto",
+) -> tuple[CandidateMetrics, tuple[np.ndarray, np.ndarray, dict[int, np.ndarray]] | None]:
+    """Run CPU Tier 0/1 geometry, hydrostatics, stability, friction, and Michell evaluation.
+
+    When ``defer_panel_wave=True`` and ``baseline.panel_wave`` is active, returns
+    ``(partial_metrics, (V, F, rf_by_load))`` so a single parent process can finish the
+    panel-solver solves on GPU without creating multiple CUDA contexts.
+    """
     base_225 = baseline.loads.get(225) if baseline is not None else None
     fixed_catch_lcg_m = (
         float(base_225.lcg_m)
@@ -392,16 +517,19 @@ def evaluate_tier0_tier1(
     hull_path.write_text(hull.model_dump_json(indent=2) + "\n")
     d_hash = hull.design_hash()
 
-    def _fail(msg: str, **partial: Any) -> CandidateMetrics:
-        return CandidateMetrics(
-            valid=False,
-            error=msg,
-            design_hash=d_hash,
-            hull_json_path=str(hull_path),
-            mesh_resolution=mesh_resolution,
-            elapsed_s=round(time.monotonic() - t0, 3),
-            skip_resistance=skip_resistance,
-            **partial,
+    def _fail(msg: str, **partial: Any) -> tuple[CandidateMetrics, None]:
+        return (
+            CandidateMetrics(
+                valid=False,
+                error=msg,
+                design_hash=d_hash,
+                hull_json_path=str(hull_path),
+                mesh_resolution=mesh_resolution,
+                elapsed_s=round(time.monotonic() - t0, 3),
+                skip_resistance=skip_resistance,
+                **partial,
+            ),
+            None,
         )
 
     # Tier 0: kayakgen form metrics (plus optional full Tier 0 hydrostatics/resistance/GZ)
@@ -604,10 +732,17 @@ def evaluate_tier0_tier1(
     kn_230: dict[int, float] | None = None
     kn_230_exact: dict[int, float] | None = None
     friction_ratio: dict[int, tuple[float, ...]] = {}
+    rf_by_load: dict[int, np.ndarray] = {}
+    michell_rw_225_N: tuple[float, ...] | None = None
+    michell_kn_225: dict[int, float] | None = None
+    michell_kn_225_exact: dict[int, float] | None = None
+    wave_model: str | None = None
+    wave_backend: str | None = None
+    panel_rw_225_N: tuple[float, ...] | None = None
     aft_coaming_above_225wl_cm: float | None = None
     rear_deck_above_225wl_cm: float | None = None
 
-    def _speed_tables(r_up: dict[str, Any], lb: int) -> tuple[dict[int, float], dict[int, float]]:
+    def _michell_and_rf(r_up: dict[str, Any], lb: int) -> tuple[np.ndarray, np.ndarray]:
         lwl_m = float(np.ptp(r_up["wl_x"]))
         xs, zs, Y = half_breadth_grid(r_up["tris"], 401, 81)
         u_arr = RESISTANCE_SPEEDS_KN * KN
@@ -615,8 +750,6 @@ def evaluate_tier0_tier1(
             [ittc57(float(u), lwl_m, r_up["wet"], RHO_SEAWATER, NU_SEAWATER)[0] for u in u_arr],
             dtype=float,
         )
-        # Charge friction where the area is, relative to the baseline's own distribution: the
-        # baseline keeps its published speeds, and a candidate pays for moving area forward.
         x_fwd = float(min(r_up["wl_x"]))
         ratio = np.array(
             [local_friction_ratio(r_up["tris"], float(u), NU_SEAWATER, x_fwd, lwl_m) for u in u_arr]
@@ -630,13 +763,8 @@ def evaluate_tier0_tier1(
             if speeds is None or not np.array_equal(np.asarray(speeds), RESISTANCE_SPEEDS_KN):
                 raise ValueError("baseline friction reference is not on RESISTANCE_SPEEDS_KN")
             rf_arr = rf_arr * ratio / np.asarray(base_ratio, dtype=float)
-        rw_arr = _michell_fast_curve(xs, zs, Y, u_arr, RHO_SEAWATER, g=G, ntheta=4000)
-        pwr_w = (rf_arr + rw_arr) * u_arr
-        exact_tbl = {
-            int(p): float(np.interp(p, pwr_w, RESISTANCE_SPEEDS_KN))
-            for p in POWER_LEVELS_W
-        }
-        return {int(p): round(val, 2) for p, val in exact_tbl.items()}, exact_tbl
+        rw_mic = _michell_fast_curve(xs, zs, Y, u_arr, RHO_SEAWATER, g=G, ntheta=4000)
+        return rf_arr, rw_mic
 
     try:
         for lb in LOADS_LB:
@@ -686,16 +814,31 @@ def evaluate_tier0_tier1(
                     (float(surf.base_deck_z(np.array([0.68]), np.array([0.0]))[0]) - upright_height) * 100.0,
                     3,
                 )
-                if not skip_resistance:
-                    kn_225, kn_225_exact = _speed_tables(r_up, lb)
-            elif lb == 265 and not skip_resistance:
-                kn_265, kn_265_exact = _speed_tables(r_up, lb)
-            elif lb == 230 and not skip_resistance:
-                kn_230, kn_230_exact = _speed_tables(r_up, lb)
+            if lb in SPEED_LOADS_LB and not skip_resistance:
+                rf_arr, rw_mic = _michell_and_rf(r_up, lb)
+                rf_by_load[lb] = rf_arr
+                u_arr = RESISTANCE_SPEEDS_KN * KN
+                if lb == 225:
+                    michell_rw_225_N = tuple(float(x) for x in rw_mic)
+                    michell_kn_225, michell_kn_225_exact = _speed_tables_from_waves(rf_arr, rw_mic, u_arr, lb)
+                if baseline.panel_wave is None:
+                    kn_tbl, kn_ex = _speed_tables_from_waves(rf_arr, rw_mic, u_arr, lb)
+                    if lb == 225:
+                        kn_225, kn_225_exact = kn_tbl, kn_ex
+                    elif lb == 265:
+                        kn_265, kn_265_exact = kn_tbl, kn_ex
+                    elif lb == 230:
+                        kn_230, kn_230_exact = kn_tbl, kn_ex
     except Exception as exc:  # noqa: BLE001
         return _fail(f"Hydrostatics / stability / resistance failed: {exc}", **tier0_fields)
 
-    return CandidateMetrics(
+    if not skip_resistance and baseline.panel_wave is None:
+        wave_model = "michell"
+        wave_backend = "michell_analytical"
+    elif not skip_resistance:
+        wave_model = "panel_dawson_3grid"
+
+    partial = CandidateMetrics(
         valid=True,
         error=None,
         design_hash=d_hash,
@@ -734,8 +877,115 @@ def evaluate_tier0_tier1(
         kn_230=kn_230,
         kn_230_exact=kn_230_exact,
         friction_ratio=dict(friction_ratio) or None,
+        wave_model=wave_model,
+        wave_backend=wave_backend,
+        panel_rw_225_N=panel_rw_225_N,
+        michell_rw_225_N=michell_rw_225_N,
+        michell_kn_225=michell_kn_225,
+        michell_kn_225_exact=michell_kn_225_exact,
         shell_area_m2=shell_area_m2,
         aft_coaming_above_225wl_cm=aft_coaming_above_225wl_cm,
         rear_deck_above_225wl_cm=rear_deck_above_225wl_cm,
         **tier0_fields,
     )
+    if skip_resistance or baseline.panel_wave is None:
+        return partial, None
+    state = (V, F, rf_by_load)
+    if defer_panel_wave:
+        return partial, state
+    return complete_deferred_panel_wave(partial, V, F, rf_by_load, baseline, panel_backend=panel_backend), None
+
+
+def complete_deferred_panel_wave(
+    metrics: CandidateMetrics,
+    V: np.ndarray,
+    F: np.ndarray,
+    rf_by_load: dict[int, np.ndarray],
+    baseline: BaselineReference,
+    *,
+    panel_backend: str = "auto",
+) -> CandidateMetrics:
+    """Finish panel-solver wave drag and speed tables on a CPU-prepared candidate."""
+    if not metrics.valid or metrics.skip_resistance or baseline.panel_wave is None:
+        return metrics
+    pw_ref = baseline.panel_wave
+    t0 = time.monotonic()
+    try:
+        if not np.array_equal(np.asarray(pw_ref.speeds_kn, dtype=float), RESISTANCE_SPEEDS_KN):
+            raise ValueError("baseline panel wave reference is not on RESISTANCE_SPEEDS_KN")
+        u_arr = RESISTANCE_SPEEDS_KN * ps.KN
+        used_backends: set[str] = set()
+        tables: dict[int, tuple[dict[int, float], dict[int, float]]] = {}
+        panel_rw_225: tuple[float, ...] | None = None
+        for lb in SPEED_LOADS_LB:
+            rf_arr = rf_by_load.get(lb)
+            if rf_arr is None:
+                raise ValueError(f"missing local-friction curve for {lb} lb")
+            rw_panel, bk = solve_panel_wave_curve(
+                V,
+                F,
+                float(lb),
+                u_arr,
+                grid_family=pw_ref.grid_family,
+                precision=pw_ref.precision,
+                linearisation=pw_ref.linearisation,
+                backend=panel_backend,
+            )
+            used_backends.update(bk)
+            tables[lb] = _speed_tables_from_waves(rf_arr, rw_panel, u_arr, lb)
+            if lb == 225:
+                panel_rw_225 = tuple(float(x) for x in rw_panel)
+        return replace(
+            metrics,
+            kn_225=tables[225][0],
+            kn_225_exact=tables[225][1],
+            kn_265=tables[265][0],
+            kn_265_exact=tables[265][1],
+            kn_230=tables[230][0],
+            kn_230_exact=tables[230][1],
+            panel_rw_225_N=panel_rw_225,
+            wave_model=f"panel_{pw_ref.linearisation}_{len(pw_ref.grid_family)}grid",
+            wave_backend="+".join(sorted(used_backends)) if used_backends else None,
+            elapsed_s=round(metrics.elapsed_s + (time.monotonic() - t0), 3),
+        )
+    except Exception as exc:  # noqa: BLE001
+        return replace(
+            metrics,
+            valid=False,
+            error=f"Hydrostatics / stability / resistance failed: {exc}",
+            kn_225=None,
+            kn_225_exact=None,
+            kn_265=None,
+            kn_265_exact=None,
+            kn_230=None,
+            kn_230_exact=None,
+            panel_rw_225_N=None,
+            elapsed_s=round(metrics.elapsed_s + (time.monotonic() - t0), 3),
+        )
+
+
+def evaluate_tier0_tier1(
+    hull: Hull,
+    work_dir: Path,
+    baseline: BaselineReference,
+    *,
+    skip_resistance: bool = False,
+    mesh_resolution: tuple[int, int] = (441, 129),
+    fast_tier0: bool = False,
+    panel_backend: str = "auto",
+) -> CandidateMetrics:
+    """Evaluate a candidate Hull using kayakgen (Tier 0) and SculptedKayakSurface (Tier 1)."""
+    metrics, state = prepare_tier0_tier1_cpu(
+        hull,
+        work_dir,
+        baseline,
+        skip_resistance=skip_resistance,
+        mesh_resolution=mesh_resolution,
+        fast_tier0=fast_tier0,
+        defer_panel_wave=True,
+        panel_backend=panel_backend,
+    )
+    if state is None:
+        return metrics
+    V, F, rf_by_load = state
+    return complete_deferred_panel_wave(metrics, V, F, rf_by_load, baseline, panel_backend=panel_backend)

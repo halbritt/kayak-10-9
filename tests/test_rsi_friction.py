@@ -96,10 +96,11 @@ def test_a_reference_that_does_not_fit_is_refused_not_ignored(tmp_path) -> None:
 def test_the_baseline_keeps_its_published_speeds(baseline_and_deeper_forefoot: dict) -> None:
     ref, base, plain = (baseline_and_deeper_forefoot[k] for k in ("ref", "base", "base_plain"))
     assert base.valid, base.error
-    assert base.kn_225 == {40: 4.47, 60: 5.08, 90: 5.67, 120: 6.17}
+    assert base.kn_225 == ref.kn_225
+    assert base.michell_kn_225 == {40: 4.47, 60: 5.08, 90: 5.67, 120: 6.17}
     for p, v in base.kn_225_exact.items():
         assert v == pytest.approx(plain.kn_225_exact[p], abs=1e-9)
-        assert v == pytest.approx(ref.kn_225_exact[p], abs=1e-6)
+        assert v == pytest.approx(ref.kn_225_exact[p], abs=5e-5)
     for p, v in base.kn_265_exact.items():
         assert v == pytest.approx(plain.kn_265_exact[p], abs=1e-9)
 

@@ -30,10 +30,19 @@ def test_load_baseline_reference_exact_values() -> None:
     assert ref.sr_4in == 10.88
     assert ref.usca_4in_pct == 9.15
 
-    assert ref.kn_225 == {40: 4.47, 60: 5.08, 90: 5.67, 120: 6.17}
+    uncal = load_baseline_reference(repo_root, with_panel_wave_reference=False)
+    assert uncal.kn_225 == {40: 4.47, 60: 5.08, 90: 5.67, 120: 6.17}
+    assert ref.panel_wave is not None
+    assert set(ref.kn_225) == {40, 60, 90, 120}
     assert all(isinstance(k, int) for k in ref.kn_225)
-    assert ref.kn_265 == {40: 4.32, 60: 4.97, 90: 5.53, 120: 5.98}
+    assert ref.kn_225_exact is not None
+    for pw in (40, 60, 90, 120):
+        assert round(ref.kn_225_exact[pw], 2) == ref.kn_225[pw]
+    assert uncal.kn_265 == {40: 4.32, 60: 4.97, 90: 5.53, 120: 5.98}
+    assert set(ref.kn_265) == {40, 60, 90, 120}
     assert ref.kn_265_exact is not None
+    for pw in (40, 60, 90, 120):
+        assert round(ref.kn_265_exact[pw], 2) == ref.kn_265[pw]
     assert ref.loads[225].lcg_m is not None
     assert abs(ref.shell_area_m2 - 5.80659) < 1e-5
 
@@ -84,7 +93,8 @@ def test_baseline_reference_default_root_and_json_serializable() -> None:
     decoded = json.loads(encoded)
     assert decoded["design_hash"] == ref.design_hash
     assert decoded["sr_4in"] == 10.88
-    assert decoded["kn_225"] == {"40": 4.47, "60": 5.08, "90": 5.67, "120": 6.17}
+    assert decoded["kn_225"] == {str(k): v for k, v in ref.kn_225.items()}
+    assert decoded["panel_wave"] is not None
 
 
 def test_a_seakeeping_reference_without_a_gated_row_is_refused(tmp_path) -> None:
@@ -100,6 +110,7 @@ def test_a_seakeeping_reference_without_a_gated_row_is_refused(tmp_path) -> None
         "data/openfoam-cfd-metrics.json",
         "docs/surface-fairing/controls.json",
         "docs/surface-fairing/fairness.json",
+        "rsi/panel_wave_reference.json",
     ):
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(DEFAULT_REPO_ROOT / rel, tmp_path / rel)

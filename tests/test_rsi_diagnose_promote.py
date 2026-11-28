@@ -303,6 +303,11 @@ def test_promote_candidate_dry_run_and_apply_strict_gating(baseline_eval: tuple)
         shutil.rmtree(staged_repo)
     for sub in ("hull", "data", "docs"):
         shutil.copytree(Path(__file__).resolve().parents[1] / sub, staged_repo / sub)
+    (staged_repo / "rsi").mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        Path(__file__).resolve().parents[1] / "rsi" / "panel_wave_reference.json",
+        staged_repo / "rsi" / "panel_wave_reference.json",
+    )
 
     target_hull = staged_repo / "hull" / "kayak-10-9.hull.json"
     original_bytes = target_hull.read_bytes()

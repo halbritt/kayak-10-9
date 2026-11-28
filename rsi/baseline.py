@@ -26,6 +26,8 @@ SEAKEEPING_REFERENCE_FILE = "rsi-seakeeping-reference.json"
 # The baseline's own local-friction ratios (rsi.evaluator.local_friction_ratio) per load and speed.
 # Candidates are charged friction relative to these, so the baseline keeps its published speeds.
 FRICTION_REFERENCE_FILE = "rsi-friction-reference.json"
+# Baseline v0.2.3 panel-solver and Michell wave reference (versioned under rsi/, leaving data/ untouched).
+PANEL_WAVE_REFERENCE_FILE = "panel_wave_reference.json"
 
 # Conditions the Tier 2 seakeeping gates read, all at the 225 lb race load. Head and bow-quarter
 # seas have been gated since gates version 5; following and stern-quarter seas were added by the
@@ -201,6 +203,34 @@ class OpenFoamBaseline:
 
 
 @dataclass(frozen=True)
+class PanelWaveReference:
+    """Versioned fixed level-pose panel-solver reference for Tier-1 wave resistance."""
+
+    version: int
+    grid_family: tuple[tuple[int, int, int], ...]
+    precision: str
+    linearisation: str
+    speeds_kn: tuple[float, ...]
+    baseline_panel_rw_N: dict[int, tuple[float, ...]]
+    baseline_michell_rw_N: dict[int, tuple[float, ...]]
+    michell_kn_225: dict[int, float]
+    michell_kn_225_exact: dict[int, float]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "version": self.version,
+            "grid_family": [list(g) for g in self.grid_family],
+            "precision": self.precision,
+            "linearisation": self.linearisation,
+            "speeds_kn": list(self.speeds_kn),
+            "baseline_panel_rw_N": {str(k): list(v) for k, v in self.baseline_panel_rw_N.items()},
+            "baseline_michell_rw_N": {str(k): list(v) for k, v in self.baseline_michell_rw_N.items()},
+            "michell_kn_225": {str(k): v for k, v in self.michell_kn_225.items()},
+            "michell_kn_225_exact": {str(k): v for k, v in self.michell_kn_225_exact.items()},
+        }
+
+
+@dataclass(frozen=True)
 class BaselineReference:
     hull: Hull
     design_hash: str
@@ -234,6 +264,7 @@ class BaselineReference:
     # the local-friction charge off, which is how the reference file itself is produced.
     friction_ratio: dict[int, tuple[float, ...]] | None = None
     friction_speeds_kn: tuple[float, ...] | None = None
+    panel_wave: PanelWaveReference | None = None
     shell_area_m2: float = 5.80659
     aft_coaming_above_225wl_cm: float = 15.541
     rear_deck_above_225wl_cm: float = 14.783
@@ -280,6 +311,7 @@ class BaselineReference:
             "fairness": self.fairness.to_dict(),
             "capytaine": self.capytaine.to_dict(),
             "openfoam": self.openfoam.to_dict(),
+            "panel_wave": None if self.panel_wave is None else self.panel_wave.to_dict(),
         }
 
 
@@ -322,12 +354,15 @@ def _parse_openfoam_speed(raw: dict[str, Any]) -> OpenFoamSpeedBaseline:
 
 
 def load_baseline_reference(
-    repo_root: Path | None = None, *, with_friction_reference: bool = True
+    repo_root: Path | None = None,
+    *,
+    with_friction_reference: bool = True,
+    with_panel_wave_reference: bool = True,
 ) -> BaselineReference:
     """Load immutable baseline v0.2.3 hull and reference metrics from repo JSON files.
 
-    ``with_friction_reference=False`` leaves the local-friction reference out; only the script that
-    writes that file needs it.
+    ``with_friction_reference=False`` and ``with_panel_wave_reference=False`` omit the
+    local-friction and panel-wave references; the builder scripts pass False when generating them.
     """
     root = DEFAULT_REPO_ROOT if repo_root is None else Path(repo_root).resolve()
 
@@ -352,6 +387,32 @@ def load_baseline_reference(
         if any(len(vals) != len(friction_speeds_kn) for vals in friction_ratio.values()):
             raise ValueError(f"data/{FRICTION_REFERENCE_FILE} has a ratio list that does not match its speeds")
     openfoam_raw = json.loads((root / "data" / "openfoam-cfd-metrics.json").read_text())
+    panel_wave: PanelWaveReference | None = None
+    panel_raw: dict[str, Any] | None = None
+    if with_panel_wave_reference:
+        panel_raw = json.loads((root / "rsi" / PANEL_WAVE_REFERENCE_FILE).read_text())
+        if panel_raw.get("design_hash") != hull.design_hash():
+            raise ValueError(
+                f"rsi/{PANEL_WAVE_REFERENCE_FILE} was made for another hull; regenerate it with "
+                "scripts/build_rsi_panel_wave_reference.py"
+            )
+        p_speeds = tuple(float(v) for v in panel_raw["speeds_kn"])
+        p_grids = tuple((int(g[0]), int(g[1]), int(g[2])) for g in panel_raw["grid_family"])
+        p_rw = {int(lb): tuple(float(x) for x in vals) for lb, vals in panel_raw["baseline_panel_rw_N"].items()}
+        m_rw = {int(lb): tuple(float(x) for x in vals) for lb, vals in panel_raw["baseline_michell_rw_N"].items()}
+        if any(len(vals) != len(p_speeds) for vals in p_rw.values()) or any(len(vals) != len(p_speeds) for vals in m_rw.values()):
+            raise ValueError(f"rsi/{PANEL_WAVE_REFERENCE_FILE} wave lists do not match its speeds")
+        panel_wave = PanelWaveReference(
+            version=int(panel_raw["version"]),
+            grid_family=p_grids,
+            precision=str(panel_raw["precision"]),
+            linearisation=str(panel_raw["linearisation"]),
+            speeds_kn=p_speeds,
+            baseline_panel_rw_N=p_rw,
+            baseline_michell_rw_N=m_rw,
+            michell_kn_225={int(k): float(v) for k, v in panel_raw["michell_kn_225"].items()},
+            michell_kn_225_exact={int(k): float(v) for k, v in panel_raw["michell_kn_225_exact"].items()},
+        )
 
     hydro_3 = specs["hydro_3load"]
     l_oa_m = float(specs["L_oa_m"])
@@ -363,27 +424,33 @@ def load_baseline_reference(
     usca_4in_pct_exact = 100.0 * b4_m / l_oa_m
     usca_4in_pct = float(specs["USCA_4in_pct"])
 
-    kn_225 = {int(k): float(v) for k, v in hydro_3["kn_225"].items()}
-    kn_exact_raw = hydro_3.get("kn_225_exact")
-    kn_225_exact = (
-        {int(k): float(v) for k, v in kn_exact_raw.items()}
-        if isinstance(kn_exact_raw, dict) and set(kn_exact_raw) == set(hydro_3["kn_225"])
-        else None
-    )
-    kn_265_raw = hydro_3.get("kn_265")
-    kn_265 = (
-        {int(k): float(v) for k, v in kn_265_raw.items()}
-        if isinstance(kn_265_raw, dict) and kn_265_raw
-        else None
-    )
-    kn_265_exact_raw = hydro_3.get("kn_265_exact")
-    kn_265_exact = (
-        {int(k): float(v) for k, v in kn_265_exact_raw.items()}
-        if isinstance(kn_265_exact_raw, dict)
-        and kn_265_raw is not None
-        and set(kn_265_exact_raw) == set(kn_265_raw)
-        else None
-    )
+    if panel_raw is not None:
+        kn_225 = {int(k): float(v) for k, v in panel_raw["baseline_kn_225"].items()}
+        kn_225_exact = {int(k): float(v) for k, v in panel_raw["baseline_kn_225_exact"].items()}
+        kn_265 = {int(k): float(v) for k, v in panel_raw["baseline_kn_265"].items()}
+        kn_265_exact = {int(k): float(v) for k, v in panel_raw["baseline_kn_265_exact"].items()}
+    else:
+        kn_225 = {int(k): float(v) for k, v in hydro_3["kn_225"].items()}
+        kn_exact_raw = hydro_3.get("kn_225_exact")
+        kn_225_exact = (
+            {int(k): float(v) for k, v in kn_exact_raw.items()}
+            if isinstance(kn_exact_raw, dict) and set(kn_exact_raw) == set(hydro_3["kn_225"])
+            else None
+        )
+        kn_265_raw = hydro_3.get("kn_265")
+        kn_265 = (
+            {int(k): float(v) for k, v in kn_265_raw.items()}
+            if isinstance(kn_265_raw, dict) and kn_265_raw
+            else None
+        )
+        kn_265_exact_raw = hydro_3.get("kn_265_exact")
+        kn_265_exact = (
+            {int(k): float(v) for k, v in kn_265_exact_raw.items()}
+            if isinstance(kn_265_exact_raw, dict)
+            and kn_265_raw is not None
+            and set(kn_265_exact_raw) == set(kn_265_raw)
+            else None
+        )
 
     loads: dict[int, LoadBaseline] = {}
     for lb in (225, 265, 300):
@@ -524,5 +591,6 @@ def load_baseline_reference(
         kn_265_exact=kn_265_exact,
         friction_ratio=friction_ratio,
         friction_speeds_kn=friction_speeds_kn,
+        panel_wave=panel_wave,
         shell_area_m2=float(hydro_3.get("shell_area_m2", 5.80659)),
     )

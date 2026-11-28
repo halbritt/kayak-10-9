@@ -163,21 +163,22 @@ def test_catch_gate_fails_closed_without_usable_widths() -> None:
 
 def test_speed_gate_compares_unrounded_against_unrounded() -> None:
     ref = load_baseline_reference()
-    assert ref.kn_225_exact is not None
-    exact = ref.kn_225_exact
+    uncal_ref = load_baseline_reference(with_panel_wave_reference=False)
+    assert ref.kn_225_exact is not None and uncal_ref.kn_225_exact is not None
 
-    def with_speed(p_w: int, delta: float) -> CandidateMetrics:
-        kn_exact = dict(exact)
-        kn_exact[p_w] = exact[p_w] + delta
+    def with_speed(p_w: int, delta: float, base_ref: BaselineReference = ref) -> CandidateMetrics:
+        base_ex = base_ref.kn_225_exact or base_ref.kn_225
+        kn_exact = dict(base_ex)
+        kn_exact[p_w] = base_ex[p_w] + delta
         return _baseline_like(
-            ref, kn_225_exact=kn_exact, kn_225={k: round(v, 2) for k, v in kn_exact.items()}
+            base_ref, kn_225_exact=kn_exact, kn_225={k: round(v, 2) for k, v in kn_exact.items()}
         )
 
-    # iter046_cand006's 40 W regression: its exact speed still rounds to the published 4.47, so the
+    # iter046_cand006's 40 W regression on the spec table: still rounds to 4.47, so the
     # comparison against the rounded table let a loss larger than the tolerance through.
-    slow_40 = with_speed(40, -0.0056)
-    assert slow_40.kn_225 is not None and slow_40.kn_225[40] == ref.kn_225[40]
-    report = evaluate_gates(slow_40, ref)
+    slow_40 = with_speed(40, -0.0056, uncal_ref)
+    assert slow_40.kn_225 is not None and slow_40.kn_225[40] == uncal_ref.kn_225[40]
+    report = evaluate_gates(slow_40, uncal_ref)
     assert _violated(report, "kn_225_40w")
     assert math.isclose(report.margins["kn_225_40w"], KN_TOL_KN - 0.0056, abs_tol=1e-12)
     # Owner, 2026-11-27: the objective is the mean gain at 60 and 90 W. 40 and 120 W are gated
@@ -198,14 +199,14 @@ def test_speed_gate_compares_unrounded_against_unrounded() -> None:
     assert evaluate_gates(with_speed(40, -(KN_TOL_KN - 1e-4)), ref).passed is True
 
     # The tolerance is the same at every power level. A 0.004 kn loss at 60 W changes the published
-    # second decimal (5.08 -> 5.07), which the rounded comparison counted as a 0.01 kn regression.
-    small_60 = with_speed(60, -0.004)
-    assert small_60.kn_225 is not None and small_60.kn_225[60] < ref.kn_225[60]
-    assert evaluate_gates(small_60, ref).passed is True
+    # second decimal (5.08 -> 5.07) on the spec table, which the rounded check called -0.01 kn.
+    small_60 = with_speed(60, -0.004, uncal_ref)
+    assert small_60.kn_225 is not None and small_60.kn_225[60] < uncal_ref.kn_225[60]
+    assert evaluate_gates(small_60, uncal_ref).passed is True
     assert _violated(evaluate_gates(with_speed(60, -(KN_TOL_KN + 1e-4)), ref), "kn_225_60w")
 
     # A spec file without unrounded speeds keeps the previous comparison.
-    legacy_ref = replace(ref, kn_225_exact=None)
+    legacy_ref = replace(uncal_ref, kn_225_exact=None)
     assert evaluate_gates(slow_40, legacy_ref).passed is True
 
 
