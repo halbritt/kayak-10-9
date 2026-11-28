@@ -27,7 +27,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--work-dir", type=Path)
     args = ap.parse_args()
-    ref = load_baseline_reference(ROOT, with_friction_reference=False)
+    # Neither reference can be loaded after the hull changes; this one does not need the other.
+    ref = load_baseline_reference(ROOT, with_friction_reference=False, with_panel_wave_reference=False)
     with tempfile.TemporaryDirectory() as tmp:
         metrics = evaluate_tier0_tier1(ref.hull, args.work_dir or Path(tmp), ref)
     if not metrics.valid or not metrics.friction_ratio:

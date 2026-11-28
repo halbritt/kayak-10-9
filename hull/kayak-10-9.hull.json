@@ -22,12 +22,12 @@
       "schema_version": "1",
       "kind": "polynomial",
       "coefficients": [
-        0.249,
-        0.04482,
-        -0.21912,
-        -0.0394416,
-        -0.02988,
-        -0.005378399999999999
+        0.2503130715426159,
+        0.04680473060547105,
+        -0.2259034921,
+        -0.0375261034,
+        -0.024409579442615913,
+        -0.009278627205471054
       ]
     },
     "draft_profile": {
@@ -35,8 +35,8 @@
       "kind": "polynomial",
       "coefficients": [
         0.103,
-        0.0,
-        -0.04532
+        -0.001445049939764141,
+        -0.0485913641
       ]
     },
     "section_area_curve": {
@@ -98,8 +98,8 @@
       "coefficients": [
         0.0,
         0.0,
-        0.008,
-        -0.004
+        0.008518919891754158,
+        -0.002177326291754158
       ]
     },
     "rocker_bow_m": 0.0,
@@ -149,38 +149,46 @@
       },
       "sheer_plan": {
         "max_half_breadth_m": 0.285,
-        "max_position_xi": 0.39631995663129627,
-        "forward_exponent": 1.4901655203838866,
-        "aft_exponent": 1.990139555287078
+        "max_position_xi": 0.3963199566,
+        "forward_exponent": 1.4901655204,
+        "aft_exponent": 1.9901395553
       },
       "deck_crown_exponent": {
         "schema_version": "1",
         "kind": "ramp",
-        "forward": 2.692816171190041,
-        "aft": 9.729547268321408,
+        "forward": 2.6928161712,
+        "aft": 9.7295472683,
         "forward_xi": -0.35,
         "aft_xi": 0.2
       },
-      "shoulder_round_m": 0.06812556509299181,
+      "shoulder_round_m": 0.0681255651,
       "bilge_round_m": {
         "schema_version": "1",
         "kind": "ramp",
-        "forward": 0.07,
-        "aft": 0.0,
-        "forward_xi": -0.38,
-        "aft_xi": 0.05
+        "forward": 0.0759098262,
+        "aft": 0.0017656436,
+        "forward_xi": -0.3952160913,
+        "aft_xi": 0.041897965599999996
       }
     },
     "section_side_exponent": {
       "schema_version": "1",
       "kind": "ramp",
-      "forward": 2.0,
-      "aft": 1.1958772290315158,
-      "forward_xi": -0.4589222038716594,
-      "aft_xi": 0.42936653865876717
+      "forward": 1.9223043037794576,
+      "aft": 1.123732020391748,
+      "forward_xi": -0.3804279036,
+      "aft_xi": 0.5167037216
     },
     "surface_fairing": {
-      "target_beam_m": 0.500456
+      "longitudinal_spans": 12,
+      "transverse_spans": 22,
+      "fit_stations": 441,
+      "fit_half_girth_points": 129,
+      "end_preserve_m": 0.25,
+      "end_blend_m": 0.35,
+      "boundary_preserve_frac": 0.12,
+      "beam_control_draft_m": 0.1016,
+      "target_beam_m": 0.4998827714209161
     }
   },
   "hull_class": "sea_kayak"
