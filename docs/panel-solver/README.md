@@ -29,7 +29,8 @@ Linearised or left out: the free-surface condition is linear and applied at `z =
 
 Verified by the runs below:
 
-- In the thin-hull limit, where Michell's integral is the exact answer, the solver approaches it from below as the grid is refined and is still 5 to 12 % short at 80 stations. Convergence to Michell is the trend, not something these runs reach.
+- In the thin-hull limit, where Michell's integral is the exact answer, the solver approaches it from below as the grid is refined and is still 5 to 12 % short at 80 stations and 3 to 6 % short at 160. Convergence to Michell is the trend, not something these runs reach.
+- **Fine grids do not converge the paired difference.** On the whole GPU, up to 115 stations (17 500 panels), the fixed-pose difference moves from grid to grid as much as on the coarse grids, and changes of the near-hull row width, source height and row count spread it by 0.02 to 0.045 N at 80 to 100 stations. Pooled over 25 such cases the difference for `iter137_cand004` is -0.006 ± 0.005, -0.027 ± 0.007 and -0.046 ± 0.013 N at 5.0, 5.5 and 6.2 kn, negative in every case at the upper two speeds. See "Fine grids on the whole GPU".
 - On the fixed Wigley hull the solver is within 7 % of an independent linear Rankine-panel calculation at seven Froude numbers. It differs from four measured residuary coefficients by 1 to 17 % and exceeds two wake-survey wave coefficients by 6 and 20 %.
 - Free to sink and trim, sinkage on the Wigley hull is 8 to 12 % below the experiments and **trim is biased bow up by up to 0.4 % of length**. This matters for the kayak; see "Limitations".
 - Across seven grids the baseline kayak's fixed-pose wave resistance has a sample standard deviation of 0.092, 0.132 and 0.233 N at 5.0, 5.5 and 6.2 kn (5.8, 4.4 and 4.1 % of the respective means).
@@ -232,7 +233,134 @@ To reproduce the middle force column, take `sinkage_m`, `trim_rad` and `rw_N` fr
 
 ### Single precision
 
-Reference grid, numpy, single against double precision (`precision="single"`): the baseline moved by -2.6e-5, -1.1e-4 and +7.6e-5 N at 5.0, 5.5 and 6.2 kn and the paired difference by +3e-6, +2.0e-4 and +1.6e-4 N. That is 350 times below 0.07 N and 40 times below the grid scatter, so single precision does not limit the paired difference at this size (3700 panels). Rounding error grows with the panel count, and this was not measured above 3700 panels.
+Reference grid, numpy, single against double precision (`precision="single"`): the baseline moved by -2.6e-5, -1.1e-4 and +7.6e-5 N at 5.0, 5.5 and 6.2 kn and the paired difference by +3e-6, +2.0e-4 and +1.6e-4 N. That is 350 times below 0.07 N and 40 times below the grid scatter, so single precision does not limit the paired difference at this size (3700 panels). Rounding error grows with the panel count; at 13 400 panels it is still below 3e-4 N (see "Fine grids on the whole GPU").
+
+## Fine grids on the whole GPU
+
+Run on 2026-11-27 and 28 (UTC) with `scripts/panel_gpu_ladder.py` on the CuPy backend in double precision, with the local LLM stopped under a gpu-fleet lease so that the solver had 23.6 GiB of the RTX 3090. Raw results: `data/fine-*.json`. All values are wave resistance at the level static pose, 225 lb, candidate minus baseline, in newtons, unless stated. The station ladder and the thin-hull check ran on the solver at commit 98d82c6 and the rest at e068a0e; the two differ only in how a free run reports its pose. At 100 stations the numpy and CuPy backends give the same baseline resistance to 4e-14 relative, and at 50 stations this script reproduces the five near-hull spacing and source height values quoted above to the last digit shown.
+
+### Station ladder to 115 stations
+
+The grid family of the seven-grid study (rows 0.6 times the stations, everything else default), continued from 70 to 115 stations.
+
+| Stations | Panels | cand004 5.0 kn | 5.5 kn | 6.2 kn | cand009 5.0 kn | 5.5 kn | 6.2 kn | cand002 5.0 kn | 5.5 kn | 6.2 kn | Baseline 5.0 / 5.5 / 6.2 kn |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 70 | 6860 | -0.0125 | -0.0130 | -0.0526 | -0.0096 | -0.0120 | -0.0498 | -0.0129 | -0.0184 | -0.0604 | 1.541 / 3.132 / 5.764 |
+| 75 | 7845 | -0.0043 | -0.0197 | -0.0640 | -0.0024 | -0.0163 | -0.0637 | -0.0060 | -0.0221 | -0.0737 | 1.579 / 3.208 / 5.361 |
+| 80 | 8800 | +0.0026 | -0.0332 | -0.0450 | +0.0055 | -0.0297 | -0.0482 | +0.0021 | -0.0352 | -0.0599 | 1.746 / 2.978 / 5.387 |
+| 85 | 9911 | -0.0056 | -0.0305 | -0.0235 | -0.0017 | -0.0290 | -0.0259 | -0.0045 | -0.0353 | -0.0390 | 1.708 / 2.870 / 5.786 |
+| 90 | 10980 | -0.0110 | -0.0173 | -0.0254 | -0.0081 | -0.0161 | -0.0242 | -0.0114 | -0.0231 | -0.0363 | 1.563 / 3.064 / 6.023 |
+| 95 | 12217 | -0.0058 | -0.0162 | -0.0439 | -0.0035 | -0.0128 | -0.0408 | -0.0074 | -0.0192 | -0.0515 | 1.595 / 3.249 / 5.803 |
+| 100 | 13400 | +0.0006 | -0.0267 | -0.0556 | +0.0038 | -0.0223 | -0.0545 | +0.0000 | -0.0280 | -0.0645 | 1.743 / 3.157 / 5.434 |
+| 105 | 14763 | -0.0022 | -0.0334 | -0.0482 | +0.0022 | -0.0303 | -0.0505 | -0.0011 | -0.0358 | -0.0626 | 1.758 / 2.944 / 5.337 |
+| 110 | 16060 | -0.0080 | -0.0286 | -0.0343 | -0.0043 | -0.0272 | -0.0372 | -0.0076 | -0.0340 | -0.0514 | 1.629 / 2.909 / 5.608 |
+| 115 | 17549 | -0.0082 | -0.0201 | -0.0294 | -0.0057 | -0.0182 | -0.0292 | -0.0095 | -0.0257 | -0.0433 | 1.572 / 3.085 / 5.949 |
+
+Mean and sample standard deviation over grids, coarse half against fine half:
+
+| Hull | Grids | 5.0 kn | 5.5 kn | 6.2 kn |
+|---|---|---|---|---|
+| iter137_cand004 | 40 to 70 (7) | -0.0075 ± 0.0059 | -0.0254 ± 0.0091 | -0.0371 ± 0.0140 |
+| iter137_cand004 | 75 to 115 (9) | -0.0047 ± 0.0044 | -0.0250 ± 0.0068 | -0.0411 ± 0.0139 |
+| iter139_cand009 | 40 to 70 (7) | -0.0053 ± 0.0056 | -0.0237 ± 0.0086 | -0.0375 ± 0.0130 |
+| iter139_cand009 | 75 to 115 (9) | -0.0016 ± 0.0045 | -0.0224 ± 0.0068 | -0.0416 ± 0.0137 |
+| iter139_cand002 | 40 to 70 (7) | -0.0083 ± 0.0055 | -0.0295 ± 0.0080 | -0.0492 ± 0.0118 |
+| iter139_cand002 | 75 to 115 (9) | -0.0050 ± 0.0046 | -0.0287 ± 0.0065 | -0.0536 ± 0.0126 |
+| baseline, absolute | 40 to 70 (7) | 1.585 ± 0.092 | 2.998 ± 0.132 | 5.658 ± 0.233 |
+| baseline, absolute | 75 to 115 (9) | 1.655 ± 0.083 | 3.052 ± 0.135 | 5.632 ± 0.266 |
+
+- **The difference does not converge as stations are added.** From 75 to 115 stations it keeps moving from grid to grid by as much as it did from 40 to 70: the largest standard deviation among the finalists is 0.005, 0.007 and 0.014 N at 5.0, 5.5 and 6.2 kn against 0.006, 0.009 and 0.014 N, and the ranges for `iter137_cand004` are 0.014, 0.017 and 0.041 N. Successive grids do not approach a limit; the last four grids at 6.2 kn read -0.056, -0.048, -0.034 and -0.029 N for `iter137_cand004`.
+- The mean over a family of grids is steady: the two halves agree to 0.005 N at every speed for every hull. At 5.5 and 6.2 kn every finalist reads below the baseline on all 16 grids. At 5.0 kn the sign changes with the grid.
+- The baseline's own resistance does not converge either (±5, ±4 and ±5 % on the fine half). It swings with a period of about 20 stations (high at 45, 60 to 65, 80 to 85 and 100 to 105 stations at 5.0 kn), which is the signature of station placement, not of resolution.
+
+### Near-hull row width, source height and row count on fine grids
+
+The spacing check above found, at 50 stations, that the near-hull row width and the source height move the difference by more than the whole station ladder. The same changes on finer grids, `iter137_cand004` minus baseline. "Rows 0.8" has 0.8 rows per station where the ladder has 0.6.
+
+5.5 kn:
+
+| Variant | 50 | 65 | 80 | 90 | 100 | 110 stations |
+|---|---|---|---|---|---|---|
+| defaults (first row 0.75, sources 0.80) | -0.0170 | -0.0295 | -0.0332 | -0.0173 | -0.0267 | -0.0286 |
+| first row 0.5625 | -0.0423 | -0.0125 | -0.0152 | -0.0377 | -0.0192 | -0.0345 |
+| first row 0.375 | +0.0019 | -0.0406 | -0.0288 | -0.0294 | -0.0291 | -0.0251 |
+| sources 0.55 | -0.0312 | -0.0389 | -0.0143 | -0.0341 | -0.0165 | -0.0260 |
+| first row 0.375, sources 0.55 | -0.0706 | -0.0360 | -0.0319 | -0.0275 | -0.0358 | not run |
+| rows 0.8 | -0.0180 | -0.0248 | -0.0310 | -0.0177 | -0.0291 | not run |
+| first row 0.375, rows 0.8 | +0.0002 | -0.0337 | -0.0302 | -0.0217 | -0.0423 | not run |
+| span of the column | 0.073 | 0.028 | 0.019 | 0.021 | 0.026 | 0.009 (4 variants) |
+
+6.2 kn:
+
+| Variant | 50 | 65 | 80 | 90 | 100 | 110 stations |
+|---|---|---|---|---|---|---|
+| defaults (first row 0.75, sources 0.80) | -0.0513 | -0.0244 | -0.0450 | -0.0254 | -0.0556 | -0.0343 |
+| first row 0.5625 | -0.0277 | -0.0840 | -0.0340 | -0.0496 | -0.0350 | -0.0547 |
+| first row 0.375 | -0.0910 | -0.0101 | -0.0596 | -0.0331 | -0.0650 | -0.0338 |
+| sources 0.55 | -0.0255 | -0.0256 | -0.0607 | -0.0359 | -0.0306 | -0.0527 |
+| first row 0.375, sources 0.55 | +0.0056 | -0.0481 | -0.0535 | -0.0514 | -0.0468 | not run |
+| rows 0.8 | -0.0505 | -0.0342 | -0.0375 | -0.0353 | -0.0495 | not run |
+| first row 0.375, rows 0.8 | -0.0916 | -0.0489 | -0.0628 | -0.0344 | -0.0753 | not run |
+| span of the column | 0.097 | 0.074 | 0.029 | 0.026 | 0.045 | 0.021 (4 variants) |
+
+At 5.0 kn the spans are 0.046, 0.012, 0.016, 0.013, 0.012 and 0.020 N and the values lie between -0.019 and +0.003 N from 80 stations up.
+
+- **The variants do not converge on one value.** Their spread falls by a factor of three to four between 50 and 80 stations (0.073 to 0.019 N at 5.5 kn, 0.097 to 0.029 N at 6.2 kn) and then stops falling: 0.019, 0.021 and 0.026 N at 80, 90 and 100 stations at 5.5 kn; 0.029, 0.026 and 0.045 N at 6.2 kn. No variant settles either: each row of the tables keeps moving by 0.01 to 0.03 N between 80 and 110 stations.
+- The sign reversals at 50 stations are a coarse-grid effect. From 65 stations up every one of the 32 cases is negative at 5.5 and at 6.2 kn.
+- Pooled over the 25 cases from 80 to 110 stations, the difference for `iter137_cand004` is -0.006 ± 0.005 N at 5.0 kn (five of 25 positive), -0.027 ± 0.007 N at 5.5 kn (range -0.042 to -0.014) and -0.046 ± 0.013 N at 6.2 kn (range -0.075 to -0.025). The variant-to-variant spread at one station count and the station-to-station spread of one variant are the same size, and the same size as on the coarse ladder.
+- The other two finalists at 80 and 100 stations (12 cases each): `iter139_cand009` -0.003 ± 0.005, -0.022 ± 0.008 and -0.046 ± 0.013 N; `iter139_cand002` -0.007 ± 0.006, -0.030 ± 0.011 and -0.057 ± 0.019 N. None is positive at 5.5 or 6.2 kn.
+- The baseline's absolute resistance moves more with these settings than with the stations: at 100 stations the seven variants give 1.43 to 1.84, 2.80 to 3.76 and 5.42 to 6.50 N.
+
+**What the fixed-pose difference is resolved to.** At the level static pose and 80 stations or more, the wave resistance of `iter137_cand004` is lower than the baseline's by 0.027 N at 5.5 kn and 0.046 N at 6.2 kn, with one standard deviation of 0.007 and 0.013 N over grids and discretisation settings, and no single grid can be trusted to better than about ±0.015 N at 5.5 kn and ±0.025 N at 6.2 kn (the half range). Refinement to 17 000 panels did not reduce that; a mean over a family of grids is the only stable number. At 5.0 kn the difference is -0.006 ± 0.005 N and its sign is not resolved. This is a statement about the discretisation at one pose. The reversal of sign under a common running pose (above) is untouched by it.
+
+### Thin-hull limit on finer grids
+
+As in "Verification against theory": uniform-stream linearisation, Wigley form with `B/L = 0.005`, panel wave resistance over Michell.
+
+| Grid | Panels (hull, surface) | Fn 0.25 | Fn 0.30 | Fn 0.35 | Fn 0.40 | Fn 0.45 |
+|---|---|---|---|---|---|---|
+| stations 80, rows 48 | 640, 8160 | 0.884 | 0.913 | 0.933 | 0.941 | 0.954 |
+| stations 100, rows 60 | 800, 12600 | 0.913 | 0.922 | 0.943 | 0.948 | 0.960 |
+| stations 115, rows 69 | 920, 16629 | 0.927 | 0.927 | 0.949 | 0.950 | 0.963 |
+| stations 120, rows 48 | 960, 12000 | 0.930 | 0.928 | 0.950 | 0.951 | 0.964 |
+| stations 160, rows 48 | 1280, 15936 | 0.949 | 0.936 | 0.958 | 0.955 | 0.968 |
+
+The ratio keeps rising with the station count and does not depend on the row count (115 stations with 69 rows and 120 with 48 agree to 0.003). At 160 stations the solver is 3 to 6 % below Michell, against 5 to 12 % at 80. The shortfall roughly halves at Fn 0.25 for a doubling of stations and falls by a quarter to a third at Fn 0.30 to 0.45: first order at best, and not reached on this card.
+
+### Single precision at 13 400 panels
+
+100 stations, single against double precision: the baseline moved by +1.6e-4, -6e-5 and +2.1e-4 N and the paired difference by -2.1e-4, +2.1e-4 and +2.9e-4 N at 5.0, 5.5 and 6.2 kn. That is 25 to 45 times below the grid scatter of the difference. Single precision took 2.2 s where double took 12.1 s (the solve 0.15 s per speed against 3.1 s) and 6.5 GiB against 12.9 GiB.
+
+### Free to sink and trim at 80 stations
+
+| Grid | Speed, kn | Baseline, N | Sinkage, mm | Trim, deg (bow up +) | Candidate trim, deg | Difference, N |
+|---|---|---|---|---|---|---|
+| 80 stations, 48 rows | 5.5 | 4.196 | 6.93 | +0.2616 | +0.2641 | +0.0036 |
+| 80 stations, 48 rows | 6.2 | 9.374 | 9.24 | +0.5394 | +0.5422 | +0.0709 |
+
+Both poses converged in 7 flow solutions. With the two coarse grids above the free difference for `iter137_cand004` reads +0.031, -0.007 and +0.004 N at 5.5 kn and +0.065, +0.125 and +0.071 N at 6.2 kn. It remains unresolved at 5.5 kn; at 6.2 kn it is positive on all three grids, the opposite sign to the level fixed-pose difference. Only one fine grid was run: the 100 and 90 station cases and the other two finalists were skipped for time.
+
+### Timings and memory on the whole card
+
+Kayak baseline, three speeds at one pose, wall time for the whole call (panelling on the host, assembly and three solves on the GPU). "Pool" is the high-water mark of CuPy's memory pool and "process" what the driver charged the process.
+
+| Stations | Panels | Wall, s | Assembly, s | Solve per speed, s | Pool, GiB | Process, GiB |
+|---|---|---|---|---|---|---|
+| 40 | 2480 | 0.45 | 0.30 | 0.04 | 0.9 | 1.3 |
+| 50 | 3700 | 0.72 | 0.44 | 0.09 | 1.6 | 2.0 |
+| 60 | 5160 | 1.6 | 0.94 | 0.22 | 2.6 | 2.9 |
+| 70 | 6860 | 2.6 | 1.2 | 0.47 | 4.0 | 4.3 |
+| 80 | 8800 | 4.2 | 1.4 | 0.93 | 5.8 | 6.2 |
+| 90 | 10980 | 7.9 | 2.7 | 1.7 | 8.5 | 8.8 |
+| 100 | 13400 | 12.0 | 2.7 | 3.1 | 12.6 | 12.9 |
+| 110 | 16060 | 19.8 | 3.9 | 5.2 | 17.7 | 18.0 |
+| 115 | 17549 | 27.6 | 6.9 | 6.9 | 21.0 | 21.3 |
+
+- **numpy on 4 threads at 100 stations: 516 s** (assembly 403 s, solves 43, 38 and 31 s) against 12.0 s on the GPU, a factor of 43. The host had a load average of 26 to 30 on 12 threads from other work while it ran, and the process was niced, so the CPU figure is pessimistic.
+- Memory is about 73 bytes per panel squared in double precision with these settings (2e6 point-panel pairs per assembly chunk on the GPU), not the 66 estimated from the small runs: 115 stations is the largest grid of this family that fits in 24 GiB, and 100 stations with 0.8 rows per station (17 600 panels, 25 s) fits as well.
+- Above about 8000 panels the double-precision LU solve dominates the wall time on this card.
+- A free run cost 53 to 59 s per hull at 80 stations (two speeds, 14 flow solutions), about 40 % of it re-balancing the pose on the loaded host.
+- The rows from 100 stations up, the thin-hull runs and the second half of the variants were timed while another process was repeatedly trying to load a model onto the same card (an alert responder restarted the stopped LLM service, which then failed for lack of memory and retried). One single-precision comparison failed for lack of memory because of it and was repeated. No result is affected, since a case either completes or fails; the timings of those rows may be a little slow.
 
 ## Cross-check with the Michell tier on the kayak
 
@@ -284,14 +412,14 @@ Kayak baseline, three speeds at one pose (one assembly, three solves), wall time
 
 - A hull free to sink and trim needs 6 or 7 flow solutions per speed: 3.5 to 4.5 minutes per speed on the CPU at 60 stations, 10 to 13.5 minutes for the three speeds.
 - The GPU is 11 to 17 times faster than four loaded CPU threads at the sizes that fit. It is worth having: measuring variation across the seven grids costs seven fixed-pose runs per hull, and the free runs seven solves per speed.
-- GPU memory: about 66 bytes per panel squared in double precision (measured: 408 MiB at 2480 panels), half that in single, plus roughly 0.3 GiB of CUDA context. The card had 0.93 GiB free during this work. A double-precision run at 60 stations needs about 2.1 GiB in all, at 70 stations about 3.4 GiB, and at 100 stations (about 14 000 panels) about 12.5 GiB. The control-surface estimate adds about 100 kB per panel. **No full-size double-precision GPU run has been made.**
+- GPU memory: about 66 bytes per panel squared in double precision (measured: 408 MiB at 2480 panels), half that in single, plus roughly 0.3 GiB of CUDA context. The card had 0.93 GiB free during this work. A double-precision run at 60 stations needs about 2.1 GiB in all, at 70 stations about 3.4 GiB, and at 100 stations (about 14 000 panels) about 12.5 GiB. The control-surface estimate adds about 100 kB per panel. The full-size double-precision runs made later measured about 73 bytes per panel squared; see "Fine grids on the whole GPU".
 - The CuPy backend gives the same wave resistance as numpy to 1e-9 relative in double precision (`tests/test_panel_solver_gpu.py`, run in a separate environment with CuPy 14.2.0 on CUDA 12.8: 4 passed). CuPy is not installed in the repository's environment, where those tests skip.
 
 ## Limitations and failed checks
 
 - **Trim is biased bow up**, by up to 0.4 % of length on the Wigley hull against experiment. On the kayak the computed trim is 0.19 % L at 5.0 kn, 0.45 % at 5.5 kn and 0.94 % at 6.2 kn, and the computed rise in wave resistance on release (26, 40 and 68 %) comes almost entirely from it. The bias on the Wigley hull is of the same size as the kayak's trim at 5.0 and 5.5 kn. The free-running absolute values for the kayak are therefore not validated, and the Wigley comparison gives a reason to expect them to be too high. Potential flow has no boundary layer to relieve the pressure recovery at the stern, and the towing force is assumed to act through the centre of gravity.
 - **Free-running paired differences are unresolved** (above).
-- **Fixed-pose paired differences** have sample standard deviations up to 0.006 to 0.014 N depending on speed in this sweep. The grid family can share discretisation and model bias.
+- **Fixed-pose paired differences** have sample standard deviations up to 0.006 to 0.014 N depending on speed in this sweep. The grid family can share discretisation and model bias. Grids up to 115 stations and changes of row width, source height and row count did not reduce the scatter ("Fine grids on the whole GPU").
 - **Absolute wave resistance of the baseline kayak** has a grid-to-grid standard deviation of 4.1 to 5.8 % of its mean across the three speeds. Refinement gives a nonmonotonic sequence.
 - **The control-surface estimate** differs from computed Wigley hull pressure by 10 to 17 % at Fn 0.30 to 0.40 and by 1 % at Fn 0.45. Its error relative to the physical force remains unknown.
 - **The waterline term** is omitted from reported resistance on the evidence of the Wigley comparison. On the 60-station grid its candidate-minus-baseline change has magnitude up to 0.0111 N at a fixed pose. In the free-pose comparison it reaches −0.0555 N for `iter137_cand004` at 6.2 kn.
@@ -304,6 +432,8 @@ Kayak baseline, three speeds at one pose (one assembly, three solves), wall time
 
 ```sh
 OMP_NUM_THREADS=4 python scripts/panel_validation.py precision paired finalists ensemble wigley-fixed wigley-free wigley-convergence thin-ship
+python scripts/panel_gpu_ladder.py ladder thin variants precision free   # CuPy, needs the whole 24 GiB card
+OMP_NUM_THREADS=4 python scripts/panel_gpu_ladder.py timing --backend numpy --nx 100 --prefix fine-cpu-
 python -m pytest tests/test_panel_solver.py            # numpy backend
 python -m pytest tests/test_panel_solver_gpu.py        # needs the gpu extra (CuPy) and a CUDA device
 ```

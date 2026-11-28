@@ -1,0 +1,238 @@
+{
+ "speeds_kn": [
+  5.5,
+  6.2
+ ],
+ "load_lb": 225.0,
+ "kg_m": 0.25,
+ "runs": [
+  {
+   "nx_hull": 80,
+   "ny_fs": 48,
+   "panels": [
+    640,
+    8160
+   ],
+   "hull": "baseline",
+   "wall_s": 52.653791344026104,
+   "pool_peak_MiB": 5967.6005859375,
+   "results": [
+    {
+     "speed_mps": 2.8294420000000002,
+     "froude": 0.38798341871880726,
+     "lwl_m": 5.423187066169617,
+     "wetted_area_m2": 2.106842744152893,
+     "rw_N": 4.196299747292581,
+     "rw_waterline_N": 0.3050222804408752,
+     "rw_doublebody_zero_N": -0.05861201742808683,
+     "rw_pressure_linear_N": 4.232636657758373,
+     "rw_farfield_N": null,
+     "farfield_parts_N": null,
+     "fz_dyn_N": -133.6310724405852,
+     "my_dyn_Nm": 138.19644208061783,
+     "cw": 0.00048544375731551234,
+     "h_m": 0.09557023323716209,
+     "trim_rad": 0.004566474792379683,
+     "sinkage_m": 0.006932696338040709,
+     "trim_change_rad": 0.004566474792379683,
+     "pose_iterations": 7,
+     "pose_converged": true,
+     "n_hull": 640,
+     "n_fs": 8160,
+     "assembly_s": 1.4263462689705193,
+     "solve_s": 0.9424456569831818,
+     "farfield_s": 0.0,
+     "backend": "cupy"
+    },
+    {
+     "speed_mps": 3.1895528,
+     "froude": 0.4381502892478591,
+     "lwl_m": 5.4037184229051185,
+     "wetted_area_m2": 2.142603815998508,
+     "rw_N": 9.373938422068512,
+     "rw_waterline_N": -0.01124964679195547,
+     "rw_doublebody_zero_N": -0.18025033386698427,
+     "rw_pressure_linear_N": 9.295382323193857,
+     "rw_farfield_N": null,
+     "farfield_parts_N": null,
+     "fz_dyn_N": -188.85908783895155,
+     "my_dyn_Nm": 281.35533389974694,
+     "cw": 0.0008391251942886467,
+     "h_m": 0.09787621506081778,
+     "trim_rad": 0.009414598897344563,
+     "sinkage_m": 0.009238678161696406,
+     "trim_change_rad": 0.009414598897344563,
+     "pose_iterations": 7,
+     "pose_converged": true,
+     "n_hull": 640,
+     "n_fs": 8160,
+     "assembly_s": 1.3014085069298744,
+     "solve_s": 0.9271922179032117,
+     "farfield_s": 0.0,
+     "backend": "cupy"
+    }
+   ]
+  },
+  {
+   "nx_hull": 80,
+   "ny_fs": 48,
+   "panels": [
+    640,
+    8160
+   ],
+   "hull": "iter137_cand004",
+   "wall_s": 59.28991553094238,
+   "pool_peak_MiB": 5967.6005859375,
+   "results": [
+    {
+     "speed_mps": 2.8294420000000002,
+     "froude": 0.387800310101595,
+     "lwl_m": 5.428309634150782,
+     "wetted_area_m2": 2.1108932537449623,
+     "rw_N": 4.199860827854171,
+     "rw_waterline_N": 0.29917341745908616,
+     "rw_doublebody_zero_N": -0.06215154417563148,
+     "rw_pressure_linear_N": 4.234519967098978,
+     "rw_farfield_N": null,
+     "farfield_parts_N": null,
+     "fz_dyn_N": -134.21366405847908,
+     "my_dyn_Nm": 140.35615343934612,
+     "cw": 0.0004849234272033939,
+     "h_m": 0.09550640908583703,
+     "trim_rad": 0.0046102042893547334,
+     "sinkage_m": 0.006930934790374391,
+     "trim_change_rad": 0.0046102042893547334,
+     "pose_iterations": 7,
+     "pose_converged": true,
+     "n_hull": 640,
+     "n_fs": 8160,
+     "assembly_s": 1.4032720029354095,
+     "solve_s": 0.9274004108738154,
+     "farfield_s": 0.0,
+     "backend": "cupy"
+    },
+    {
+     "speed_mps": 3.1895528,
+     "froude": 0.43786573748068497,
+     "lwl_m": 5.41074403427443,
+     "wetted_area_m2": 2.1473220632603365,
+     "rw_N": 9.444804828992623,
+     "rw_waterline_N": -0.05767147490060187,
+     "rw_doublebody_zero_N": -0.1800731332477047,
+     "rw_pressure_linear_N": 9.353019286377197,
+     "rw_farfield_N": null,
+     "farfield_parts_N": null,
+     "fz_dyn_N": -189.8507044933247,
+     "my_dyn_Nm": 284.57694486360435,
+     "cw": 0.0008436112060777324,
+     "h_m": 0.09779637819346002,
+     "trim_rad": 0.009462321314464431,
+     "sinkage_m": 0.009220903897997373,
+     "trim_change_rad": 0.009462321314464431,
+     "pose_iterations": 7,
+     "pose_converged": true,
+     "n_hull": 640,
+     "n_fs": 8160,
+     "assembly_s": 1.3240102070849389,
+     "solve_s": 0.9276941369753331,
+     "farfield_s": 0.0,
+     "backend": "cupy"
+    }
+   ]
+  }
+ ],
+ "skipped": [
+  {
+   "nx_hull": 100,
+   "hull": "baseline",
+   "reason": "time budget",
+   "needed_s": 147.29510265185968,
+   "left_s": 59.65016845893115
+  },
+  {
+   "nx_hull": 100,
+   "hull": "iter137_cand004",
+   "reason": "time budget",
+   "needed_s": 147.29510265185968,
+   "left_s": 59.585265680914745
+  },
+  {
+   "nx_hull": 90,
+   "hull": "baseline",
+   "reason": "time budget",
+   "needed_s": 98.89706222849892,
+   "left_s": 59.546211598906666
+  },
+  {
+   "nx_hull": 90,
+   "hull": "iter137_cand004",
+   "reason": "time budget",
+   "needed_s": 98.89706222849892,
+   "left_s": 59.49972792388871
+  },
+  {
+   "nx_hull": 80,
+   "hull": "iter139_cand009",
+   "reason": "time budget",
+   "needed_s": 63.524909497438266,
+   "left_s": 59.402005715994164
+  },
+  {
+   "nx_hull": 80,
+   "hull": "iter139_cand002",
+   "reason": "time budget",
+   "needed_s": 63.524909497438266,
+   "left_s": 59.34703536797315
+  },
+  {
+   "nx_hull": 100,
+   "hull": "iter139_cand009",
+   "reason": "time budget",
+   "needed_s": 147.29510265185968,
+   "left_s": 59.279414436779916
+  },
+  {
+   "nx_hull": 100,
+   "hull": "iter139_cand002",
+   "reason": "time budget",
+   "needed_s": 147.29510265185968,
+   "left_s": 59.225176258943975
+  }
+ ],
+ "provenance": {
+  "python": "3.12.3",
+  "numpy": "2.5.5",
+  "scipy": "1.18.1",
+  "backend": "cupy",
+  "pair_budget": 2000000,
+  "threads": 4,
+  "load_average": [
+   24.1826171875,
+   23.3857421875,
+   24.3486328125
+  ],
+  "host_cpus": 12,
+  "utc": "2026-11-28T00:21:07Z",
+  "cupy": "14.2.0",
+  "gpu": {
+   "name": "NVIDIA GeForce RTX 3090",
+   "driver_version": "615.71.10",
+   "memory.total": "24576 MiB",
+   "memory.used": "23163 MiB"
+  }
+ },
+ "difference_N": [
+  {
+   "nx_hull": 80,
+   "hull": "iter137_cand004",
+   "difference_N": [
+    0.003561080561589769,
+    0.07086640692411095
+   ],
+   "trim_difference_deg": [
+    0.0025055156169005045,
+    0.0027342930891313135
+   ]
+  }
+ ]
+}
